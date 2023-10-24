@@ -1,5 +1,29 @@
 ﻿<Applications>
 	<Application>
+		<Name>MSFS</Name>
+		<ProcessName>FlightSimulator</ProcessName>
+		<RestartPath></RestartPath>
+		<ClientIP>192.168.1.142</ClientIP>
+	</Application>
+	<Application>
+		<Name>Steam</Name>
+		<ProcessName>steam</ProcessName>
+		<RestartPath>E:\FSUIPC7\MSFS.bat</RestartPath>
+		<ClientIP>192.168.1.142</ClientIP>
+	</Application>
+	<Application>
+		<Name>Prosim</Name>
+		<ProcessName>ProSimB738</ProcessName>
+		<RestartPath>D:\ProSim 737\ProSimB738\ProSimB738.exe</RestartPath>
+		<ClientIP>192.168.1.142</ClientIP>
+	</Application>
+	<Application>
+		<Name>VPilot Host Voice</Name>
+		<ProcessName>vPilot</ProcessName>
+		<RestartPath>E:\vPilot\vPilot_voice_host.bat</RestartPath>
+		<ClientIP>192.168.1.142</ClientIP>
+	</Application>
+	<Application>
 		<Name>Cockpit Connect (Overhead)</Name>
 		<ProcessName>Cockpit Connect</ProcessName>
 		<RestartPath>F:\CockpitConnect\Cockpit Connect.exe</RestartPath>
