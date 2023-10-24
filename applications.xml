@@ -1,0 +1,18 @@
+﻿<Applications>
+	<Application>
+		<Name>Cockpit Connect (Overhead)</Name>
+		<ProcessName>Cockpit Connect</ProcessName>
+		<RestartPath>F:\CockpitConnect\Cockpit Connect.exe</RestartPath>
+	</Application>
+	<Application>
+		<Name>OBS</Name>
+		<ProcessName>obs64</ProcessName>
+		<RestartPath>F:\obs-studio\start_obs.bat</RestartPath>
+	</Application>
+	<Application>
+		<Name>Aviologic (flaps indicator)</Name>
+		<ProcessName>aes-aviologic</ProcessName>
+		<RestartPath>F:\aviologic\aes-aviologic.exe</RestartPath>
+	</Application>
+	<!-- Add more Application elements as needed -->
+</Applications>
