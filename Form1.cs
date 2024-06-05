@@ -72,7 +72,7 @@ namespace AppRestarter
                 }
                 if (app.ClientIP == null)
                 {
-                    appButton.Click += (sender, e) => HandleAppButtonClick(app, true); // Attach an event handler
+                    appButton.Click += (sender, e) => HandleAppButtonClick(app, false); // Attach an event handler
                 }
 
                 AppFlowLayoutPanel.Controls.Add(appButton);
@@ -159,7 +159,7 @@ namespace AppRestarter
         }
         private void AddToLog(string message)
         {
-            txtLog.Text = String.Format("{0} {1} \r\n", DateTime.Now, txtLog.Text);
+            txtLog.Text = String.Format("{0} {1} {2}\r\n", DateTime.Now, message, txtLog.Text);
 
         }
         private void StartServer()
@@ -204,6 +204,13 @@ namespace AppRestarter
                 server.Stop();
                 // Close any other resources or clean-up here if needed
             }
+        }
+
+        private void btnReload_Click(object sender, EventArgs e)
+        {
+            selectedApps.Clear();
+            LoadApplicationsFromXml("applications.xml");
+            UpdateAppList();
         }
     }
 }
