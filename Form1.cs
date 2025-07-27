@@ -108,8 +108,8 @@ namespace AppRestarter
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Error stopping the application: " + ex.Message);
                     AddToLog("nError stopping" + app.ProcessName);
+                    MessageBox.Show("Error stopping the application: " + ex.Message);
                 }
             }
 
@@ -119,7 +119,14 @@ namespace AppRestarter
                 Process[] processes2 = Process.GetProcessesByName(app.ProcessName);
                 if (processes2.Length == 0 && app.RestartPath != "")
                 {
-                    System.Diagnostics.Process.Start(app.RestartPath);
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = app.RestartPath,
+                        WorkingDirectory = Path.GetDirectoryName(app.RestartPath),
+                        UseShellExecute = false
+                    };
+
+                    System.Diagnostics.Process.Start(startInfo);
                     AddToLog("Started " + app.Name);
                 }
             }
@@ -141,6 +148,7 @@ namespace AppRestarter
 
                 if (confirmResult == DialogResult.Yes)
                 {
+                    AddToLog("Restarted Remote App " + applicationDetails.Name);
                     client = new TcpClient(applicationDetails.ClientIP, 2024); // Connect to the server on localhost
                     client.SendTimeout = 3000;
                     // Serialize and send the object using DataContractSerializer
@@ -148,8 +156,6 @@ namespace AppRestarter
                     NetworkStream stream = client.GetStream();
                     serializer.WriteObject(stream, applicationDetails);
                     client.Close();
-                    AddToLog("Restarted Remote App " + applicationDetails.Name);
-
                 }
             }
             catch (Exception ex)
@@ -159,8 +165,7 @@ namespace AppRestarter
         }
         private void AddToLog(string message)
         {
-            txtLog.Text = String.Format("{0} {1} {2}\r\n", DateTime.Now, message, txtLog.Text);
-
+            txtLog.AppendText(String.Format("{0} - {1} {2}", DateTime.Now, message, txtLog.Text + Environment.NewLine));
         }
         private void StartServer()
         {

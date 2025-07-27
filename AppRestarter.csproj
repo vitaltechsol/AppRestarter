@@ -7,7 +7,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <BaseOutputPath></BaseOutputPath>
+    <ApplicationIcon>Resources\app_restarter_logo.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\app_restarter_logo.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Update="applications.xml">

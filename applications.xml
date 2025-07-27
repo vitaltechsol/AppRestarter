@@ -48,7 +48,7 @@
 		<Name>Prosim CDUs</Name>
 		<ProcessName>ProSimCDU</ProcessName>
 		<RestartPath>E:\Prosim-3\ProSimCDU.bat</RestartPath>
-		<ClientIP>192.168.1.141</ClientIP>
+		<ClientIP>192.168.1.145</ClientIP>
 	</Application>
 	<Application>
 		<Name>OBS</Name>
