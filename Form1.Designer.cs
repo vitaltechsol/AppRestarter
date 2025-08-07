@@ -31,6 +31,7 @@
             AppFlowLayoutPanel = new FlowLayoutPanel();
             txtLog = new TextBox();
             btnReload = new Button();
+            btnAddApp = new Button();
             SuspendLayout();
             // 
             // AppFlowLayoutPanel
@@ -59,11 +60,22 @@
             btnReload.UseVisualStyleBackColor = true;
             btnReload.Click += btnReload_Click;
             // 
+            // btnAddApp
+            // 
+            btnAddApp.Location = new Point(12, 12);
+            btnAddApp.Name = "btnAddApp";
+            btnAddApp.Size = new Size(75, 23);
+            btnAddApp.TabIndex = 3;
+            btnAddApp.Text = "Add New";
+            btnAddApp.UseVisualStyleBackColor = true;
+            btnAddApp.Click += btnAddApp_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(535, 450);
+            Controls.Add(btnAddApp);
             Controls.Add(btnReload);
             Controls.Add(txtLog);
             Controls.Add(AppFlowLayoutPanel);
@@ -79,5 +91,6 @@
         private FlowLayoutPanel AppFlowLayoutPanel;
         private TextBox txtLog;
         private Button btnReload;
+        private Button btnAddApp;
     }
 }

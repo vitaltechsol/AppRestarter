@@ -24,6 +24,7 @@ namespace AppRestarter
             StartServer();
             LoadApplicationsFromXml("applications.xml");
             UpdateAppList();
+            AutoStartApps();
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -57,25 +58,67 @@ namespace AppRestarter
 
         private void UpdateAppList()
         {
-            // Clear the FlowLayoutPanel before adding buttons
             AppFlowLayoutPanel.Controls.Clear();
 
-            foreach (var app in selectedApps)
+            for (int i = 0; i < selectedApps.Count; i++)
             {
-                Button appButton = new Button();
-                appButton.Width = 160;
-                appButton.Height = 45;
-                appButton.Text = app.Name;
-                if (app.ClientIP != null)
+                var app = selectedApps[i];
+                int index = i;
+
+                var appButton = new Button
                 {
-                    appButton.Click += (sender, e) => HandleRemoteClientAppClick(app); // Attach an event handler
-                }
-                if (app.ClientIP == null)
+                    Width = 240,
+                    Height = 45,
+                    Text = app.Name
+                };
+
+                appButton.Click += (s, e) =>
                 {
-                    appButton.Click += (sender, e) => HandleAppButtonClick(app, false); // Attach an event handler
-                }
+                    if (app.ClientIP != null)
+                        HandleRemoteClientAppClick(app);
+                    else
+                        HandleAppButtonClick(app, false);
+                };
+
+                appButton.MouseUp += (s, e) =>
+                {
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        ContextMenuStrip menu = new ContextMenuStrip();
+                        menu.Items.Add("Edit").Click += (ms, me) => EditApp(index);
+                        menu.Show(Cursor.Position);
+                    }
+                };
 
                 AppFlowLayoutPanel.Controls.Add(appButton);
+            }
+        }
+
+        private void AutoStartApps()
+        {
+            foreach (var app in selectedApps.Where(a => a.AutoStart))
+            {
+                HandleAppButtonClick(app, true);
+            }
+        }
+
+        private void EditApp(int index)
+        {
+            var existing = selectedApps[index];
+            using var editForm = new AddAppForm(existing, index);
+            if (editForm.ShowDialog() == DialogResult.OK)
+            {
+                if (editForm.DeleteRequested)
+                {
+                    selectedApps.RemoveAt(index);
+                }
+                else
+                {
+                    selectedApps[index] = editForm.AppData;
+                }
+
+                SaveApplicationsToXml("applications.xml");
+                UpdateAppList();
             }
         }
 
@@ -165,7 +208,8 @@ namespace AppRestarter
         }
         private void AddToLog(string message)
         {
-            txtLog.AppendText(String.Format("{0} - {1} {2}", DateTime.Now, message, txtLog.Text + Environment.NewLine));
+            string logLine = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}{Environment.NewLine}";
+            txtLog.AppendText(logLine);
         }
         private void StartServer()
         {
@@ -202,6 +246,20 @@ namespace AppRestarter
             }
         }
 
+        private void SaveApplicationsToXml(string xmlFilePath)
+        {
+            var doc = new XDocument(new XElement("Applications",
+                selectedApps.Select(app => new XElement("Application",
+                    new XElement("Name", app.Name),
+                    new XElement("ProcessName", app.ProcessName),
+                    new XElement("RestartPath", app.RestartPath),
+                    new XElement("ClientIP", app.ClientIP),
+                    new XElement("AutoStart", app.AutoStart)
+                ))
+            ));
+            doc.Save(xmlFilePath);
+        }
+
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (server != null)
@@ -216,6 +274,17 @@ namespace AppRestarter
             selectedApps.Clear();
             LoadApplicationsFromXml("applications.xml");
             UpdateAppList();
+        }
+
+        private void btnAddApp_Click(object sender, EventArgs e)
+        {
+            using var addForm = new AddAppForm();
+            if (addForm.ShowDialog() == DialogResult.OK)
+            {
+                selectedApps.Add(addForm.AppData);
+                SaveApplicationsToXml("applications.xml");
+                UpdateAppList();
+            }
         }
     }
 }

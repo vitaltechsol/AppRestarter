@@ -3,7 +3,7 @@
 namespace AppRestarter
 {
     [DataContract]
-    internal class ApplicationDetails
+    public class ApplicationDetails
     {
         [DataMember]
         public string Name { get; set; }
@@ -13,6 +13,7 @@ namespace AppRestarter
         public string? RestartPath { get; set; }
         [DataMember]
         public string? ClientIP { get; set; }
-
+        [DataMember]
+        public bool AutoStart { get; set; }
     }
 }
