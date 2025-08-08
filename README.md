@@ -6,6 +6,7 @@ AppRestarter is a Windows Forms application designed to allow you to remotely re
 
 * View, add, edit, and delete application configurations.
 * Start or stop applications remotely or locally.
+* Restart applications from a web browser.
 * Keep logs of actions performed.
 * Lightweight and easy to deploy.
 
@@ -69,6 +70,14 @@ To find the process name:
 
 ### 5. Edit / Remove Applications
 After entering the applications, you can edit it by right-clicking the button and selecting 'Edit'
+
+
+### 6. Using a web browser
+* Enter the PC's IP with port 8080 to view the web version. 
+  For example `http://192.168.1.123:8080`.
+* Note that AppRestarter must run as administrator for this work.
+* You can change the web port in applicantions.xml
+
 
 ## Notes
 

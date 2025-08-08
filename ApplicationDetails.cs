@@ -21,4 +21,10 @@ namespace AppRestarter
         public bool NoKill { get; set; } = false;
 
     }
+
+    public class AppSettings
+    {
+        public int WebPort { get; set; } = 8080;
+        public int AppPort { get; set; } = 2024;
+    }
 }

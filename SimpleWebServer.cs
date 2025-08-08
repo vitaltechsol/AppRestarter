@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
+using System.Runtime;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -16,6 +19,7 @@ namespace AppRestarter
         private HttpListener _httpListener;
         private volatile bool _running = true;
         private readonly string _htmlFilePath;
+        private int _port;
 
         public SimpleWebServer(List<ApplicationDetails> apps, Action<string> logAction, string htmlFilePath)
         {
@@ -26,6 +30,7 @@ namespace AppRestarter
 
         public void Start(int port = 8080)
         {
+            _port = port;
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add($"http://+:{port}/");
             try
@@ -142,10 +147,56 @@ namespace AppRestarter
         }
 
         public event EventHandler<ApplicationDetails> RestartRequested;
+
+        public void OpenWebInterfaceInBrowser()
+        {
+            try
+            {
+                string ipAddress = GetLocalIPv4();
+                if (string.IsNullOrEmpty(ipAddress))
+                {
+                    _logAction("No valid IPv4 address found.");
+                    return;
+                }
+
+                string url = $"http://{ipAddress}:{_port}/";
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+
+                _logAction($"Opened web interface: {url}");
+            }
+            catch (Exception ex)
+            {
+                _logAction($"Failed to open web interface: {ex.Message}");
+            }
+        }
+
+        private string GetLocalIPv4()
+        {
+            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up)
+                {
+                    var props = ni.GetIPProperties();
+                    foreach (var addr in props.UnicastAddresses)
+                    {
+                        if (addr.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(addr.Address))
+                        {
+                            return addr.Address.ToString();
+                        }
+                    }
+                }
+            }
+            return null;
+        }
     }
 
     public class RestartRequest
     {
         public string ProcessName { get; set; }
     }
+
 }

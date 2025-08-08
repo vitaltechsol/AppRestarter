@@ -1,51 +1,57 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Applications>
-	<Application>
-		<Name>MSFS</Name>
-		<ProcessName>FlightSimulator</ProcessName>
-		<RestartPath></RestartPath>
-		<ClientIP>192.168.1.142</ClientIP>
-		<AutoStart>false</AutoStart>
-		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
-	</Application>
-	<Application>
-		<Name>Steam</Name>
-		<ProcessName>MSFS Steam</ProcessName>
-		<RestartPath>E:\FSUIPC7\MSFS.bat</RestartPath>
-		<ClientIP>192.168.1.142</ClientIP>
-		<AutoStart>false</AutoStart>
-		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
-	</Application>
-	<Application>
-		<Name>Prosim</Name>
-		<ProcessName>ProSimB738</ProcessName>
-		<RestartPath>D:\ProSim 737\ProSimB738\ProSimB738.exe</RestartPath>
-		<ClientIP>192.168.1.142</ClientIP>
-		<AutoStart>false</AutoStart>
-		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
-	</Application>
-	<Application>
-		<Name>SayIntentions (AI ATC)</Name>
-		<ProcessName>SayIntentionsAI</ProcessName>
-		<RestartPath>E:\SayIntentions\SayIntentionsAI.exe</RestartPath>
-		<ClientIP>192.168.1.142</ClientIP>
-		<AutoStart>true</AutoStart>
-		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
-	</Application>
-	<Application>
-		<Name>SimHaptic (ButtKicker)</Name>
-		<ProcessName>SimHaptic</ProcessName>
-		<RestartPath>D:\SimHaptic\SimHaptic.exe</RestartPath>
-		<ClientIP>192.168.1.142</ClientIP>
-		<AutoStart>true</AutoStart>
-		<AutoStartDelayInSeconds>10</AutoStartDelayInSeconds>
-	</Application>
-	<Application>
-		<Name>Active Sky</Name>
-		<ProcessName>Active Sky FS</ProcessName>
-		<RestartPath>E:\ActiveSky_FS\AS_FS.exe</RestartPath>
-		<ClientIP>192.168.1.142</ClientIP>
-		<AutoStart>true</AutoStart>
-		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
-	</Application>
-</Applications>
+<Root>
+  <Settings>
+    <AppPort>2024</AppPort>
+    <WebPort>8080</WebPort>
+	</Settings>
+	<Applications>
+		<Application>
+			<Name>MSFS</Name>
+			<ProcessName>FlightSimulator</ProcessName>
+			<RestartPath></RestartPath>
+			<ClientIP>192.168.1.142</ClientIP>
+			<AutoStart>false</AutoStart>
+			<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
+		</Application>
+		<Application>
+			<Name>Steam</Name>
+			<ProcessName>MSFS Steam</ProcessName>
+			<RestartPath>E:\FSUIPC7\MSFS.bat</RestartPath>
+			<ClientIP>192.168.1.142</ClientIP>
+			<AutoStart>false</AutoStart>
+			<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
+		</Application>
+		<Application>
+			<Name>Prosim</Name>
+			<ProcessName>ProSimB738</ProcessName>
+			<RestartPath>D:\ProSim 737\ProSimB738\ProSimB738.exe</RestartPath>
+			<ClientIP>192.168.1.142</ClientIP>
+			<AutoStart>false</AutoStart>
+			<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
+		</Application>
+		<Application>
+			<Name>SayIntentions (AI ATC)</Name>
+			<ProcessName>SayIntentionsAI</ProcessName>
+			<RestartPath>E:\SayIntentions\SayIntentionsAI.exe</RestartPath>
+			<ClientIP>192.168.1.142</ClientIP>
+			<AutoStart>true</AutoStart>
+			<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
+		</Application>
+		<Application>
+			<Name>SimHaptic (ButtKicker)</Name>
+			<ProcessName>SimHaptic</ProcessName>
+			<RestartPath>D:\SimHaptic\SimHaptic.exe</RestartPath>
+			<ClientIP>192.168.1.142</ClientIP>
+			<AutoStart>true</AutoStart>
+			<AutoStartDelayInSeconds>10</AutoStartDelayInSeconds>
+		</Application>
+		<Application>
+			<Name>Active Sky</Name>
+			<ProcessName>Active Sky FS</ProcessName>
+			<RestartPath>E:\ActiveSky_FS\AS_FS.exe</RestartPath>
+			<ClientIP>192.168.1.142</ClientIP>
+			<AutoStart>true</AutoStart>
+			<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
+		</Application>
+	</Applications>
+</Root>

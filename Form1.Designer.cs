@@ -33,6 +33,7 @@
             btnReload = new Button();
             btnAddApp = new Button();
             label1 = new Label();
+            btnOpenWeb = new Button();
             SuspendLayout();
             // 
             // AppFlowLayoutPanel
@@ -87,7 +88,20 @@
             label1.Name = "label1";
             label1.Size = new Size(37, 15);
             label1.TabIndex = 4;
-            label1.Text = "v1.0.2";
+            label1.Text = "v1.1.0";
+            // 
+            // btnOpenWeb
+            // 
+            btnOpenWeb.BackColor = SystemColors.HotTrack;
+            btnOpenWeb.FlatStyle = FlatStyle.Popup;
+            btnOpenWeb.ForeColor = SystemColors.ButtonFace;
+            btnOpenWeb.Location = new Point(213, 8);
+            btnOpenWeb.Name = "btnOpenWeb";
+            btnOpenWeb.Size = new Size(114, 23);
+            btnOpenWeb.TabIndex = 5;
+            btnOpenWeb.Text = "Web Interface";
+            btnOpenWeb.UseVisualStyleBackColor = false;
+            btnOpenWeb.Click += btnOpenWeb_Click;
             // 
             // Form1
             // 
@@ -95,6 +109,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.WindowText;
             ClientSize = new Size(534, 441);
+            Controls.Add(btnOpenWeb);
             Controls.Add(label1);
             Controls.Add(btnAddApp);
             Controls.Add(btnReload);
@@ -114,5 +129,6 @@
         private Button btnReload;
         private Button btnAddApp;
         private Label label1;
+        private Button btnOpenWeb;
     }
 }

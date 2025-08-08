@@ -16,7 +16,7 @@ namespace AppRestarter
         private TcpListener server;
         private volatile bool _serverRunning = true;
         private SimpleWebServer _webServer;
-
+        private AppSettings _settings = new AppSettings();
 
         public Form1()
         {
@@ -24,6 +24,7 @@ namespace AppRestarter
             this.FormClosing += MainForm_FormClosing;
 
             StartServer();
+            LoadSettingsAndApplications("applications.xml");
             LoadApplicationsFromXml("applications.xml");
             UpdateAppList();
             AutoStartApps();
@@ -37,7 +38,10 @@ namespace AppRestarter
             try
             {
                 XDocument xmlDocument = XDocument.Load(xmlFilePath);
-                foreach (XElement applicationElement in xmlDocument.Root.Elements("Application"))
+                var root = xmlDocument.Root;
+                var applicationsElement = root.Element("Applications");
+
+                foreach (XElement applicationElement in applicationsElement.Elements("Application"))
                 {
                     ApplicationDetails app = new ApplicationDetails
                     {
@@ -111,8 +115,8 @@ namespace AppRestarter
                 else
                     _ = HandleAppButtonClickAsync(app, true, false); // If you want async restart
             };
-            _webServer.Start(8080);
-            AddToLog($"Web Server started on 8080");
+            _webServer.Start(_settings.WebPort);
+            AddToLog($"Web Server started on {_settings.WebPort}");
         }
 
         private void AutoStartApps()
@@ -256,7 +260,7 @@ namespace AppRestarter
                 if (skipConfirm || confirmResult == DialogResult.Yes)
                 {
                     Debug.WriteLine("Restarting****");
-                    using var client = new TcpClient(applicationDetails.ClientIP, 2024);
+                    using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
                     client.SendTimeout = 3000;
 
                     using var stream = client.GetStream();
@@ -295,7 +299,7 @@ namespace AppRestarter
         {
             try
             {
-                server = new TcpListener(IPAddress.Any, 2024);
+                server = new TcpListener(IPAddress.Any, _settings.AppPort);
                 server.Start();
 
                 Thread serverThread = new Thread(ServerThread)
@@ -388,16 +392,29 @@ namespace AppRestarter
 
         private void SaveApplicationsToXml(string xmlFilePath)
         {
-            var doc = new XDocument(new XElement("Applications",
-                selectedApps.Select(app => new XElement("Application",
-                    new XElement("Name", app.Name),
-                    new XElement("ProcessName", app.ProcessName),
-                    new XElement("RestartPath", app.RestartPath),
-                    new XElement("ClientIP", app.ClientIP),
-                    new XElement("AutoStart", app.AutoStart),
-                    new XElement("AutoStartDelayInSeconds", app.AutoStartDelayInSeconds)
-                ))
-            ));
+            var doc = new XDocument(
+                new XElement("Root",
+                // Save settings
+                new XElement("Settings",
+                    new XElement("AppPort", _settings.AppPort),
+                    new XElement("WebPort", _settings.WebPort)
+                ),
+                    // Save applications
+                    new XElement("Applications",
+                        selectedApps.Select(app =>
+                            new XElement("Application",
+                                new XElement("Name", app.Name),
+                                new XElement("ProcessName", app.ProcessName),
+                                new XElement("RestartPath", app.RestartPath),
+                                new XElement("ClientIP", app.ClientIP),
+                                new XElement("AutoStart", app.AutoStart),
+                                new XElement("AutoStartDelayInSeconds", app.AutoStartDelayInSeconds)
+                            )
+                        )
+                    )
+                )
+            );
+
             doc.Save(xmlFilePath);
         }
 
@@ -428,6 +445,32 @@ namespace AppRestarter
                 SaveApplicationsToXml("applications.xml");
                 UpdateAppList();
             }
+        }
+
+        private void LoadSettingsAndApplications(string xmlFilePath)
+        {
+            try
+            {
+                var xmlDocument = XDocument.Load(xmlFilePath);
+                var root = xmlDocument.Root;
+
+                // Load settings
+                var settingsElement = root.Element("Settings");
+                if (settingsElement != null)
+                {
+                    _settings.AppPort = int.TryParse(settingsElement.Element("AppPort")?.Value, out var appPort) ? appPort : 2024;
+                    _settings.WebPort = int.TryParse(settingsElement.Element("WebPort")?.Value, out var webPort) ? webPort : 8080;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading settings and applications from XML: " + ex.Message);
+            }
+        }
+
+        private void btnOpenWeb_Click(object sender, EventArgs e)
+        {
+            _webServer.OpenWebInterfaceInBrowser();
         }
     }
 }
