@@ -34,6 +34,7 @@ namespace AppRestarter
                 txtPath.Text = existing.RestartPath;
                 txtClientIP.Text = existing.ClientIP;
                 chkAutoStart.Checked = existing.AutoStart;
+                numDelay.Value = existing.AutoStartDelayInSeconds;
 
                 btnDelete.Visible = true;
             }
@@ -51,6 +52,7 @@ namespace AppRestarter
             AppData.RestartPath = txtPath.Text.Trim();
             AppData.ClientIP = txtClientIP.Text.Trim();
             AppData.AutoStart = chkAutoStart.Checked;
+            AppData.AutoStartDelayInSeconds = (int)numDelay.Value;
 
             DialogResult = DialogResult.OK;
             Close();

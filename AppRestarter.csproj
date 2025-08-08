@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="applications_sample.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="Resources\app_restarter_logo.ico" />
   </ItemGroup>
 
@@ -20,7 +24,7 @@
 
   <ItemGroup>
     <None Update="applications.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

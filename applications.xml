@@ -1,59 +1,51 @@
-﻿<Applications>
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Applications>
 	<Application>
 		<Name>MSFS</Name>
 		<ProcessName>FlightSimulator</ProcessName>
 		<RestartPath></RestartPath>
 		<ClientIP>192.168.1.142</ClientIP>
+		<AutoStart>false</AutoStart>
+		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
 	</Application>
 	<Application>
 		<Name>Steam</Name>
-		<ProcessName>steam</ProcessName>
+		<ProcessName>MSFS Steam</ProcessName>
 		<RestartPath>E:\FSUIPC7\MSFS.bat</RestartPath>
 		<ClientIP>192.168.1.142</ClientIP>
+		<AutoStart>false</AutoStart>
+		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
 	</Application>
 	<Application>
 		<Name>Prosim</Name>
 		<ProcessName>ProSimB738</ProcessName>
-		<RestartPath>D:\ProSim 737\ProSimB738\prosim.bat</RestartPath>
+		<RestartPath>D:\ProSim 737\ProSimB738\ProSimB738.exe</RestartPath>
 		<ClientIP>192.168.1.142</ClientIP>
+		<AutoStart>false</AutoStart>
+		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
 	</Application>
 	<Application>
-		<Name>VPilot Host Voice</Name>
-		<ProcessName>vPilot</ProcessName>
-		<RestartPath>E:\vPilot\vPilot_voice_host.bat</RestartPath>
+		<Name>SayIntentions (AI ATC)</Name>
+		<ProcessName>SayIntentionsAI</ProcessName>
+		<RestartPath>E:\SayIntentions\SayIntentionsAI.exe</RestartPath>
 		<ClientIP>192.168.1.142</ClientIP>
+		<AutoStart>true</AutoStart>
+		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
 	</Application>
 	<Application>
-		<Name>Rudder/Tiller Locker</Name>
-		<ProcessName>FSRRudderFix</ProcessName>
-		<RestartPath>D:\RudderFix_v1.1\FSRRudderFix.exe</RestartPath>
+		<Name>SimHaptic (ButtKicker)</Name>
+		<ProcessName>SimHaptic</ProcessName>
+		<RestartPath>D:\SimHaptic\SimHaptic.exe</RestartPath>
 		<ClientIP>192.168.1.142</ClientIP>
+		<AutoStart>true</AutoStart>
+		<AutoStartDelayInSeconds>10</AutoStartDelayInSeconds>
 	</Application>
 	<Application>
-		<Name>Cockpit Connect (Overhead)</Name>
-		<ProcessName>Cockpit Connect</ProcessName>
-		<RestartPath>F:\CockpitConnect\Cockpit Connect.exe</RestartPath>
+		<Name>Active Sky</Name>
+		<ProcessName>Active Sky FS</ProcessName>
+		<RestartPath>E:\ActiveSky_FS\AS_FS.exe</RestartPath>
+		<ClientIP>192.168.1.142</ClientIP>
+		<AutoStart>true</AutoStart>
+		<AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
 	</Application>
-	<Application>
-		<Name>Aviologic (flaps indicator)</Name>
-		<ProcessName>aes-aviologic</ProcessName>
-		<RestartPath>F:\aviologic\aes-aviologic.exe</RestartPath>
-	</Application>
-	<Application>
-		<Name>Phidgets2Prosim (Motors)</Name>
-		<ProcessName>Phidgets2Prosim</ProcessName>
-		<RestartPath>F:\VitaltechSolRepos\Phidgets2Prosim\bin\Debug\Phidgets2Prosim.exe</RestartPath>
-	</Application>
-	<Application>
-		<Name>Prosim CDUs</Name>
-		<ProcessName>ProSimCDU</ProcessName>
-		<RestartPath>E:\Prosim-3\ProSimCDU.bat</RestartPath>
-		<ClientIP>192.168.1.145</ClientIP>
-	</Application>
-	<Application>
-		<Name>OBS</Name>
-		<ProcessName>obs64</ProcessName>
-		<RestartPath>F:\obs-studio\start_obs.bat</RestartPath>
-	</Application>
-	<!-- Add more Application elements as needed -->
 </Applications>

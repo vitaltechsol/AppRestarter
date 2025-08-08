@@ -43,7 +43,9 @@ namespace AppRestarter
                         Name = applicationElement.Element("Name").Value,
                         ProcessName = applicationElement.Element("ProcessName").Value,
                         RestartPath = applicationElement.Element("RestartPath")?.Value,
-                        ClientIP = applicationElement.Element("ClientIP")?.Value
+                        ClientIP = applicationElement.Element("ClientIP")?.Value,
+                        AutoStart = bool.TryParse(applicationElement.Element("AutoStart")?.Value, out var autoStart) && autoStart,
+                        AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0
                     };
 
                     selectedApps.Add(app);
@@ -67,17 +69,22 @@ namespace AppRestarter
 
                 var appButton = new Button
                 {
-                    Width = 240,
+                    Width = 163,
                     Height = 45,
-                    Text = app.Name
+                    Text = app.Name,
+                    BackColor = Color.FromArgb(90, 143, 240),
+                    FlatStyle = FlatStyle.Flat,
+                    ForeColor = SystemColors.ButtonFace
                 };
+
+                appButton.FlatAppearance.BorderSize = 0;
 
                 appButton.Click += (s, e) =>
                 {
                     if (app.ClientIP != null)
-                        HandleRemoteClientAppClick(app);
+                        HandleRemoteClientAppClick(app, false, false);
                     else
-                        HandleAppButtonClick(app, false);
+                        HandleAppButtonClick(app, false, false);
                 };
 
                 appButton.MouseUp += (s, e) =>
@@ -98,7 +105,23 @@ namespace AppRestarter
         {
             foreach (var app in selectedApps.Where(a => a.AutoStart))
             {
-                HandleAppButtonClick(app, true);
+                AddToLog($"Auto starting {app.Name} in {app.AutoStartDelayInSeconds} seconds");
+
+                Task.Run(async () =>
+                {
+
+                    if (app.AutoStartDelayInSeconds > 0)
+                        await Task.Delay(app.AutoStartDelayInSeconds * 1000);
+
+                    if (app.ClientIP != null)
+                    {
+                        Debug.WriteLine($"AutoStart ClientIP {app.Name}");
+                        HandleRemoteClientAppClick(app, true, true);
+                    }
+                    else
+                        HandleAppButtonClick(app, true, true);
+
+                });
             }
         }
 
@@ -122,7 +145,7 @@ namespace AppRestarter
             }
         }
 
-        private void HandleAppButtonClick(ApplicationDetails app, bool skipConfirm)
+        private void HandleAppButtonClick(ApplicationDetails app, bool skipConfirm, bool noKill)
         {
             Process[] processes = Process.GetProcessesByName(app.ProcessName);
             Debug.WriteLine("kill " + app.ProcessName + processes.Length);
@@ -140,7 +163,7 @@ namespace AppRestarter
 
                 try
                 {
-                    if (processes.Length > 0)
+                    if (processes.Length > 0 && !noKill)
                     {
                         foreach (Process process in processes)
                         {
@@ -151,8 +174,8 @@ namespace AppRestarter
                 }
                 catch (Exception ex)
                 {
-                    AddToLog("nError stopping" + app.ProcessName);
-                    MessageBox.Show("Error stopping the application: " + ex.Message);
+                    AddToLog("Error stopping" + app.ProcessName);
+                    Debug.WriteLine("Error stopping the application: " + ex.Message);
                 }
             }
 
@@ -169,47 +192,69 @@ namespace AppRestarter
                         UseShellExecute = false
                     };
 
-                    System.Diagnostics.Process.Start(startInfo);
-                    AddToLog("Started " + app.Name);
+                    Process.Start(startInfo);
+                    AddToLog($"Started {app.Name}");
+                    Debug.WriteLine($"Started {app.Name}");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error starting the application: " + ex.Message);
+                AddToLog($"Error starting {app.ProcessName} {ex.Message}");
+                Debug.WriteLine($"Error starting {app.ProcessName} {ex.Message}");
+                MessageBox.Show($"Error starting {app.ProcessName} {ex.Message}");
             }
         }
 
-        private void HandleRemoteClientAppClick(ApplicationDetails applicationDetails)
+        private void HandleRemoteClientAppClick(ApplicationDetails applicationDetails, bool skipConfirm, bool noKill)
         {
+           //  AddToLog("Restarting Remote App " + applicationDetails.Name);
             try
             {
-                var confirmResult = MessageBox.Show("Are you sure you want to stop "
-                    + applicationDetails.Name + "\nand restart from: " + applicationDetails.RestartPath
-                    + "\nfrom IP: " + applicationDetails.ClientIP,
-                 "Restart Remote App",
-                 MessageBoxButtons.YesNo);
+                DialogResult? confirmResult = null;
 
-                if (confirmResult == DialogResult.Yes)
+                if (!skipConfirm)
                 {
-                    AddToLog("Restarted Remote App " + applicationDetails.Name);
+                    confirmResult = MessageBox.Show("Are you sure you want to stop "
+                        + applicationDetails.Name + "\nand restart from: " + applicationDetails.RestartPath
+                        + "\nfrom IP: " + applicationDetails.ClientIP,
+                     "Restart Remote App",
+                     MessageBoxButtons.YesNo);
+                }
+
+                if (skipConfirm || confirmResult == DialogResult.Yes)
+                {
+                    Debug.WriteLine("Restarting****");
                     client = new TcpClient(applicationDetails.ClientIP, 2024); // Connect to the server on localhost
                     client.SendTimeout = 3000;
                     // Serialize and send the object using DataContractSerializer
                     var serializer = new DataContractSerializer(typeof(ApplicationDetails));
                     NetworkStream stream = client.GetStream();
+                    applicationDetails.NoKill = noKill;
                     serializer.WriteObject(stream, applicationDetails);
                     client.Close();
+                    AddToLog($"Started Remote App{applicationDetails.Name} on {applicationDetails.ClientIP}");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error starting the application: " + ex.Message + "\nIP: " + applicationDetails.ClientIP);
+            //    var msg = $"Error starting {applicationDetails.ProcessName} {ex.Message} \nIP: {applicationDetails.ClientIP}";
+                MessageBox.Show(ex.Message);
+                // AddToLog(msg);
+                Debug.WriteLine(ex);
+          
             }
         }
         private void AddToLog(string message)
         {
             string logLine = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}{Environment.NewLine}";
-            txtLog.AppendText(logLine);
+            if (txtLog.InvokeRequired)
+            {
+                txtLog.Invoke(new Action(() => txtLog.Text = logLine + txtLog.Text));
+            }
+            else
+            {
+                txtLog.Text = logLine + txtLog.Text;
+            }
         }
         private void StartServer()
         {
@@ -242,7 +287,7 @@ namespace AppRestarter
                 AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
                     $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
                 client.Close();
-                HandleAppButtonClick(applicationDetails, true);
+                HandleAppButtonClick(applicationDetails, true, applicationDetails.NoKill);
             }
         }
 
@@ -254,7 +299,8 @@ namespace AppRestarter
                     new XElement("ProcessName", app.ProcessName),
                     new XElement("RestartPath", app.RestartPath),
                     new XElement("ClientIP", app.ClientIP),
-                    new XElement("AutoStart", app.AutoStart)
+                    new XElement("AutoStart", app.AutoStart),
+                    new XElement("AutoStartDelayInSeconds", app.AutoStartDelayInSeconds)
                 ))
             ));
             doc.Save(xmlFilePath);

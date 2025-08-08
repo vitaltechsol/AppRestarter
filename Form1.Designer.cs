@@ -32,10 +32,13 @@
             txtLog = new TextBox();
             btnReload = new Button();
             btnAddApp = new Button();
+            label1 = new Label();
             SuspendLayout();
             // 
             // AppFlowLayoutPanel
             // 
+            AppFlowLayoutPanel.AutoScroll = true;
+            AppFlowLayoutPanel.BackColor = SystemColors.ControlDarkDark;
             AppFlowLayoutPanel.Location = new Point(12, 40);
             AppFlowLayoutPanel.Name = "AppFlowLayoutPanel";
             AppFlowLayoutPanel.Size = new Size(510, 300);
@@ -52,29 +55,47 @@
             // 
             // btnReload
             // 
-            btnReload.Location = new Point(410, 12);
+            btnReload.BackColor = SystemColors.HotTrack;
+            btnReload.FlatStyle = FlatStyle.Popup;
+            btnReload.ForeColor = SystemColors.ButtonFace;
+            btnReload.Location = new Point(93, 8);
             btnReload.Name = "btnReload";
-            btnReload.Size = new Size(112, 23);
+            btnReload.Size = new Size(114, 23);
             btnReload.TabIndex = 2;
             btnReload.Text = "Reload Config";
-            btnReload.UseVisualStyleBackColor = true;
+            btnReload.UseVisualStyleBackColor = false;
             btnReload.Click += btnReload_Click;
             // 
             // btnAddApp
             // 
-            btnAddApp.Location = new Point(12, 12);
+            btnAddApp.BackColor = SystemColors.HotTrack;
+            btnAddApp.FlatStyle = FlatStyle.Popup;
+            btnAddApp.ForeColor = SystemColors.ButtonFace;
+            btnAddApp.Location = new Point(12, 8);
             btnAddApp.Name = "btnAddApp";
             btnAddApp.Size = new Size(75, 23);
             btnAddApp.TabIndex = 3;
             btnAddApp.Text = "Add New";
-            btnAddApp.UseVisualStyleBackColor = true;
+            btnAddApp.UseVisualStyleBackColor = false;
             btnAddApp.Click += btnAddApp_Click;
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.ForeColor = SystemColors.ButtonShadow;
+            label1.Location = new Point(479, 12);
+            label1.Name = "label1";
+            label1.Size = new Size(37, 15);
+            label1.TabIndex = 4;
+            label1.Text = "v1.0.0";
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(535, 450);
+            BackColor = SystemColors.WindowText;
+            ClientSize = new Size(534, 441);
+            Controls.Add(label1);
             Controls.Add(btnAddApp);
             Controls.Add(btnReload);
             Controls.Add(txtLog);
@@ -92,5 +113,6 @@
         private TextBox txtLog;
         private Button btnReload;
         private Button btnAddApp;
+        private Label label1;
     }
 }

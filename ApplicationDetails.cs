@@ -15,5 +15,10 @@ namespace AppRestarter
         public string? ClientIP { get; set; }
         [DataMember]
         public bool AutoStart { get; set; }
+        [DataMember]
+        public int AutoStartDelayInSeconds { get; set; } = 0;
+        public bool NoKill { get; set; } = false;
+     
+
     }
 }
