@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8' />
+    <title>AppRestarter Web UI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        button {
+            width: 260px;
+            height: 80px;
+            margin: 5px;
+            font-size: 22px;
+            cursor: pointer;
+            color: white
+        }
+
+        #status {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>AppRestarter Web UI</h2>
+    <div id='buttons'></div>
+    <div id='status'></div>
+
+    <script>
+        async function loadApps() {
+            const res = await fetch('/apps');
+            if (!res.ok) {
+                document.getElementById('status').innerText = 'Failed to load apps';
+                return;
+            }
+            const apps = await res.json();
+            const container = document.getElementById('buttons');
+            container.innerHTML = '';
+            apps.forEach(app => {
+                const btn = document.createElement('button');
+                btn.innerText = app.Name;
+                btn.style.backgroundColor = app.ClientIP ? '#5a90f2' : '#5a63f2';
+                btn.onclick = () => restartApp(app.ProcessName, app.Name);
+                container.appendChild(btn);
+            });
+        }
+
+        async function restartApp(processName, displayName) {
+            document.getElementById('status').innerText = `Restarting ${displayName}...`;
+            const res = await fetch('/restart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ProcessName: processName })
+            });
+            if (res.ok) {
+                document.getElementById('status').innerText = `${displayName} restart triggered successfully.`;
+            } else {
+                const text = await res.text();
+                document.getElementById('status').innerText = `Failed to restart ${displayName}: ${text}`;
+            }
+        }
+
+        window.onload = loadApps;
+    </script>
+</body>
+</html>

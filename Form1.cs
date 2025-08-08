@@ -15,6 +15,8 @@ namespace AppRestarter
         private List<ApplicationDetails> selectedApps = new List<ApplicationDetails>();
         private TcpListener server;
         private volatile bool _serverRunning = true;
+        private SimpleWebServer _webServer;
+
 
         public Form1()
         {
@@ -25,6 +27,7 @@ namespace AppRestarter
             LoadApplicationsFromXml("applications.xml");
             UpdateAppList();
             AutoStartApps();
+            StartWebServer();
         }
 
         private void Form1_Load(object sender, EventArgs e) { }
@@ -96,6 +99,20 @@ namespace AppRestarter
 
                 AppFlowLayoutPanel.Controls.Add(appButton);
             }
+        }
+
+        private void StartWebServer()
+        {
+            _webServer = new SimpleWebServer(selectedApps, AddToLog, "index.html");
+            _webServer.RestartRequested += (s, app) =>
+            {
+                if (!string.IsNullOrEmpty(app.ClientIP))
+                    HandleRemoteClientAppClick(app, true, false);
+                else
+                    _ = HandleAppButtonClickAsync(app, true, false); // If you want async restart
+            };
+            _webServer.Start(8080);
+            AddToLog($"Web Server started on 8080");
         }
 
         private void AutoStartApps()
@@ -390,6 +407,7 @@ namespace AppRestarter
             {
                 _serverRunning = false;
                 server?.Stop();
+                _webServer?.Stop();
             }
             catch { }
         }
