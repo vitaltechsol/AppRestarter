@@ -47,13 +47,18 @@ Allow the app to communicate over the network when prompted, or:
 5. Allow the connection, name the rule `AppRestarter`, and finish the wizard.
 
 
-### 5. Configure Applications
+### 5. Configure New Applications
 
-Use the UI to add applications:
+Use the UI to add applications.
+**You don't need to add the applications on both Server and Client.** Only add the applications to the Server
+
+Click the *Add New* Button
 
 * Name: Friendly name
 * Process Name: e.g. `notepad` (without `.exe`)
-* Restart Path: Full path to the `.exe` of the app
+* Restart Path: Full path to the `.exe` of the app. IF the app is remote, should be the path in the remote PC
+* Client IP (Optional): If the application is located on a different PC. Add the IP address.
+
 
 To find the process name:
 
@@ -61,6 +66,9 @@ To find the process name:
 2. Go to the **Details** tab
 3. Look at the **Name** column (e.g. `FlightSimulator.exe`, `notepad.exe`)
 4. Enter just the name without `.exe` in the app configuration
+
+### 5. Edit / Remove Applications
+After entering the applications, you can edit it by right-clicking the button and selecting 'Edit'
 
 ## Notes
 
