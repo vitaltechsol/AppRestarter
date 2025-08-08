@@ -19,7 +19,7 @@ AppRestarter is a Windows Forms application designed to allow you to remotely re
 
 ### 1. Download
 
-Download the ZIP and extract it.
+Download the ZIP and extract it. https://github.com/vitaltechsol/AppRestarter/releases
 
 
 ### 2. Deployment
