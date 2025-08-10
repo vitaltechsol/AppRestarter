@@ -12,7 +12,7 @@ using System.Windows.Forms;
 
 namespace AppRestarter
 {
-    public class SimpleWebServer
+    public class WebServer
     {
         private readonly List<ApplicationDetails> _apps;
         private readonly Action<string> _logAction;
@@ -21,7 +21,7 @@ namespace AppRestarter
         private readonly string _htmlFilePath;
         private int _port;
 
-        public SimpleWebServer(List<ApplicationDetails> apps, Action<string> logAction, string htmlFilePath)
+        public WebServer(List<ApplicationDetails> apps, Action<string> logAction, string htmlFilePath)
         {
             _apps = apps ?? throw new ArgumentNullException(nameof(apps));
             _logAction = logAction ?? throw new ArgumentNullException(nameof(logAction));

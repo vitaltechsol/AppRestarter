@@ -15,7 +15,7 @@ namespace AppRestarter
         private List<ApplicationDetails> selectedApps = new List<ApplicationDetails>();
         private TcpListener server;
         private volatile bool _serverRunning = true;
-        private SimpleWebServer _webServer;
+        private WebServer _webServer;
         private AppSettings _settings = new AppSettings();
 
         public Form1()
@@ -107,7 +107,7 @@ namespace AppRestarter
 
         private void StartWebServer()
         {
-            _webServer = new SimpleWebServer(selectedApps, AddToLog, "index.html");
+            _webServer = new WebServer(selectedApps, AddToLog, "index.html");
             _webServer.RestartRequested += (s, app) =>
             {
                 if (!string.IsNullOrEmpty(app.ClientIP))
@@ -453,6 +453,7 @@ namespace AppRestarter
             {
                 var xmlDocument = XDocument.Load(xmlFilePath);
                 var root = xmlDocument.Root;
+                bool autoStartWithWindows = false;
 
                 // Load settings
                 var settingsElement = root.Element("Settings");
@@ -460,7 +461,13 @@ namespace AppRestarter
                 {
                     _settings.AppPort = int.TryParse(settingsElement.Element("AppPort")?.Value, out var appPort) ? appPort : 2024;
                     _settings.WebPort = int.TryParse(settingsElement.Element("WebPort")?.Value, out var webPort) ? webPort : 8080;
+                    _settings.AutoStartWithWindows = bool.TryParse(settingsElement.Element("AutoStartWithWindows")?.Value, out autoStartWithWindows);
+                    _settings.Schema = settingsElement.Element("Schema")?.Value;
+
                 }
+
+                // Apply the startup setting
+                StartupHelper.EnsureStartup(autoStartWithWindows);
             }
             catch (Exception ex)
             {
