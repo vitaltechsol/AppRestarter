@@ -17,6 +17,7 @@ namespace AppRestarter
         private volatile bool _serverRunning = true;
         private WebServer _webServer;
         private AppSettings _settings = new AppSettings();
+        string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
 
         public Form1()
         {
@@ -24,8 +25,8 @@ namespace AppRestarter
             this.FormClosing += MainForm_FormClosing;
 
             StartServer();
-            LoadSettingsAndApplications("applications.xml");
-            LoadApplicationsFromXml("applications.xml");
+            LoadSettingsFromXml();
+            LoadApplicationsFromXml();
             UpdateAppList();
             AutoStartApps();
             StartWebServer();
@@ -33,11 +34,12 @@ namespace AppRestarter
 
         private void Form1_Load(object sender, EventArgs e) { }
 
-        private void LoadApplicationsFromXml(string xmlFilePath)
+        private void LoadApplicationsFromXml()
         {
             try
             {
-                XDocument xmlDocument = XDocument.Load(xmlFilePath);
+                string configPath = getXMLConfigPath();
+                XDocument xmlDocument = XDocument.Load(configPath);
                 var root = xmlDocument.Root;
                 var applicationsElement = root.Element("Applications");
 
@@ -50,7 +52,9 @@ namespace AppRestarter
                         RestartPath = applicationElement.Element("RestartPath")?.Value,
                         ClientIP = applicationElement.Element("ClientIP")?.Value,
                         AutoStart = bool.TryParse(applicationElement.Element("AutoStart")?.Value, out var autoStart) && autoStart,
-                        AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0
+                        AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
+                        NoWarn = bool.TryParse(applicationElement.Element("NoWarn")?.Value, out var noWarn) ? noWarn : false,
+                        StartMinimized = bool.TryParse(applicationElement.Element("StartMinimized")?.Value, out var startMinimized) ? startMinimized : false,
                     };
 
                     selectedApps.Add(app);
@@ -83,12 +87,13 @@ namespace AppRestarter
 
                 appButton.FlatAppearance.BorderSize = 0;
 
+                // When clicking a button
                 appButton.Click += (s, e) =>
                 {
                     if (!string.IsNullOrEmpty(app.ClientIP))
-                        HandleRemoteClientAppClick(app, false, false);
+                        HandleRemoteClientAppClick(app, true, true, false);
                     else
-                        _ = HandleAppButtonClickAsync(app, false, false);
+                        _ = HandleAppButtonClickAsync(app, true, true, false);
                 };
 
                 appButton.MouseUp += (s, e) =>
@@ -110,10 +115,11 @@ namespace AppRestarter
             _webServer = new WebServer(selectedApps, AddToLog, "index.html");
             _webServer.RestartRequested += (s, app) =>
             {
+                // When called from web app
                 if (!string.IsNullOrEmpty(app.ClientIP))
-                    HandleRemoteClientAppClick(app, true, false);
+                    HandleRemoteClientAppClick(app, true, true, true);
                 else
-                    _ = HandleAppButtonClickAsync(app, true, false); // If you want async restart
+                    _ = HandleAppButtonClickAsync(app, true, true, true); // If you want async restart
             };
             _webServer.Start(_settings.WebPort);
             AddToLog($"Web Server started on {_settings.WebPort}");
@@ -132,11 +138,12 @@ namespace AppRestarter
 
                     if (!string.IsNullOrEmpty(app.ClientIP))
                     {
+                        // When auto starting
                         Debug.WriteLine($"AutoStart ClientIP {app.Name}");
-                        HandleRemoteClientAppClick(app, true, true);
+                        HandleRemoteClientAppClick(app, true, false, true);
                     }
                     else
-                        await HandleAppButtonClickAsync(app, true, true);
+                        await HandleAppButtonClickAsync(app, true, false, true);
                 });
             }
         }
@@ -156,42 +163,45 @@ namespace AppRestarter
                     selectedApps[index] = editForm.AppData;
                 }
 
-                SaveApplicationsToXml("applications.xml");
+                SaveApplicationsToXml();
                 UpdateAppList();
             }
         }
 
-        private async Task HandleAppButtonClickAsync(ApplicationDetails app, bool skipConfirm, bool noKill)
+        private async Task HandleAppButtonClickAsync(ApplicationDetails app, bool start, bool stop, bool skipConfirm)
         {
             DialogResult? confirmResult = null;
 
             if (!skipConfirm)
             {
-                if (InvokeRequired)
+                if (!app.NoWarn)
                 {
-                    confirmResult = (DialogResult)await Task.Run(() =>
-                        this.Invoke(new Func<DialogResult>(() =>
-                            MessageBox.Show(
-                                $"Are you sure you want to stop {app.Name}\nand restart from: {app.RestartPath}",
-                                "Restart App",
-                                MessageBoxButtons.YesNo))));
-                }
-                else
-                {
-                    confirmResult = MessageBox.Show(
-                        $"Are you sure you want to stop {app.Name}\nand restart from: {app.RestartPath}",
-                        "Restart App",
-                        MessageBoxButtons.YesNo);
+                    if (InvokeRequired)
+                    {
+                        confirmResult = (DialogResult)await Task.Run(() =>
+                            this.Invoke(new Func<DialogResult>(() =>
+                                MessageBox.Show(
+                                    $"Are you sure you want to stop {app.Name}\nand restart from: {app.RestartPath}",
+                                    "Restart App",
+                                    MessageBoxButtons.YesNo))));
+                    }
+                    else
+                    {
+                        confirmResult = MessageBox.Show(
+                            $"Are you sure you want to stop {app.Name}\nand restart from: {app.RestartPath}",
+                            "Restart App",
+                            MessageBoxButtons.YesNo);
+                    }
                 }
             }
 
-            if (skipConfirm || confirmResult == DialogResult.Yes)
+            if (skipConfirm || confirmResult == DialogResult.Yes || app.NoWarn)
             {
                 try
                 {
                     Process[] processes = Process.GetProcessesByName(app.ProcessName);
 
-                    if (processes.Length > 0 && !noKill)
+                    if (processes.Length > 0 && stop)
                     {
                         foreach (Process process in processes)
                         {
@@ -218,11 +228,38 @@ namespace AppRestarter
                     {
                         FileName = app.RestartPath,
                         WorkingDirectory = Path.GetDirectoryName(app.RestartPath),
-                        UseShellExecute = false
+                        UseShellExecute = false,
                     };
 
-                    Process.Start(startInfo);
-                    AddToLog($"Started {app.Name}");
+                    if (app.StartMinimized)
+                    {
+                        startInfo.WindowStyle = ProcessWindowStyle.Minimized;
+                    }
+
+                    var process = Process.Start(startInfo);
+
+                    if (app.StartMinimized)
+                    {
+                        _ = Task.Run(() =>
+                        {
+                            if (process != null)
+                            {
+                                // Wait for the main window to appear
+                                process.WaitForInputIdle();
+                                Thread.Sleep(2000); // Give the UI time to render
+
+                                if (process.MainWindowHandle != IntPtr.Zero && WinApiHelper.IsWindowVisible(process.MainWindowHandle))
+                                {
+                                    WinApiHelper.ShowWindow(process.MainWindowHandle, WinApiHelper.SW_MINIMIZE);
+                                }
+                                AddToLog($"Started {app.Name} minimized.");
+                            }
+                        });
+                    } else
+                    {
+                        AddToLog($"Started {app.Name}");
+                    }
+
                     Debug.WriteLine($"Started {app.Name}");
                 }
             }
@@ -243,7 +280,7 @@ namespace AppRestarter
             }
         }
 
-        private void HandleRemoteClientAppClick(ApplicationDetails applicationDetails, bool skipConfirm, bool noKill)
+        private void HandleRemoteClientAppClick(ApplicationDetails applicationDetails, bool start, bool stop, bool skipConfirm)
         {
             try
             {
@@ -251,13 +288,16 @@ namespace AppRestarter
 
                 if (!skipConfirm)
                 {
-                    confirmResult = MessageBox.Show(
-                        $"Are you sure you want to stop {applicationDetails.Name}\nand restart from: {applicationDetails.RestartPath}\nfrom IP: {applicationDetails.ClientIP}",
-                        "Restart Remote App",
-                        MessageBoxButtons.YesNo);
+                    if (!applicationDetails.NoWarn)
+                    {
+                        confirmResult = MessageBox.Show(
+                            $"Are you sure you want to stop {applicationDetails.Name}\nand restart from: {applicationDetails.RestartPath}\nfrom IP: {applicationDetails.ClientIP}",
+                            "Restart Remote App",
+                            MessageBoxButtons.YesNo);
+                    }
                 }
 
-                if (skipConfirm || confirmResult == DialogResult.Yes)
+                if (skipConfirm || confirmResult == DialogResult.Yes || applicationDetails.NoWarn)
                 {
                     Debug.WriteLine("Restarting****");
                     using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
@@ -265,7 +305,7 @@ namespace AppRestarter
 
                     using var stream = client.GetStream();
 
-                    applicationDetails.NoKill = noKill;
+                    applicationDetails.KillProcess = stop;
                     var serializer = new DataContractSerializer(typeof(ApplicationDetails));
                     serializer.WriteObject(stream, applicationDetails);
                     stream.Flush();
@@ -360,7 +400,7 @@ namespace AppRestarter
                                 $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
 
                             // Fire and forget the async handler:
-                            _ = HandleAppButtonClickAsync(applicationDetails, true, applicationDetails.NoKill);
+                            _ = HandleAppButtonClickAsync(applicationDetails, true, applicationDetails.KillProcess, true);
                         }
                         catch (SerializationException serEx)
                         {
@@ -390,14 +430,17 @@ namespace AppRestarter
             }
         }
 
-        private void SaveApplicationsToXml(string xmlFilePath)
+        private void SaveApplicationsToXml()
         {
+            var xmlFilePath = getXMLConfigPath();
             var doc = new XDocument(
                 new XElement("Root",
                 // Save settings
                 new XElement("Settings",
                     new XElement("AppPort", _settings.AppPort),
-                    new XElement("WebPort", _settings.WebPort)
+                    new XElement("WebPort", _settings.WebPort),
+                    new XElement("AutoStartWithWindows", _settings.AutoStartWithWindows),
+                    new XElement("Schema", _settings.Schema)
                 ),
                     // Save applications
                     new XElement("Applications",
@@ -408,7 +451,9 @@ namespace AppRestarter
                                 new XElement("RestartPath", app.RestartPath),
                                 new XElement("ClientIP", app.ClientIP),
                                 new XElement("AutoStart", app.AutoStart),
-                                new XElement("AutoStartDelayInSeconds", app.AutoStartDelayInSeconds)
+                                new XElement("AutoStartDelayInSeconds", app.AutoStartDelayInSeconds),
+                                new XElement("NoWarn", app.NoWarn),
+                                new XElement("StartMinimized", app.StartMinimized)
                             )
                         )
                     )
@@ -432,7 +477,7 @@ namespace AppRestarter
         private void btnReload_Click(object sender, EventArgs e)
         {
             selectedApps.Clear();
-            LoadApplicationsFromXml("applications.xml");
+            LoadApplicationsFromXml();
             UpdateAppList();
         }
 
@@ -442,16 +487,17 @@ namespace AppRestarter
             if (addForm.ShowDialog() == DialogResult.OK)
             {
                 selectedApps.Add(addForm.AppData);
-                SaveApplicationsToXml("applications.xml");
+                SaveApplicationsToXml();
                 UpdateAppList();
             }
         }
 
-        private void LoadSettingsAndApplications(string xmlFilePath)
+        private void LoadSettingsFromXml()
         {
             try
             {
-                var xmlDocument = XDocument.Load(xmlFilePath);
+                string configPath = getXMLConfigPath();
+                var xmlDocument = XDocument.Load(configPath);
                 var root = xmlDocument.Root;
                 bool autoStartWithWindows = false;
 
@@ -467,7 +513,11 @@ namespace AppRestarter
                 }
 
                 // Apply the startup setting
-                StartupHelper.EnsureStartup(autoStartWithWindows);
+                if (autoStartWithWindows)
+                {
+                    StartupHelper.AddOrUpdateAppStartup(AddToLog);
+                }
+            
             }
             catch (Exception ex)
             {
@@ -478,6 +528,12 @@ namespace AppRestarter
         private void btnOpenWeb_Click(object sender, EventArgs e)
         {
             _webServer.OpenWebInterfaceInBrowser();
+        }
+
+        private string getXMLConfigPath()
+        {
+            string configPath = Path.Combine(exeDir, "applications.xml");
+            return configPath;
         }
     }
 }

@@ -35,6 +35,8 @@ namespace AppRestarter
                 txtClientIP.Text = existing.ClientIP;
                 chkAutoStart.Checked = existing.AutoStart;
                 numDelay.Value = existing.AutoStartDelayInSeconds;
+                chkNoWarn.Checked = existing.NoWarn;
+                chkStartMinimized.Checked = existing.StartMinimized;
 
                 btnDelete.Visible = true;
             }
@@ -53,6 +55,8 @@ namespace AppRestarter
             AppData.ClientIP = txtClientIP.Text.Trim();
             AppData.AutoStart = chkAutoStart.Checked;
             AppData.AutoStartDelayInSeconds = (int)numDelay.Value;
+            AppData.StartMinimized = chkStartMinimized.Checked;
+            AppData.NoWarn = chkNoWarn.Checked;
 
             DialogResult = DialogResult.OK;
             Close();

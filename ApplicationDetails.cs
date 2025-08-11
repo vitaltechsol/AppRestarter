@@ -18,7 +18,12 @@ namespace AppRestarter
         [DataMember]
         public int AutoStartDelayInSeconds { get; set; } = 0;
         [DataMember]
-        public bool NoKill { get; set; } = false;
+        public bool KillProcess { get; set; } = false;
+        [DataMember]
+        public bool NoWarn { get; set; } = false;
+        [DataMember]
+        public bool StartMinimized { get; set; } = false;
+
 
     }
 

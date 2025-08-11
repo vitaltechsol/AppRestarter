@@ -29,6 +29,8 @@
             btnCancel = new Button();
             btnDelete = new Button();
             label1 = new Label();
+            chkStartMinimized = new CheckBox();
+            chkNoWarn = new CheckBox();
             ((System.ComponentModel.ISupportInitialize)numDelay).BeginInit();
             SuspendLayout();
             // 
@@ -119,7 +121,7 @@
             // 
             // btnSave
             // 
-            btnSave.Location = new Point(150, 190);
+            btnSave.Location = new Point(150, 260);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(80, 30);
             btnSave.TabIndex = 12;
@@ -129,7 +131,7 @@
             // btnCancel
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new Point(240, 190);
+            btnCancel.Location = new Point(240, 260);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(80, 30);
             btnCancel.TabIndex = 13;
@@ -137,7 +139,7 @@
             // 
             // btnDelete
             // 
-            btnDelete.Location = new Point(330, 190);
+            btnDelete.Location = new Point(330, 260);
             btnDelete.Name = "btnDelete";
             btnDelete.Size = new Size(80, 30);
             btnDelete.TabIndex = 14;
@@ -154,11 +156,29 @@
             label1.TabIndex = 15;
             label1.Text = "seconds";
             // 
+            // chkStartMinimized
+            // 
+            chkStartMinimized.Location = new Point(150, 180);
+            chkStartMinimized.Name = "chkStartMinimized";
+            chkStartMinimized.Size = new Size(210, 24);
+            chkStartMinimized.TabIndex = 16;
+            chkStartMinimized.Text = "Auto-start minimized";
+            // 
+            // chkNoWarn
+            // 
+            chkNoWarn.Location = new Point(150, 210);
+            chkNoWarn.Name = "chkNoWarn";
+            chkNoWarn.Size = new Size(227, 24);
+            chkNoWarn.TabIndex = 17;
+            chkNoWarn.Text = "Don't warn when restarting";
+            // 
             // AddAppForm
             // 
             AcceptButton = btnSave;
             CancelButton = btnCancel;
-            ClientSize = new Size(470, 240);
+            ClientSize = new Size(470, 312);
+            Controls.Add(chkNoWarn);
+            Controls.Add(chkStartMinimized);
             Controls.Add(label1);
             Controls.Add(numDelay);
             Controls.Add(lblName);
@@ -201,5 +221,7 @@
         #endregion
 
         private Label label1;
+        private CheckBox chkStartMinimized;
+        private CheckBox chkNoWarn;
     }
 }
