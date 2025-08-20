@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             AppFlowLayoutPanel = new FlowLayoutPanel();
             txtLog = new TextBox();
             btnReload = new Button();
@@ -115,6 +116,7 @@
             Controls.Add(btnReload);
             Controls.Add(txtLog);
             Controls.Add(AppFlowLayoutPanel);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "AppRestarter";
             Load += Form1_Load;

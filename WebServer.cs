@@ -36,12 +36,12 @@ namespace AppRestarter
             try
             {
                 _httpListener.Start();
-                _logAction($"HTTP server started on port {port}");
+                _logAction($"Web Server started on port {port}");
                 Task.Run(() => ServerLoop());
             }
             catch (Exception ex)
             {
-                _logAction($"Failed to start HTTP server: {ex.Message}");
+                _logAction($"Failed to start Web Server: {ex.Message}. Make sure this app is running in administrator mode");
             }
         }
 

@@ -14,6 +14,7 @@
 
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AddAppForm));
             lblName = new Label();
             txtName = new TextBox();
             lblProcess = new Label();
@@ -195,6 +196,7 @@
             Controls.Add(btnCancel);
             Controls.Add(btnDelete);
             FormBorderStyle = FormBorderStyle.FixedDialog;
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "AddAppForm";
             StartPosition = FormStartPosition.CenterParent;
             Text = "Add New Application";

@@ -102,6 +102,7 @@ namespace AppRestarter
                     {
                         ContextMenuStrip menu = new ContextMenuStrip();
                         menu.Items.Add("Edit").Click += (ms, me) => EditApp(index);
+                        menu.Items.Add("Stop").Click += (ms, me) => StopApp(index);
                         menu.Show(Cursor.Position);
                     }
                 };
@@ -122,7 +123,6 @@ namespace AppRestarter
                     _ = HandleAppButtonClickAsync(app, true, true, true); // If you want async restart
             };
             _webServer.Start(_settings.WebPort);
-            AddToLog($"Web Server started on {_settings.WebPort}");
         }
 
         private void AutoStartApps()
@@ -166,6 +166,15 @@ namespace AppRestarter
                 SaveApplicationsToXml();
                 UpdateAppList();
             }
+        }
+
+        private void StopApp(int index)
+        {
+            var existing = selectedApps[index];
+            if (!string.IsNullOrEmpty(existing.ClientIP))
+                HandleRemoteClientAppClick(existing, false, true, false);
+            else
+                _ = HandleAppButtonClickAsync(existing, false, true, false);
         }
 
         private async Task HandleAppButtonClickAsync(ApplicationDetails app, bool start, bool stop, bool skipConfirm)
