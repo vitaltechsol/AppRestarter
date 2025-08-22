@@ -525,6 +525,9 @@ namespace AppRestarter
                 if (autoStartWithWindows)
                 {
                     StartupHelper.AddOrUpdateAppStartup(AddToLog);
+                } else
+                {
+                    StartupHelper.RemoveAppStartup(AddToLog);
                 }
             
             }
