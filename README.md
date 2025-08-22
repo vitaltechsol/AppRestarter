@@ -55,13 +55,15 @@ Use the UI to add applications.
 
 Click the *Add New* Button
 
-* Name: Friendly name
-* Process Name: e.g. `notepad` (without `.exe`)
-* Restart Path: Full path to the `.exe` of the app. IF the app is remote, should be the path in the remote PC
-* Client IP (Optional): If the application is located on a different PC. Add the IP address.
+* **Name:** Friendly name
+* **Process Name:** e.g. `notepad` (without `.exe`) (See more instructions bellow)
+* **Restart Path:** Full path to the `.exe` of the app. IF the app is remote, should be the path in the remote PC.
+* **Client IP (Optional):** If the application is located on a different PC. Add the IP address.
+* **Auto-start app after:** Will automatically start the application after that many seconds when AppRestarter starts
+* **Auto-start minimized:** Will start the application minimized
+* **Don't Warn when restarting:** Will not show the confirmation modal when restarting the apps.
 
-
-To find the process name:
+**To find the process name:**
 
 1. Press **Ctrl + Shift + Esc** to open **Task Manager**
 2. Go to the **Details** tab
@@ -69,10 +71,12 @@ To find the process name:
 4. Enter just the name without `.exe` in the app configuration
 
 ### 5. Edit / Remove Applications
-After entering the applications, you can edit it by right-clicking the button and selecting 'Edit'
+After entering the applications, you can edit it by right-clicking the button and selecting `Edit`
 
+### 6. Restart or Stop Applications
+Click the button to restart an application. You can also right-click and select `Stop` to stop the application.
 
-### 6. Using a web browser
+### 7. Using a web browser
 * Enter the PC's IP with port 8080 to view the web version. 
   For example `http://192.168.1.123:8080`.
 * Note that AppRestarter must run as administrator for this work.
