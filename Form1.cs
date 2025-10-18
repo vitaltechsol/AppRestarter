@@ -32,7 +32,9 @@ namespace AppRestarter
             StartWebServer();
         }
 
-        private void Form1_Load(object sender, EventArgs e) { }
+        private void Form1_Load(object sender, EventArgs e)
+        {
+        }
 
         private void LoadApplicationsFromXml()
         {
@@ -113,14 +115,15 @@ namespace AppRestarter
 
         private void StartWebServer()
         {
-            _webServer = new WebServer(selectedApps, AddToLog, "index.html");
+            // exeDir is already defined in your Form1: Path.GetDirectoryName(Application.ExecutablePath)
+            var indexPath = Path.Combine(exeDir, "index.html"); // <-- make it absolute
+            _webServer = new WebServer(selectedApps, AddToLog, indexPath);
             _webServer.RestartRequested += (s, app) =>
             {
-                // When called from web app
                 if (!string.IsNullOrEmpty(app.ClientIP))
                     HandleRemoteClientAppClick(app, true, true, true);
                 else
-                    _ = HandleAppButtonClickAsync(app, true, true, true); // If you want async restart
+                    _ = HandleAppButtonClickAsync(app, true, true, true);
             };
             _webServer.Start(_settings.WebPort);
         }
@@ -264,7 +267,8 @@ namespace AppRestarter
                                 AddToLog($"Started {app.Name} minimized.");
                             }
                         });
-                    } else
+                    }
+                    else
                     {
                         AddToLog($"Started {app.Name}");
                     }
@@ -449,6 +453,7 @@ namespace AppRestarter
                     new XElement("AppPort", _settings.AppPort),
                     new XElement("WebPort", _settings.WebPort),
                     new XElement("AutoStartWithWindows", _settings.AutoStartWithWindows),
+                    new XElement("StartMinimized", _settings.StartMinimized),
                     new XElement("Schema", _settings.Schema)
                 ),
                     // Save applications
@@ -517,23 +522,86 @@ namespace AppRestarter
                     _settings.AppPort = int.TryParse(settingsElement.Element("AppPort")?.Value, out var appPort) ? appPort : 2024;
                     _settings.WebPort = int.TryParse(settingsElement.Element("WebPort")?.Value, out var webPort) ? webPort : 8080;
                     _settings.AutoStartWithWindows = bool.TryParse(settingsElement.Element("AutoStartWithWindows")?.Value, out autoStartWithWindows);
+                    _settings.StartMinimized = bool.TryParse(settingsElement.Element("StartMinimized")?.Value, out var sm) && sm;
                     _settings.Schema = settingsElement.Element("Schema")?.Value;
-
                 }
 
                 // Apply the startup setting
                 if (autoStartWithWindows)
                 {
                     StartupHelper.AddOrUpdateAppStartup(AddToLog);
-                } else
+                }
+                else
                 {
                     StartupHelper.RemoveAppStartup(AddToLog);
                 }
-            
+
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error loading settings and applications from XML: " + ex.Message);
+            }
+        }
+
+        private void ShowSettingsDialog()
+        {
+            using var dlg = new SettingsForm(_settings);
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+            var oldAppPort = _settings.AppPort;
+            var oldWebPort = _settings.WebPort;
+
+            // Update settings in memory
+            _settings = dlg.Updated;
+
+            // Persist settings & apps
+            SaveApplicationsToXml(); // ensure this writes Settings incl. new flags
+
+            // Apply Auto-start (Scheduled Task)
+            if (_settings.AutoStartWithWindows)
+                StartupHelper.AddOrUpdateAppStartup(AddToLog);
+            else
+                StartupHelper.RemoveAppStartup(AddToLog);
+
+            // Restart TCP listener if AppPort changed
+            if (oldAppPort != _settings.AppPort)
+            {
+                try
+                {
+                    server?.Stop();
+                }
+                catch { }
+                StartServer(); // use _settings.AppPort inside StartServer
+                AddToLog($"App listener restarted on port: {_settings.AppPort}");
+            }
+
+            // Restart web server if WebPort changed
+            if (oldWebPort != _settings.WebPort)
+            {
+                try { _webServer?.Stop(); } catch { }
+                StartWebServer(); // uses _settings.WebPort internally
+                AddToLog($"Web server restarted on port: {_settings.WebPort}");
+            }
+
+            // If StartMinimized changed and currently visible, apply now (optional UX)
+            if (_settings.StartMinimized && this.WindowState != FormWindowState.Minimized)
+            {
+                this.WindowState = FormWindowState.Minimized;
+                // if you do minimize-to-tray, also set ShowInTaskbar = false here
+            }
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            // CLI override: pass --minimized to force minimized start (e.g., from Scheduled Task)
+            bool cliMin = Environment.GetCommandLineArgs().Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));
+
+            if (_settings.StartMinimized || cliMin)
+            {
+                // plain minimized to taskbar
+                this.WindowState = FormWindowState.Minimized;
             }
         }
 
@@ -546,6 +614,11 @@ namespace AppRestarter
         {
             string configPath = Path.Combine(exeDir, "applications.xml");
             return configPath;
+        }
+
+        private void btnSettings_Click(object sender, EventArgs e)
+        {
+            ShowSettingsDialog();
         }
     }
 }

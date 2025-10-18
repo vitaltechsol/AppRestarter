@@ -1,11 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Root>
   <Settings>
-    <Schema>1.1.0</Schema>
+    <Schema>1.2.0</Schema>
     <AppPort>2024</AppPort>
     <WebPort>8080</WebPort>
     <AutoStartWithWindows>true</AutoStartWithWindows>
-	</Settings>
+    <StartMinimized>false</StartMinimized>
+  </Settings>
 	<Applications>
     <Application>
       <Name>MSPaint</Name>

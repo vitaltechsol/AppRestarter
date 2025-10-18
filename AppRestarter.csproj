@@ -28,9 +28,7 @@
 
   <ItemGroup>
     <Compile Update="AddAppForm.cs" />
-    <Compile Update="Form1.cs">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Compile>
+    <Compile Update="Form1.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -35,6 +35,7 @@
             btnAddApp = new Button();
             label1 = new Label();
             btnOpenWeb = new Button();
+            btnSettings = new Button();
             SuspendLayout();
             // 
             // AppFlowLayoutPanel
@@ -57,12 +58,12 @@
             // 
             // btnReload
             // 
-            btnReload.BackColor = SystemColors.HotTrack;
+            btnReload.BackColor = SystemColors.WindowFrame;
             btnReload.FlatStyle = FlatStyle.Popup;
             btnReload.ForeColor = SystemColors.ButtonFace;
-            btnReload.Location = new Point(132, 8);
+            btnReload.Location = new Point(251, 9);
             btnReload.Name = "btnReload";
-            btnReload.Size = new Size(114, 23);
+            btnReload.Size = new Size(99, 23);
             btnReload.TabIndex = 2;
             btnReload.Text = "Reload Config";
             btnReload.UseVisualStyleBackColor = false;
@@ -73,7 +74,7 @@
             btnAddApp.BackColor = SystemColors.HotTrack;
             btnAddApp.FlatStyle = FlatStyle.Popup;
             btnAddApp.ForeColor = SystemColors.ButtonFace;
-            btnAddApp.Location = new Point(12, 8);
+            btnAddApp.Location = new Point(12, 9);
             btnAddApp.Name = "btnAddApp";
             btnAddApp.Size = new Size(105, 23);
             btnAddApp.TabIndex = 3;
@@ -89,20 +90,33 @@
             label1.Name = "label1";
             label1.Size = new Size(37, 15);
             label1.TabIndex = 4;
-            label1.Text = "v1.3.0";
+            label1.Text = "v1.4.0";
             // 
             // btnOpenWeb
             // 
-            btnOpenWeb.BackColor = SystemColors.HotTrack;
+            btnOpenWeb.BackColor = SystemColors.WindowFrame;
             btnOpenWeb.FlatStyle = FlatStyle.Popup;
             btnOpenWeb.ForeColor = SystemColors.ButtonFace;
-            btnOpenWeb.Location = new Point(252, 8);
+            btnOpenWeb.Location = new Point(142, 9);
             btnOpenWeb.Name = "btnOpenWeb";
-            btnOpenWeb.Size = new Size(114, 23);
+            btnOpenWeb.Size = new Size(100, 23);
             btnOpenWeb.TabIndex = 5;
             btnOpenWeb.Text = "Web Interface";
             btnOpenWeb.UseVisualStyleBackColor = false;
             btnOpenWeb.Click += btnOpenWeb_Click;
+            // 
+            // btnSettings
+            // 
+            btnSettings.BackColor = SystemColors.WindowFrame;
+            btnSettings.FlatStyle = FlatStyle.Popup;
+            btnSettings.ForeColor = SystemColors.ButtonFace;
+            btnSettings.Location = new Point(359, 9);
+            btnSettings.Name = "btnSettings";
+            btnSettings.Size = new Size(68, 23);
+            btnSettings.TabIndex = 6;
+            btnSettings.Text = "Settings";
+            btnSettings.UseVisualStyleBackColor = false;
+            btnSettings.Click += btnSettings_Click;
             // 
             // Form1
             // 
@@ -110,6 +124,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.WindowText;
             ClientSize = new Size(534, 441);
+            Controls.Add(btnSettings);
             Controls.Add(btnOpenWeb);
             Controls.Add(label1);
             Controls.Add(btnAddApp);
@@ -132,5 +147,6 @@
         private Button btnAddApp;
         private Label label1;
         private Button btnOpenWeb;
+        private Button btnSettings;
     }
 }

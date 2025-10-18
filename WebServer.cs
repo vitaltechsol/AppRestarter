@@ -25,6 +25,14 @@ namespace AppRestarter
         {
             _apps = apps ?? throw new ArgumentNullException(nameof(apps));
             _logAction = logAction ?? throw new ArgumentNullException(nameof(logAction));
+
+            // If relative, resolve to the EXE directory so auto-start scenarios work
+            if (!Path.IsPathRooted(htmlFilePath))
+            {
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                htmlFilePath = Path.Combine(baseDir, htmlFilePath);
+            }
+
             _htmlFilePath = htmlFilePath;
         }
 
@@ -36,7 +44,7 @@ namespace AppRestarter
             try
             {
                 _httpListener.Start();
-                _logAction($"Web Server started on port {port}");
+                _logAction($"Web Server started on port {port}. index at: {_htmlFilePath}");
                 Task.Run(() => ServerLoop());
             }
             catch (Exception ex)

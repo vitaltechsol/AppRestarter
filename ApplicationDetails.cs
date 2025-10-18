@@ -29,9 +29,10 @@ namespace AppRestarter
 
     public class AppSettings
     {
-        public string Schema { get; set; } = "x.x.x";
+        public string Schema { get; set; } = "1.2.0";
         public int WebPort { get; set; } = 8080;
         public int AppPort { get; set; } = 2024;
         public bool AutoStartWithWindows { get; set; } = true;
+        public bool StartMinimized { get; set; } = false;   
     }
 }
