@@ -36,7 +36,7 @@ namespace AppRestarter
             _htmlFilePath = htmlFilePath;
         }
 
-        public void Start(int port = 8080)
+        public void Start(int port = 8090)
         {
             _port = port;
             _httpListener = new HttpListener();
@@ -100,7 +100,8 @@ namespace AppRestarter
                             app.Name,
                             app.ProcessName,
                             app.RestartPath,
-                            app.ClientIP
+                            app.ClientIP,
+                            app.NoWarn
                         }).ToList();
 
                         var json = JsonSerializer.Serialize(appsToSend);

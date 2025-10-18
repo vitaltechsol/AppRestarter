@@ -69,7 +69,7 @@
             this.numWebPort.Name = "numWebPort";
             this.numWebPort.Size = new System.Drawing.Size(120, 23);
             this.numWebPort.TabIndex = 3;
-            this.numWebPort.Value = new decimal(new int[] { 8080, 0, 0, 0 });
+            this.numWebPort.Value = new decimal(new int[] { 8090, 0, 0, 0 });
             // 
             // chkAutoStart
             // 

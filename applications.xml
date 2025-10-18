@@ -3,7 +3,7 @@
   <Settings>
     <Schema>1.2.0</Schema>
     <AppPort>2024</AppPort>
-    <WebPort>8080</WebPort>
+    <WebPort>8090</WebPort>
     <AutoStartWithWindows>true</AutoStartWithWindows>
     <StartMinimized>false</StartMinimized>
   </Settings>

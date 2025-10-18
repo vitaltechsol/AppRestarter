@@ -4,7 +4,6 @@ AppRestarter is a Windows Forms application designed to allow you to remotely re
 
 ## Features
 
-* View, add, edit, and delete application configurations.
 * Start or stop applications remotely or locally.
 * Restart applications from a web browser.
 * Keep logs of actions performed.
@@ -77,10 +76,31 @@ After entering the applications, you can edit it by right-clicking the button an
 Click the button to restart an application. You can also right-click and select `Stop` to stop the application.
 
 ### 7. Using a web browser
-* Enter the PC's IP with port 8080 to view the web version. 
-  For example `http://192.168.1.123:8080`.
+* Enter the PC's IP with port 8090 to view the web version. 
+  For example `http://192.168.1.123:8090`.
 * Note that AppRestarter must run as administrator for this work.
-* You can change the web port in applicantions.xml
+* You can change the web port in Settings
+
+## Settings
+
+- **App Port**  
+  The TCP port used by the AppRestarter server for communication between local and remote clients.  
+  Default: `2024`
+
+- **Web Port**  
+  The port the built-in web UI version runs on.  
+  Access the web UI by visiting `http://<your-ip>:<WebPort>` in a browser.  
+  Default: `8090`
+
+- **Auto Start with Windows**  
+  If set to `true`, AppRestarter will configure itself to run automatically when Windows starts.  
+  This is done using a Windows Scheduled Task so that the program can also run with administrator rights if required.  
+  Default: `true`
+	- 
+- **Start Minimized**  
+  If set to `true`, AppRestarter will start minimized when launched.  
+  This is useful when running at startup so the application doesn't pop up in front of the user.  
+  Default: `false`
 
 
 ## Notes

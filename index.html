@@ -42,27 +42,35 @@
                 const btn = document.createElement('button');
                 btn.innerText = app.Name;
                 btn.style.backgroundColor = app.ClientIP ? '#5a90f2' : '#5a63f2';
-                btn.onclick = () => restartApp(app.ProcessName, app.Name);
+                btn.onclick = () => restartApp(app); // pass whole app
                 container.appendChild(btn);
             });
         }
 
-        async function restartApp(processName, displayName) {
-            document.getElementById('status').innerText = `Restarting ${displayName}...`;
+        async function restartApp(app) {
+            // If NoWarn is false (or missing), ask for confirmation
+            const shouldWarn = (app.NoWarn === false || app.NoWarn === undefined);
+            if (shouldWarn) {
+                const ok = window.confirm(`Are you sure you want to restart "${app.Name}"?`);
+                if (!ok) return;
+            }
+
+            document.getElementById('status').innerText = `Restarting ${app.Name}...`;
             const res = await fetch('/restart', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ProcessName: processName })
+                body: JSON.stringify({ ProcessName: app.ProcessName })
             });
             if (res.ok) {
-                document.getElementById('status').innerText = `${displayName} restart triggered successfully.`;
+                document.getElementById('status').innerText = `${app.Name} restart triggered successfully.`;
             } else {
                 const text = await res.text();
-                document.getElementById('status').innerText = `Failed to restart ${displayName}: ${text}`;
+                document.getElementById('status').innerText = `Failed to restart ${app.Name}: ${text}`;
             }
         }
 
         window.onload = loadApps;
     </script>
+
 </body>
 </html>
