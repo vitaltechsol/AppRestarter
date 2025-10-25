@@ -55,12 +55,16 @@ Use the UI to add applications.
 Click the *Add New* Button
 
 * **Name:** Friendly name
-* **Process Name:** e.g. `notepad` (without `.exe`) (See more instructions bellow)
 * **Restart Path:** Full path to the `.exe` of the app. IF the app is remote, should be the path in the remote PC.
-* **Client IP (Optional):** If the application is located on a different PC. Add the IP address.
+* **Process Name (Optional):** e.g. `notepad` (without `.exe`) (See more instructions bellow)
+* * **Client IP (Optional):** If the application is located on a different PC. Add the IP address.
 * **Auto-start app after:** Will automatically start the application after that many seconds when AppRestarter starts
 * **Auto-start minimized:** Will start the application minimized
 * **Don't Warn when restarting:** Will not show the confirmation modal when restarting the apps.
+
+**Process name:**
+The process name is optional, but if provided, it will be faster to close the application before restarting it.
+Process name could also be useful to kill background application that don't have a path name. In this case leave the path name blank.
 
 **To find the process name:**
 

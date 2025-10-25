@@ -45,14 +45,14 @@
             // 
             // txtName
             // 
-            txtName.Location = new Point(150, 12);
+            txtName.Location = new Point(148, 12);
             txtName.Name = "txtName";
             txtName.Size = new Size(250, 23);
             txtName.TabIndex = 3;
             // 
             // lblProcess
             // 
-            lblProcess.Location = new Point(15, 50);
+            lblProcess.Location = new Point(15, 84);
             lblProcess.Name = "lblProcess";
             lblProcess.Size = new Size(120, 20);
             lblProcess.TabIndex = 4;
@@ -60,31 +60,31 @@
             // 
             // txtProcess
             // 
-            txtProcess.Location = new Point(150, 47);
+            txtProcess.Location = new Point(148, 81);
             txtProcess.Name = "txtProcess";
             txtProcess.Size = new Size(250, 23);
             txtProcess.TabIndex = 5;
             // 
             // lblPath
             // 
-            lblPath.Location = new Point(15, 85);
+            lblPath.Location = new Point(15, 47);
             lblPath.Name = "lblPath";
-            lblPath.Size = new Size(120, 20);
+            lblPath.Size = new Size(120, 18);
             lblPath.TabIndex = 6;
             lblPath.Text = "Restart Path:";
             // 
             // txtPath
             // 
-            txtPath.Location = new Point(150, 82);
+            txtPath.Location = new Point(148, 44);
             txtPath.Name = "txtPath";
             txtPath.Size = new Size(210, 23);
             txtPath.TabIndex = 7;
             // 
             // btnBrowse
             // 
-            btnBrowse.Location = new Point(370, 81);
+            btnBrowse.Location = new Point(368, 43);
             btnBrowse.Name = "btnBrowse";
-            btnBrowse.Size = new Size(70, 25);
+            btnBrowse.Size = new Size(70, 23);
             btnBrowse.TabIndex = 8;
             btnBrowse.Text = "Browse...";
             btnBrowse.Click += btnBrowse_Click;
@@ -99,7 +99,7 @@
             // 
             // txtClientIP
             // 
-            txtClientIP.Location = new Point(150, 117);
+            txtClientIP.Location = new Point(148, 117);
             txtClientIP.Name = "txtClientIP";
             txtClientIP.Size = new Size(250, 23);
             txtClientIP.TabIndex = 10;
@@ -108,13 +108,13 @@
             // 
             chkAutoStart.Location = new Point(150, 150);
             chkAutoStart.Name = "chkAutoStart";
-            chkAutoStart.Size = new Size(153, 24);
+            chkAutoStart.Size = new Size(181, 24);
             chkAutoStart.TabIndex = 11;
             chkAutoStart.Text = "Auto-start this app after";
             // 
             // numDelay
             // 
-            numDelay.Location = new Point(302, 152);
+            numDelay.Location = new Point(330, 152);
             numDelay.Maximum = new decimal(new int[] { 300, 0, 0, 0 });
             numDelay.Name = "numDelay";
             numDelay.Size = new Size(50, 23);
@@ -151,7 +151,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(360, 154);
+            label1.Location = new Point(388, 154);
             label1.Name = "label1";
             label1.Size = new Size(50, 15);
             label1.TabIndex = 15;
@@ -161,7 +161,7 @@
             // 
             chkStartMinimized.Location = new Point(150, 180);
             chkStartMinimized.Name = "chkStartMinimized";
-            chkStartMinimized.Size = new Size(210, 24);
+            chkStartMinimized.Size = new Size(290, 24);
             chkStartMinimized.TabIndex = 16;
             chkStartMinimized.Text = "Auto-start minimized";
             // 
@@ -169,7 +169,7 @@
             // 
             chkNoWarn.Location = new Point(150, 210);
             chkNoWarn.Name = "chkNoWarn";
-            chkNoWarn.Size = new Size(227, 24);
+            chkNoWarn.Size = new Size(290, 24);
             chkNoWarn.TabIndex = 17;
             chkNoWarn.Text = "Don't warn when restarting";
             // 

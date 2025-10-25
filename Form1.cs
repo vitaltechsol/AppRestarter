@@ -209,33 +209,24 @@ namespace AppRestarter
 
             if (skipConfirm || confirmResult == DialogResult.Yes || app.NoWarn)
             {
-                try
+                if (stop)
                 {
-                    Process[] processes = Process.GetProcessesByName(app.ProcessName);
-
-                    if (processes.Length > 0 && stop)
-                    {
-                        foreach (Process process in processes)
-                        {
-                            process.Kill();
-                            AddToLog($"Stopped {process.ProcessName}");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AddToLog($"Error stopping {app.ProcessName}");
-                    Debug.WriteLine("Error stopping the application: " + ex.Message);
+                    ProcessKiller.Kill(app, AddToLog);
                 }
             }
 
-            await Task.Delay(2000);
+            if (start && stop)
+            {
+                // Delay after stopping and before starting
+                await Task.Delay(1000);
+            }
 
             try
             {
-                Process[] processes2 = Process.GetProcessesByName(app.ProcessName);
-                if (processes2.Length == 0 && !string.IsNullOrWhiteSpace(app.RestartPath))
+                bool isRunning = ProcessKiller.IsRunning(app);
+                if (start && !isRunning && !string.IsNullOrWhiteSpace(app.RestartPath))
                 {
+                    AddToLog($"Starting {app.Name}");
                     var startInfo = new ProcessStartInfo
                     {
                         FileName = app.RestartPath,

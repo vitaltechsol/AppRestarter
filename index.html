@@ -59,7 +59,7 @@
             const res = await fetch('/restart', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ProcessName: app.ProcessName })
+                body: JSON.stringify({ Name: app.Name })
             });
             if (res.ok) {
                 document.getElementById('status').innerText = `${app.Name} restart triggered successfully.`;

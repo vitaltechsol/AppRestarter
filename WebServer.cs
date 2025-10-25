@@ -117,7 +117,7 @@ namespace AppRestarter
                         var body = await reader.ReadToEndAsync();
                         var restartRequest = JsonSerializer.Deserialize<RestartRequest>(body);
 
-                        var app = _apps.FirstOrDefault(a => a.ProcessName == restartRequest?.ProcessName);
+                        var app = _apps.FirstOrDefault(a => a.Name == restartRequest?.Name);
                         if (app != null)
                         {
                             // Fire the restart event/callback for the app
@@ -205,7 +205,7 @@ namespace AppRestarter
 
     public class RestartRequest
     {
-        public string ProcessName { get; set; }
+        public string Name { get; set; }
     }
 
 }
