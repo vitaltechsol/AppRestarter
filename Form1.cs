@@ -211,7 +211,9 @@ namespace AppRestarter
             {
                 if (stop)
                 {
-                    ProcessKiller.Kill(app, AddToLog);
+                    var stopped = await ProcessTerminator.StopAsync(app, AddToLog, timeoutMs: 5000);
+                    if (stopped == 0)
+                        AddToLog($"No running process found to stop for {app.Name}.");
                 }
             }
 
@@ -223,8 +225,7 @@ namespace AppRestarter
 
             try
             {
-                bool isRunning = ProcessKiller.IsRunning(app);
-                if (start && !isRunning && !string.IsNullOrWhiteSpace(app.RestartPath))
+                if (start && !string.IsNullOrWhiteSpace(app.RestartPath))
                 {
                     AddToLog($"Starting {app.Name}");
                     var startInfo = new ProcessStartInfo

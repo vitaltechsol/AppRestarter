@@ -2,10 +2,14 @@
 
 AppRestarter is a Windows Forms application designed to allow you to remotely restart applications on other PCs via a client/server model.
 
+AppRestarter gracefully stops the target application before restarting it, ensuring a clean restart process. 
+
+If the application is frozen or unresponsive, AppRestarter can forcefully terminate it.
+
 ## Features
 
 * Start or stop applications remotely or locally.
-* Restart applications from a web browser.
+* Restart applications using a web browser (Web UI).
 * Keep logs of actions performed.
 * Lightweight and easy to deploy.
 
@@ -63,8 +67,8 @@ Click the *Add New* Button
 * **Don't Warn when restarting:** Will not show the confirmation modal when restarting the apps.
 
 **Process name:**
-The process name is optional, but if provided, it will be faster to close the application before restarting it.
-Process name could also be useful to kill background application that don't have a path name. In this case leave the path name blank.
+
+The process name is optional, but can be useful to kill background application that don't have a path name. Or an application process launched from other applications. In this case leave the path name blank.
 
 **To find the process name:**
 
