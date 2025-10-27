@@ -1,34 +1,39 @@
-using System;
-using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using System.Xml.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Forms;
 
 namespace AppRestarter
 {
     public partial class AddAppForm : Form
     {
         public ApplicationDetails AppData { get; private set; }
-
-        private bool isEditMode;
-        private int editIndex;
-
         public bool DeleteRequested { get; private set; } = false;
 
-        public AddAppForm(ApplicationDetails existing = null, int index = -1)
+        private readonly Func<List<string>> _getGroups;
+        private readonly Action _manageGroups;
+
+        public AddAppForm(
+            ApplicationDetails existing = null,
+            int index = -1,
+            Func<List<string>> getGroups = null,
+            Action manageGroups = null
+        )
         {
             InitializeComponent();
 
+            _getGroups = getGroups ?? (() => new List<string>());
+            _manageGroups = manageGroups ?? (() => { });
+
+
+
+            // Populate groups combo
+            LoadGroupsIntoCombo();
+
             if (existing != null)
             {
-                isEditMode = true;
-                editIndex = index;
                 AppData = existing;
 
-                // Populate fields
                 txtName.Text = existing.Name;
                 txtProcess.Text = existing.ProcessName;
                 txtPath.Text = existing.RestartPath;
@@ -38,13 +43,57 @@ namespace AppRestarter
                 chkNoWarn.Checked = existing.NoWarn;
                 chkStartMinimized.Checked = existing.StartMinimized;
 
+                // select existing group if present
+                var g = existing.GroupName;
+                SelectGroupInCombo(g);
                 btnDelete.Visible = true;
             }
             else
             {
                 AppData = new ApplicationDetails();
                 btnDelete.Visible = false;
+                // default None
+                SelectGroupInCombo(null);
             }
+        }
+
+        private void LoadGroupsIntoCombo()
+        {
+            var groups = _getGroups().Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+
+            cmbGroup.BeginUpdate();
+            cmbGroup.Items.Clear();
+            cmbGroup.Items.Add("None");
+            foreach (var g in groups) cmbGroup.Items.Add(g);
+            cmbGroup.EndUpdate();
+        }
+
+        private void SelectGroupInCombo(string groupNameOrNull)
+        {
+            if (string.IsNullOrWhiteSpace(groupNameOrNull))
+            {
+                // None
+                cmbGroup.SelectedIndex = 0;
+            }
+            else
+            {
+                int idx = cmbGroup.FindStringExact(groupNameOrNull);
+                cmbGroup.SelectedIndex = (idx >= 0) ? idx : 0; // default to None if missing
+            }
+        }
+
+        // NEW: Manage Groups button → open manager via Form1 callback, then refresh combo
+        private void btnManageGroups_Click(object sender, EventArgs e)
+        {
+            // Remember current selection
+            var current = (cmbGroup.SelectedIndex <= 0) ? null : cmbGroup.SelectedItem?.ToString();
+
+            // Open the manager in Form1 (centralized save/sync)
+            _manageGroups?.Invoke();
+
+            // Reload fresh groups & reselect previous if still present
+            LoadGroupsIntoCombo();
+            SelectGroupInCombo(current);
         }
 
         private void btnSave_Click(object sender, EventArgs e)
@@ -57,6 +106,9 @@ namespace AppRestarter
             AppData.AutoStartDelayInSeconds = (int)numDelay.Value;
             AppData.StartMinimized = chkStartMinimized.Checked;
             AppData.NoWarn = chkNoWarn.Checked;
+
+            var sel = cmbGroup.SelectedItem?.ToString();
+            AppData.GroupName = (string.Equals(sel, "None", StringComparison.OrdinalIgnoreCase) ? null : sel);
 
             DialogResult = DialogResult.OK;
             Close();
@@ -81,6 +133,6 @@ namespace AppRestarter
                 txtPath.Text = dlg.FileName;
             }
         }
-    }
 
+    }
 }

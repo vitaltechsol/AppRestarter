@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -13,6 +13,10 @@ namespace AppRestarter
     public partial class Form1 : Form
     {
         private List<ApplicationDetails> selectedApps = new List<ApplicationDetails>();
+
+        // NEW: central source of truth for groups (loaded from XML)
+        private List<string> _groups = new List<string>();
+
         private TcpListener server;
         private volatile bool _serverRunning = true;
         private WebServer _webServer;
@@ -26,14 +30,17 @@ namespace AppRestarter
 
             StartServer();
             LoadSettingsFromXml();
-            LoadApplicationsFromXml();
+            LoadApplicationsFromXml();  // also loads _groups
             UpdateAppList();
             AutoStartApps();
             StartWebServer();
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private void Form1_Load(object sender, EventArgs e) { }
+
+        private string getXMLConfigPath()
         {
+            return Path.Combine(exeDir, "applications.xml");
         }
 
         private void LoadApplicationsFromXml()
@@ -43,7 +50,12 @@ namespace AppRestarter
                 string configPath = getXMLConfigPath();
                 XDocument xmlDocument = XDocument.Load(configPath);
                 var root = xmlDocument.Root;
+
+                // Load groups first (NEW)
+                _groups = LoadGroups(root);
+
                 var applicationsElement = root.Element("Applications");
+                selectedApps.Clear();
 
                 foreach (XElement applicationElement in applicationsElement.Elements("Application"))
                 {
@@ -57,6 +69,7 @@ namespace AppRestarter
                         AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
                         NoWarn = bool.TryParse(applicationElement.Element("NoWarn")?.Value, out var noWarn) ? noWarn : false,
                         StartMinimized = bool.TryParse(applicationElement.Element("StartMinimized")?.Value, out var startMinimized) ? startMinimized : false,
+                        GroupName = applicationElement.Element("GroupName")?.Value // NEW
                     };
 
                     selectedApps.Add(app);
@@ -68,10 +81,79 @@ namespace AppRestarter
             }
         }
 
+        // NEW: helper to read <Groups>
+        private static List<string> LoadGroups(XElement root)
+        {
+            var groups = new List<string>();
+            var groupsEl = root.Element("Groups");
+            if (groupsEl != null)
+            {
+                foreach (var g in groupsEl.Elements("Group"))
+                {
+                    var name = g.Attribute("Name")?.Value;
+                    if (!string.IsNullOrWhiteSpace(name))
+                        groups.Add(name);
+                }
+            }
+            return groups.Distinct(StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+
         private void UpdateAppList()
         {
             AppFlowLayoutPanel.Controls.Clear();
 
+            // NEW: Group buttons first
+            foreach (var g in _groups)
+            {
+                var groupBtn = new Button
+                {
+                    Width = 163,
+                    Height = 45,
+                    Text = $"[Group] {g}",
+                    BackColor = Color.FromArgb(46, 125, 50), // green-ish
+                    FlatStyle = FlatStyle.Flat,
+                    ForeColor = SystemColors.ButtonFace
+                };
+                groupBtn.FlatAppearance.BorderSize = 0;
+
+                groupBtn.Click += async (s, e) =>
+                {
+                    var apps = selectedApps.Where(a => string.Equals(a.GroupName, g, StringComparison.OrdinalIgnoreCase)).ToList();
+                    foreach (var app in apps)
+                    {
+                        if (!string.IsNullOrEmpty(app.ClientIP))
+                            HandleRemoteClientAppClick(app, true, true, true);
+                        else
+                            await HandleAppButtonClickAsync(app, true, true, true);
+                    }
+                };
+
+                groupBtn.MouseUp += (s, e) =>
+                {
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        ContextMenuStrip menu = new ContextMenuStrip();
+                        menu.Items.Add("Stop").Click += async (ms, me) =>
+                        {
+                            var apps = selectedApps.Where(a => string.Equals(a.GroupName, g, StringComparison.OrdinalIgnoreCase)).ToList();
+                            foreach (var app in apps)
+                            {
+                                if (!string.IsNullOrEmpty(app.ClientIP))
+                                    HandleRemoteClientAppClick(app, false, true, true);
+                                else
+                                    await HandleAppButtonClickAsync(app, false, true, true);
+                            }
+                        };
+                        menu.Show(Cursor.Position);
+                    }
+                };
+
+                AppFlowLayoutPanel.Controls.Add(groupBtn);
+            }
+
+            // Existing per-app buttons (unchanged)
             for (int i = 0; i < selectedApps.Count; i++)
             {
                 var app = selectedApps[i];
@@ -89,7 +171,6 @@ namespace AppRestarter
 
                 appButton.FlatAppearance.BorderSize = 0;
 
-                // When clicking a button
                 appButton.Click += (s, e) =>
                 {
                     if (!string.IsNullOrEmpty(app.ClientIP))
@@ -115,8 +196,7 @@ namespace AppRestarter
 
         private void StartWebServer()
         {
-            // exeDir is already defined in your Form1: Path.GetDirectoryName(Application.ExecutablePath)
-            var indexPath = Path.Combine(exeDir, "index.html"); // <-- make it absolute
+            var indexPath = Path.Combine(exeDir, "index.html");
             _webServer = new WebServer(selectedApps, AddToLog, indexPath);
             _webServer.RestartRequested += (s, app) =>
             {
@@ -141,7 +221,6 @@ namespace AppRestarter
 
                     if (!string.IsNullOrEmpty(app.ClientIP))
                     {
-                        // When auto starting
                         Debug.WriteLine($"AutoStart ClientIP {app.Name}");
                         HandleRemoteClientAppClick(app, true, false, true);
                     }
@@ -151,20 +230,22 @@ namespace AppRestarter
             }
         }
 
+        // UPDATED: pass groups and manage callback into AddAppForm (both for edit and add)
         private void EditApp(int index)
         {
             var existing = selectedApps[index];
-            using var editForm = new AddAppForm(existing, index);
+            using var editForm = new AddAppForm(
+                existing,
+                index,
+                getGroups: () => new List<string>(_groups),  // latest groups
+                manageGroups: ManageGroups                    // callback to edit groups centrally
+            );
             if (editForm.ShowDialog() == DialogResult.OK)
             {
                 if (editForm.DeleteRequested)
-                {
                     selectedApps.RemoveAt(index);
-                }
                 else
-                {
                     selectedApps[index] = editForm.AppData;
-                }
 
                 SaveApplicationsToXml();
                 UpdateAppList();
@@ -178,6 +259,67 @@ namespace AppRestarter
                 HandleRemoteClientAppClick(existing, false, true, false);
             else
                 _ = HandleAppButtonClickAsync(existing, false, true, false);
+        }
+
+        private void btnAddApp_Click(object sender, EventArgs e)
+        {
+            using var addForm = new AddAppForm(
+                existing: null,
+                index: -1,
+                getGroups: () => new List<string>(_groups),
+                manageGroups: ManageGroups
+            );
+            if (addForm.ShowDialog() == DialogResult.OK)
+            {
+                selectedApps.Add(addForm.AppData);
+                SaveApplicationsToXml();
+                UpdateAppList();
+            }
+        }
+
+        // CENTRAL place to manage groups; keeps everything in sync
+        private void ManageGroups()
+        {
+            // If you already have a GroupsForm, use it here. Example:
+            using var dlg = new GroupsForm(_groups);
+            if (dlg.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            var newGroups = dlg.Groups.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+
+            // Detect a single rename (optional, nice UX):
+            // If exactly one name removed and one added, assume it's a rename and update apps.
+            var removed = _groups.Except(newGroups, StringComparer.OrdinalIgnoreCase).ToList();
+            var added = newGroups.Except(_groups, StringComparer.OrdinalIgnoreCase).ToList();
+            if (removed.Count == 1 && added.Count == 1)
+            {
+                string oldName = removed[0];
+                string newName = added[0];
+                foreach (var app in selectedApps)
+                {
+                    if (!string.IsNullOrEmpty(app.GroupName) &&
+                        app.GroupName.Equals(oldName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        app.GroupName = newName;
+                    }
+                }
+            }
+            else
+            {
+                // If groups were deleted, unassign those from apps
+                var valid = new HashSet<string>(newGroups, StringComparer.OrdinalIgnoreCase);
+                foreach (var app in selectedApps)
+                {
+                    if (!string.IsNullOrEmpty(app.GroupName) && !valid.Contains(app.GroupName))
+                        app.GroupName = null;
+                }
+            }
+
+            _groups = newGroups;
+
+            // Persist to XML and refresh UI
+            SaveApplicationsToXml();
+            UpdateAppList();
         }
 
         private async Task HandleAppButtonClickAsync(ApplicationDetails app, bool start, bool stop, bool skipConfirm)
@@ -219,7 +361,6 @@ namespace AppRestarter
 
             if (start && stop)
             {
-                // Delay after stopping and before starting
                 await Task.Delay(1000);
             }
 
@@ -236,9 +377,7 @@ namespace AppRestarter
                     };
 
                     if (app.StartMinimized)
-                    {
                         startInfo.WindowStyle = ProcessWindowStyle.Minimized;
-                    }
 
                     var process = Process.Start(startInfo);
 
@@ -248,10 +387,8 @@ namespace AppRestarter
                         {
                             if (process != null)
                             {
-                                // Wait for the main window to appear
                                 process.WaitForInputIdle();
-                                Thread.Sleep(2000); // Give the UI time to render
-
+                                Thread.Sleep(2000);
                                 if (process.MainWindowHandle != IntPtr.Zero && WinApiHelper.IsWindowVisible(process.MainWindowHandle))
                                 {
                                     WinApiHelper.ShowWindow(process.MainWindowHandle, WinApiHelper.SW_MINIMIZE);
@@ -404,7 +541,6 @@ namespace AppRestarter
                             AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
                                 $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
 
-                            // Fire and forget the async handler:
                             _ = HandleAppButtonClickAsync(applicationDetails, true, applicationDetails.KillProcess, true);
                         }
                         catch (SerializationException serEx)
@@ -438,20 +574,22 @@ namespace AppRestarter
         private void SaveApplicationsToXml()
         {
             var xmlFilePath = getXMLConfigPath();
+
             var doc = new XDocument(
                 new XElement("Root",
-                // Save settings
-                new XElement("Settings",
-                    new XElement("AppPort", _settings.AppPort),
-                    new XElement("WebPort", _settings.WebPort),
-                    new XElement("AutoStartWithWindows", _settings.AutoStartWithWindows),
-                    new XElement("StartMinimized", _settings.StartMinimized),
-                    new XElement("Schema", _settings.Schema)
-                ),
-                    // Save applications
+                    new XElement("Settings",
+                        new XElement("AppPort", _settings.AppPort),
+                        new XElement("WebPort", _settings.WebPort),
+                        new XElement("AutoStartWithWindows", _settings.AutoStartWithWindows),
+                        new XElement("StartMinimized", _settings.StartMinimized),
+                        new XElement("Schema", _settings.Schema)
+                    ),
+                    // NEW: save _groups
+                    new XElement("Groups", _groups.Select(g => new XElement("Group", new XAttribute("Name", g)))),
                     new XElement("Applications",
                         selectedApps.Select(app =>
-                            new XElement("Application",
+                        {
+                            var x = new XElement("Application",
                                 new XElement("Name", app.Name),
                                 new XElement("ProcessName", app.ProcessName),
                                 new XElement("RestartPath", app.RestartPath),
@@ -460,8 +598,11 @@ namespace AppRestarter
                                 new XElement("AutoStartDelayInSeconds", app.AutoStartDelayInSeconds),
                                 new XElement("NoWarn", app.NoWarn),
                                 new XElement("StartMinimized", app.StartMinimized)
-                            )
-                        )
+                            );
+                            if (!string.IsNullOrWhiteSpace(app.GroupName))
+                                x.Add(new XElement("GroupName", app.GroupName));
+                            return x;
+                        })
                     )
                 )
             );
@@ -482,20 +623,13 @@ namespace AppRestarter
 
         private void btnReload_Click(object sender, EventArgs e)
         {
-            selectedApps.Clear();
             LoadApplicationsFromXml();
             UpdateAppList();
         }
 
-        private void btnAddApp_Click(object sender, EventArgs e)
+        private void btnOpenWeb_Click(object sender, EventArgs e)
         {
-            using var addForm = new AddAppForm();
-            if (addForm.ShowDialog() == DialogResult.OK)
-            {
-                selectedApps.Add(addForm.AppData);
-                SaveApplicationsToXml();
-                UpdateAppList();
-            }
+            _webServer.OpenWebInterfaceInBrowser();
         }
 
         private void LoadSettingsFromXml()
@@ -507,7 +641,6 @@ namespace AppRestarter
                 var root = xmlDocument.Root;
                 bool autoStartWithWindows = false;
 
-                // Load settings
                 var settingsElement = root.Element("Settings");
                 if (settingsElement != null)
                 {
@@ -518,16 +651,10 @@ namespace AppRestarter
                     _settings.Schema = settingsElement.Element("Schema")?.Value;
                 }
 
-                // Apply the startup setting
                 if (autoStartWithWindows)
-                {
                     StartupHelper.AddOrUpdateAppStartup(AddToLog);
-                }
                 else
-                {
                     StartupHelper.RemoveAppStartup(AddToLog);
-                }
-
             }
             catch (Exception ex)
             {
@@ -535,82 +662,14 @@ namespace AppRestarter
             }
         }
 
-        private void ShowSettingsDialog()
+        private void btnGroups_Click(object sender, EventArgs e)
         {
-            using var dlg = new SettingsForm(_settings);
-            if (dlg.ShowDialog(this) != DialogResult.OK) return;
 
-            var oldAppPort = _settings.AppPort;
-            var oldWebPort = _settings.WebPort;
-
-            // Update settings in memory
-            _settings = dlg.Updated;
-
-            // Persist settings & apps
-            SaveApplicationsToXml(); // ensure this writes Settings incl. new flags
-
-            // Apply Auto-start (Scheduled Task)
-            if (_settings.AutoStartWithWindows)
-                StartupHelper.AddOrUpdateAppStartup(AddToLog);
-            else
-                StartupHelper.RemoveAppStartup(AddToLog);
-
-            // Restart TCP listener if AppPort changed
-            if (oldAppPort != _settings.AppPort)
-            {
-                try
-                {
-                    server?.Stop();
-                }
-                catch { }
-                StartServer(); // use _settings.AppPort inside StartServer
-                AddToLog($"App listener restarted on port: {_settings.AppPort}");
-            }
-
-            // Restart web server if WebPort changed
-            if (oldWebPort != _settings.WebPort)
-            {
-                try { _webServer?.Stop(); } catch { }
-                StartWebServer(); // uses _settings.WebPort internally
-                AddToLog($"Web server restarted on port: {_settings.WebPort}");
-            }
-
-            // If StartMinimized changed and currently visible, apply now (optional UX)
-            if (_settings.StartMinimized && this.WindowState != FormWindowState.Minimized)
-            {
-                this.WindowState = FormWindowState.Minimized;
-                // if you do minimize-to-tray, also set ShowInTaskbar = false here
-            }
-        }
-
-        protected override void OnShown(EventArgs e)
-        {
-            base.OnShown(e);
-
-            // CLI override: pass --minimized to force minimized start (e.g., from Scheduled Task)
-            bool cliMin = Environment.GetCommandLineArgs().Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));
-
-            if (_settings.StartMinimized || cliMin)
-            {
-                // plain minimized to taskbar
-                this.WindowState = FormWindowState.Minimized;
-            }
-        }
-
-        private void btnOpenWeb_Click(object sender, EventArgs e)
-        {
-            _webServer.OpenWebInterfaceInBrowser();
-        }
-
-        private string getXMLConfigPath()
-        {
-            string configPath = Path.Combine(exeDir, "applications.xml");
-            return configPath;
         }
 
         private void btnSettings_Click(object sender, EventArgs e)
         {
-            ShowSettingsDialog();
+
         }
     }
 }

@@ -32,6 +32,9 @@
             label1 = new Label();
             chkStartMinimized = new CheckBox();
             chkNoWarn = new CheckBox();
+            lblGroup = new Label();
+            cmbGroup = new ComboBox();
+            btnManageGroups = new Button();
             ((System.ComponentModel.ISupportInitialize)numDelay).BeginInit();
             SuspendLayout();
             // 
@@ -122,7 +125,7 @@
             // 
             // btnSave
             // 
-            btnSave.Location = new Point(150, 260);
+            btnSave.Location = new Point(150, 270);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(80, 30);
             btnSave.TabIndex = 12;
@@ -132,7 +135,7 @@
             // btnCancel
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new Point(240, 260);
+            btnCancel.Location = new Point(240, 270);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(80, 30);
             btnCancel.TabIndex = 13;
@@ -140,7 +143,7 @@
             // 
             // btnDelete
             // 
-            btnDelete.Location = new Point(330, 260);
+            btnDelete.Location = new Point(330, 270);
             btnDelete.Name = "btnDelete";
             btnDelete.Size = new Size(80, 30);
             btnDelete.TabIndex = 14;
@@ -173,11 +176,40 @@
             chkNoWarn.TabIndex = 17;
             chkNoWarn.Text = "Don't warn when restarting";
             // 
+            // lblGroup
+            // 
+            lblGroup.Location = new Point(15, 240);
+            lblGroup.Name = "lblGroup";
+            lblGroup.Size = new Size(120, 20);
+            lblGroup.TabIndex = 0;
+            lblGroup.Text = "Group:";
+            // 
+            // cmbGroup
+            // 
+            cmbGroup.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbGroup.Location = new Point(148, 237);
+            cmbGroup.Name = "cmbGroup";
+            cmbGroup.Size = new Size(195, 23);
+            cmbGroup.TabIndex = 1;
+            // 
+            // btnManageGroups
+            // 
+            btnManageGroups.Location = new Point(354, 237);
+            btnManageGroups.Name = "btnManageGroups";
+            btnManageGroups.Size = new Size(75, 23);
+            btnManageGroups.TabIndex = 18;
+            btnManageGroups.Text = "Manage";
+            btnManageGroups.UseVisualStyleBackColor = true;
+            btnManageGroups.Click += btnManageGroups_Click;
+            // 
             // AddAppForm
             // 
             AcceptButton = btnSave;
             CancelButton = btnCancel;
-            ClientSize = new Size(470, 312);
+            ClientSize = new Size(470, 325);
+            Controls.Add(btnManageGroups);
+            Controls.Add(lblGroup);
+            Controls.Add(cmbGroup);
             Controls.Add(chkNoWarn);
             Controls.Add(chkStartMinimized);
             Controls.Add(label1);
@@ -219,11 +251,14 @@
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnDelete;
         private System.Windows.Forms.NumericUpDown numDelay;
+        private System.Windows.Forms.Label lblGroup;
+        private System.Windows.Forms.ComboBox cmbGroup;
 
         #endregion
 
         private Label label1;
         private CheckBox chkStartMinimized;
         private CheckBox chkNoWarn;
+        private Button btnManageGroups;
     }
 }

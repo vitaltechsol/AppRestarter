@@ -61,7 +61,7 @@
             btnReload.BackColor = SystemColors.WindowFrame;
             btnReload.FlatStyle = FlatStyle.Popup;
             btnReload.ForeColor = SystemColors.ButtonFace;
-            btnReload.Location = new Point(251, 9);
+            btnReload.Location = new Point(289, 8);
             btnReload.Name = "btnReload";
             btnReload.Size = new Size(99, 23);
             btnReload.TabIndex = 2;
@@ -76,7 +76,7 @@
             btnAddApp.ForeColor = SystemColors.ButtonFace;
             btnAddApp.Location = new Point(12, 9);
             btnAddApp.Name = "btnAddApp";
-            btnAddApp.Size = new Size(105, 23);
+            btnAddApp.Size = new Size(98, 23);
             btnAddApp.TabIndex = 3;
             btnAddApp.Text = "Add New App";
             btnAddApp.UseVisualStyleBackColor = false;
@@ -97,7 +97,7 @@
             btnOpenWeb.BackColor = SystemColors.WindowFrame;
             btnOpenWeb.FlatStyle = FlatStyle.Popup;
             btnOpenWeb.ForeColor = SystemColors.ButtonFace;
-            btnOpenWeb.Location = new Point(142, 9);
+            btnOpenWeb.Location = new Point(183, 8);
             btnOpenWeb.Name = "btnOpenWeb";
             btnOpenWeb.Size = new Size(100, 23);
             btnOpenWeb.TabIndex = 5;
@@ -110,7 +110,7 @@
             btnSettings.BackColor = SystemColors.WindowFrame;
             btnSettings.FlatStyle = FlatStyle.Popup;
             btnSettings.ForeColor = SystemColors.ButtonFace;
-            btnSettings.Location = new Point(359, 9);
+            btnSettings.Location = new Point(394, 8);
             btnSettings.Name = "btnSettings";
             btnSettings.Size = new Size(68, 23);
             btnSettings.TabIndex = 6;

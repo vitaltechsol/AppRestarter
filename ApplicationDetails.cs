@@ -23,6 +23,9 @@ namespace AppRestarter
         public bool NoWarn { get; set; } = false;
         [DataMember]
         public bool StartMinimized { get; set; } = false;
+        [DataMember]
+        public string? GroupName { get; set; }
+
 
 
     }
