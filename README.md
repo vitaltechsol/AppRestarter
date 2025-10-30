@@ -10,6 +10,7 @@ If the application is frozen or unresponsive, AppRestarter can forcefully termin
 
 * Start or stop applications remotely or locally.
 * Restart applications using a web browser (Web UI).
+* Create groups to start/stop groups of applications.
 * Keep logs of actions performed.
 * Lightweight and easy to deploy.
 
@@ -17,7 +18,7 @@ If the application is frozen or unresponsive, AppRestarter can forcefully termin
 
 * Windows 10 and newer
 * Application must be installed and accessible from the specified path.
-* To use remote restart, the client machine must run this app and listen on port 2024.
+* To use remote restart apps, the client machine must run this app and listen on port 2024.
 
 ## Installation & Setup
 
@@ -68,7 +69,7 @@ Click the *Add New* Button
 
 **Process name:**
 
-The process name is optional, but can be useful to kill background application that don't have a path name. Or an application process launched from other applications. In this case leave the path name blank.
+The Process Name is optional and should only be used when the application runs as a background process or when no valid executable path is available.
 
 **To find the process name:**
 
@@ -83,7 +84,32 @@ After entering the applications, you can edit it by right-clicking the button an
 ### 6. Restart or Stop Applications
 Click the button to restart an application. You can also right-click and select `Stop` to stop the application.
 
-### 7. Using a web browser
+### 7. Groups
+
+You can organize applications into Groups to manage multiple related apps together.
+
+**Creating a Group**
+
+* Click the Add New App button or edit an existing app in the main AppRestarter window.
+* Click `Manage` next to the groups drop down.
+* Enter a descriptive name for the group (e.g., Flight Sim Tools, Audio Services) under `Group Name`.
+* Click `Add Grouo` Button
+* The group will appear as a green button in the main AppRestarter UI and on the web interface.
+
+**Assigning an App to a Group**
+ 
+* When adding or editing an application, use the Group dropdown.
+* Select one of the available groups or choose None to leave it unassigned.
+* When saved, the group name will be stored in the XML configuration file under that application.
+
+**Using Groups**
+
+* Clicking a group button will restart all applications in that group.
+* Right-clicking a group button and selecting Stop will stop all apps in that group.
+ 
+Groups also appear in the web interface, allowing you to remotely restart all apps in the group.
+
+### Using a web browser
 * Enter the PC's IP with port 8090 to view the web version. 
   For example `http://192.168.1.123:8090`.
 * Note that AppRestarter must run as administrator for this work.

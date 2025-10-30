@@ -52,7 +52,7 @@ namespace AppRestarter
         ///      * Target by full path (first match; one instance per path).
         /// Returns the number of processes that were terminated (gracefully or by force).
         /// </summary>
-        public static async Task<int> StopAsync(ApplicationDetails app, Action<string> log, int timeoutMs = 5000)
+        public static async Task<int> StopAsync(ApplicationDetails app, Action<string> log, int timeoutMs = 8000)
         {
             if (app == null) { log?.Invoke("Terminator: No app details."); return 0; }
 
@@ -340,7 +340,6 @@ namespace AppRestarter
             }
         }
 
-
         private static bool TryGetProcessPathFast(Process proc, out string exePath)
         {
             exePath = null;
@@ -378,6 +377,22 @@ namespace AppRestarter
             catch (NotSupportedException) { }
 
             return false;
+        }
+
+
+        /// <summary>
+        /// Returns true if any process matches the same selection policy used for termination
+        /// (by process name first, otherwise by executable path).
+        /// </summary>
+        public static bool IsRunning(ApplicationDetails app, Action<string> log = null)
+        {
+            try
+            {
+                var targets = SelectTargets(app, log);
+                foreach (var p in targets) { try { p.Dispose(); } catch { } }
+                return targets.Count > 0;
+            }
+            catch { return false; }
         }
     }
 }

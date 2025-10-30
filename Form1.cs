@@ -22,6 +22,7 @@ namespace AppRestarter
         private WebServer _webServer;
         private AppSettings _settings = new AppSettings();
         string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
+        private int _timeout = 8000;
 
         public Form1()
         {
@@ -30,7 +31,7 @@ namespace AppRestarter
 
             StartServer();
             LoadSettingsFromXml();
-            LoadApplicationsFromXml();  // also loads _groups
+            LoadApplicationsFromXml();
             UpdateAppList();
             AutoStartApps();
             StartWebServer();
@@ -111,8 +112,8 @@ namespace AppRestarter
                 {
                     Width = 163,
                     Height = 45,
-                    Text = $"[Group] {g}",
-                    BackColor = Color.FromArgb(46, 125, 50), // green-ish
+                    Text = $"[{g}]",
+                    BackColor = Color.FromArgb(8, 111, 118),
                     FlatStyle = FlatStyle.Flat,
                     ForeColor = SystemColors.ButtonFace
                 };
@@ -124,9 +125,9 @@ namespace AppRestarter
                     foreach (var app in apps)
                     {
                         if (!string.IsNullOrEmpty(app.ClientIP))
-                            HandleRemoteClientAppClick(app, true, true, true);
+                            HandleRemoteClientAppClick(app, true, true, false);
                         else
-                            await HandleAppButtonClickAsync(app, true, true, true);
+                            await HandleAppButtonClickAsync(app, true, true, false);
                     }
                 };
 
@@ -348,25 +349,29 @@ namespace AppRestarter
                     }
                 }
             }
-
+            var stopped = 0;
             if (skipConfirm || confirmResult == DialogResult.Yes || app.NoWarn)
             {
                 if (stop)
                 {
-                    var stopped = await ProcessTerminator.StopAsync(app, AddToLog, timeoutMs: 5000);
-                    if (stopped == 0)
-                        AddToLog($"No running process found to stop for {app.Name}.");
+                    stopped = await ProcessTerminator.StopAsync(app, AddToLog, timeoutMs: _timeout);
                 }
             }
 
-            if (start && stop)
+            if (start && stopped > 0)
             {
-                await Task.Delay(1000);
+                await Task.Delay(2000);
             }
 
             try
             {
-                if (start && !string.IsNullOrWhiteSpace(app.RestartPath))
+                bool isAppRunning = start && ProcessTerminator.IsRunning(app);
+                if (start && isAppRunning)
+                {
+                    AddToLog($"Skipped starting {app.Name}: already running.");
+                }
+
+                if (start && !string.IsNullOrWhiteSpace(app.RestartPath) && !isAppRunning)
                 {
                     AddToLog($"Starting {app.Name}");
                     var startInfo = new ProcessStartInfo
@@ -441,17 +446,16 @@ namespace AppRestarter
 
                 if (skipConfirm || confirmResult == DialogResult.Yes || applicationDetails.NoWarn)
                 {
-                    Debug.WriteLine("Restarting****");
+                    AddToLog($"Sending Remote App Request {applicationDetails.Name} on {applicationDetails.ClientIP}");
                     using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
                     client.SendTimeout = 3000;
-
                     using var stream = client.GetStream();
-
-                    applicationDetails.KillProcess = stop;
+                    
+                    applicationDetails.StopRequested = stop;
+                    applicationDetails.StartRequested = start;
                     var serializer = new DataContractSerializer(typeof(ApplicationDetails));
                     serializer.WriteObject(stream, applicationDetails);
                     stream.Flush();
-                    AddToLog($"Started Remote App {applicationDetails.Name} on {applicationDetails.ClientIP}");
                 }
             }
             catch (Exception ex)
@@ -507,7 +511,7 @@ namespace AppRestarter
                         using var client = server.AcceptTcpClient();
                         using var stream = client.GetStream();
 
-                        client.ReceiveTimeout = 5000;
+                        client.ReceiveTimeout = _timeout;
 
                         using var ms = new System.IO.MemoryStream();
                         byte[] buffer = new byte[8192];
@@ -541,7 +545,7 @@ namespace AppRestarter
                             AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
                                 $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
 
-                            _ = HandleAppButtonClickAsync(applicationDetails, true, applicationDetails.KillProcess, true);
+                            _ = HandleAppButtonClickAsync(applicationDetails, applicationDetails.StartRequested, applicationDetails.StopRequested, true);
                         }
                         catch (SerializationException serEx)
                         {

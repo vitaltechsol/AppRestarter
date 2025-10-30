@@ -59,7 +59,7 @@
             lblProcess.Name = "lblProcess";
             lblProcess.Size = new Size(120, 20);
             lblProcess.TabIndex = 4;
-            lblProcess.Text = "Process Name:";
+            lblProcess.Text = "or Process Name:";
             // 
             // txtProcess
             // 
