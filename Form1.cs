@@ -683,7 +683,66 @@ namespace AppRestarter
 
         private void btnSettings_Click(object sender, EventArgs e)
         {
+            using var dlg = new SettingsForm(_settings);
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
 
+            var oldAppPort = _settings.AppPort;
+            var oldWebPort = _settings.WebPort;
+
+            // Update settings in memory
+            _settings = dlg.Updated;
+
+            // Persist settings & apps
+            SaveApplicationsToXml(); // ensure this writes Settings incl. new flags
+
+            // Apply Auto-start (Scheduled Task)
+            if (_settings.AutoStartWithWindows)
+                StartupHelper.AddOrUpdateAppStartup(AddToLog);
+            else
+                StartupHelper.RemoveAppStartup(AddToLog);
+
+            // Restart TCP listener if AppPort changed
+            if (oldAppPort != _settings.AppPort)
+            {
+                try
+                {
+                    server?.Stop();
+                }
+                catch { }
+                StartServer(); // use _settings.AppPort inside StartServer
+                AddToLog($"App listener restarted on port: {_settings.AppPort}");
+            }
+
+            // Restart web server if WebPort changed
+            if (oldWebPort != _settings.WebPort)
+            {
+                try { _webServer?.Stop(); } catch { }
+                StartWebServer(); // uses _settings.WebPort internally
+                AddToLog($"Web server restarted on port: {_settings.WebPort}");
+            }
+
+            // If StartMinimized changed and currently visible, apply now (optional UX)
+            if (_settings.StartMinimized && this.WindowState != FormWindowState.Minimized)
+            {
+                this.WindowState = FormWindowState.Minimized;
+                // if you do minimize-to-tray, also set ShowInTaskbar = false here
+            }
+
+
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            // CLI override: pass --minimized to force minimized start (e.g., from Scheduled Task)
+            bool cliMin = Environment.GetCommandLineArgs().Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));
+
+            if (_settings.StartMinimized || cliMin)
+            {
+                // plain minimized to taskbar
+                this.WindowState = FormWindowState.Minimized;
+            }
         }
     }
 }
