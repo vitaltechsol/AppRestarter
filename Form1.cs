@@ -326,6 +326,11 @@ namespace AppRestarter
         private async Task HandleAppButtonClickAsync(ApplicationDetails app, bool start, bool stop, bool skipConfirm)
         {
             DialogResult? confirmResult = null;
+            string actionName = "restart";
+            if (stop && !start)
+                actionName = "stop";
+            else if (!stop && start)
+                actionName = "start";
 
             if (!skipConfirm)
             {
@@ -336,14 +341,14 @@ namespace AppRestarter
                         confirmResult = (DialogResult)await Task.Run(() =>
                             this.Invoke(new Func<DialogResult>(() =>
                                 MessageBox.Show(
-                                    $"Are you sure you want to stop {app.Name}\nand restart from: {app.RestartPath}",
+                                    $"Are you sure you want to {actionName} {app.Name}\n from: {app.RestartPath}",
                                     "Restart App",
                                     MessageBoxButtons.YesNo))));
                     }
                     else
                     {
                         confirmResult = MessageBox.Show(
-                            $"Are you sure you want to stop {app.Name}\nand restart from: {app.RestartPath}",
+                            $"Are you sure you want to {actionName} {app.Name}\n from: {app.RestartPath}",
                             "Restart App",
                             MessageBoxButtons.YesNo);
                     }
@@ -432,13 +437,18 @@ namespace AppRestarter
             try
             {
                 DialogResult? confirmResult = null;
+                string actionName = "restart";
+                if (stop && !start)
+                    actionName = "stop";
+                else if (!stop && start)
+                    actionName = "start";
 
                 if (!skipConfirm)
                 {
                     if (!applicationDetails.NoWarn)
                     {
                         confirmResult = MessageBox.Show(
-                            $"Are you sure you want to stop {applicationDetails.Name}\nand restart from: {applicationDetails.RestartPath}\nfrom IP: {applicationDetails.ClientIP}",
+                            $"Are you sure you want to {actionName} {applicationDetails.Name}\n from: {applicationDetails.RestartPath}\nfrom IP: {applicationDetails.ClientIP}",
                             "Restart Remote App",
                             MessageBoxButtons.YesNo);
                     }
@@ -446,7 +456,7 @@ namespace AppRestarter
 
                 if (skipConfirm || confirmResult == DialogResult.Yes || applicationDetails.NoWarn)
                 {
-                    AddToLog($"Sending Remote App Request {applicationDetails.Name} on {applicationDetails.ClientIP}");
+                    AddToLog($"Sending Remote App Request {applicationDetails.Name} on {applicationDetails.ClientIP} to {actionName} " );
                     using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
                     client.SendTimeout = 3000;
                     using var stream = client.GetStream();

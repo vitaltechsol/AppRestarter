@@ -58,7 +58,6 @@ namespace AppRestarter
 
             log?.Invoke($"Stopping {app.Name}.");
 
-
             var targets = SelectTargets(app, log);
             if (targets.Count == 0)
             {
@@ -72,9 +71,15 @@ namespace AppRestarter
             {
                 try
                 {
-                    if (TrySendCloseMainWindow(p, log))
+                    bool attemptedGraceful = false;
+
+                    // 1) Try main window first (if there is one)
+                    if (TrySendCloseMainWindow(p, log, app))
                     {
-                        // Wait for graceful exit
+                        attemptedGraceful = true;
+                        // important: there may be more top-level windows for the same PID
+                        SendWmCloseToAllTopLevelWindows(p.Id, log, app);
+
                         if (await WaitForExitWithTimeoutAsync(p, timeoutMs).ConfigureAwait(false))
                         {
                             log?.Invoke($"Gracefully stopped {p.ProcessName} (PID {p.Id}).");
@@ -83,34 +88,33 @@ namespace AppRestarter
                         }
                         else
                         {
-                            log?.Invoke($"{p.ProcessName} (PID {p.Id}) did not exit within {timeoutMs} ms; forcing kill.");
+                            log?.Invoke($"{p.ProcessName} (PID {p.Id}) did not exit within {timeoutMs} ms after main WM_CLOSE; will force.");
                         }
                     }
                     else
                     {
-                        // No main window or message couldn't be sent – try WM_CLOSE to all top-level windows of the process
-                        if (SendWmCloseToAllTopLevelWindows(p.Id, log))
+                        // 2) No main window or couldn't close it — still try ALL windows
+                        if (SendWmCloseToAllTopLevelWindows(p.Id, log, app))
                         {
-                            if (await WaitForExitAsync(p, timeoutMs))
+                            attemptedGraceful = true;
+                            if (await WaitForExitWithTimeoutAsync(p, timeoutMs).ConfigureAwait(false))
                             {
-                                log?.Invoke($"Gracefully stopped (WM_CLOSE) {p.ProcessName} (PID {p.Id}).");
+                                log?.Invoke($"Gracefully stopped (all windows) {p.ProcessName} (PID {p.Id}).");
                                 stopped++;
                                 continue;
                             }
                             else
                             {
-                                log?.Invoke($"{p.ProcessName} (PID {p.Id}) did not exit within {timeoutMs} ms after WM_CLOSE; forcing kill.");
+                                log?.Invoke($"{p.ProcessName} (PID {p.Id}) did not exit within {timeoutMs} ms after posting WM_CLOSE to all windows; will force.");
                             }
                         }
-                        // else: fall through to force kill
                     }
 
-                    // Fallback: force kill
+                    // 3) Fallback: force kill
                     try
                     {
                         p.Kill();
                         if (await WaitForExitWithTimeoutAsync(p, 2000).ConfigureAwait(false))
-                            // short wait to confirm
                             log?.Invoke($"Force-killed {p.ProcessName} (PID {p.Id}).");
                         else
                             log?.Invoke($"Force-kill requested for {p.ProcessName} (PID {p.Id}).");
@@ -216,16 +220,15 @@ namespace AppRestarter
 
         // ---- Graceful signaling helpers ----
 
-        private static bool TrySendCloseMainWindow(Process p, Action<string> log)
+        private static bool TrySendCloseMainWindow(Process p, Action<string> log, ApplicationDetails app)
         {
             try
             {
                 if (p.MainWindowHandle != IntPtr.Zero)
                 {
-                    // CloseMainWindow posts WM_CLOSE to main window
                     if (p.CloseMainWindow())
                     {
-                        log?.Invoke($"Closing process {p.ProcessName} (PID {p.Id}).");
+                        log?.Invoke($"Closing process for {app.Name} (PID {p.Id}).");
                         return true;
                     }
                 }
@@ -235,15 +238,15 @@ namespace AppRestarter
             return false;
         }
 
-        private static bool SendWmCloseToAllTopLevelWindows(int pid, Action<string> log)
+        private static bool SendWmCloseToAllTopLevelWindows(int pid, Action<string> log, ApplicationDetails app)
         {
             bool anySent = false;
             try
             {
                 EnumWindows((hWnd, lParam) =>
                 {
-                    if (!IsWindowVisible(hWnd)) return true; // continue
-                    // only top-level roots
+                    // we want to close *all* top-level windows for this PID, visible or not,
+                    // because some apps show dialog/tool windows that might be hidden
                     var root = GetAncestor(hWnd, GA_ROOT);
                     if (root != hWnd) return true;
 
@@ -259,31 +262,8 @@ namespace AppRestarter
                 }, IntPtr.Zero);
             }
             catch { }
-            if (anySent) log?.Invoke($"Posted WM_CLOSE to top-level windows of PID {pid}.");
+            if (anySent) log?.Invoke($"Closing all {app.Name} windows (PID {pid}).");
             return anySent;
-        }
-
-        private static async Task<bool> WaitForExitAsync(Process p, int timeoutMs)
-        {
-            try
-            {
-                if (p.HasExited) return true;
-
-                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                void Handler(object s, EventArgs e) => tcs.TrySetResult(true);
-
-                p.EnableRaisingEvents = true;
-                p.Exited += Handler;
-
-                using var _ = p; // ensure dispose on completion path
-                var delay = Task.Delay(timeoutMs);
-                var completed = await Task.WhenAny(tcs.Task, delay).ConfigureAwait(false);
-                p.Exited -= Handler;
-
-                if (completed == tcs.Task) return true; // exited within timeout
-                return p.HasExited;
-            }
-            catch { return false; }
         }
 
         // ---- Path helpers ----
@@ -312,18 +292,15 @@ namespace AppRestarter
                 if (p.HasExited) return true;
 
 #if NET5_0_OR_GREATER
-                // Fast path on modern runtimes
                 var wait = p.WaitForExitAsync();
                 var delay = Task.Delay(timeoutMs);
                 var completed = await Task.WhenAny(wait, delay).ConfigureAwait(false);
                 if (completed == wait) return true;
 #else
-        // .NET Framework / older: run the blocking wait off the UI thread
-        var exited = await Task.Run(() => p.WaitForExit(timeoutMs)).ConfigureAwait(false);
-        if (exited) return true;
+                var exited = await Task.Run(() => p.WaitForExit(timeoutMs)).ConfigureAwait(false);
+                if (exited) return true;
 #endif
 
-                // Extra-safe fallback: short poll in case the above missed a state change
                 var deadline = DateTime.UtcNow.AddMilliseconds(250);
                 while (DateTime.UtcNow < deadline)
                 {
@@ -335,7 +312,6 @@ namespace AppRestarter
             }
             catch
             {
-                // If anything goes wrong (access denied, etc.), treat as "not exited" unless the process says otherwise
                 try { return p.HasExited; } catch { return false; }
             }
         }
@@ -344,7 +320,6 @@ namespace AppRestarter
         {
             exePath = null;
 
-            // Fast: QueryFullProcessImageName
             IntPtr hProcess = IntPtr.Zero;
             try
             {
@@ -366,7 +341,6 @@ namespace AppRestarter
                 if (hProcess != IntPtr.Zero) CloseHandle(hProcess);
             }
 
-            // Fallback: MainModule (may throw for protected processes)
             try
             {
                 exePath = proc.MainModule?.FileName;
@@ -378,7 +352,6 @@ namespace AppRestarter
 
             return false;
         }
-
 
         /// <summary>
         /// Returns true if any process matches the same selection policy used for termination
