@@ -16,7 +16,7 @@ namespace AppRestarter
 
         // NEW: central source of truth for groups (loaded from XML)
         private List<string> _groups = new List<string>();
-
+        private List<PcInfo> _pcs = new List<PcInfo>();
         private TcpListener server;
         private volatile bool _serverRunning = true;
         private WebServer _webServer;
@@ -32,6 +32,7 @@ namespace AppRestarter
             StartServer();
             LoadSettingsFromXml();
             LoadApplicationsFromXml();
+            LoadPcsFromXml();
             UpdateAppList();
             AutoStartApps();
             StartWebServer();
@@ -598,8 +599,11 @@ namespace AppRestarter
                         new XElement("StartMinimized", _settings.StartMinimized),
                         new XElement("Schema", _settings.Schema)
                     ),
-                    // NEW: save _groups
-                    new XElement("Groups", _groups.Select(g => new XElement("Group", new XAttribute("Name", g)))),
+                    // save _groups
+                    new XElement("Groups", _groups.Select(g => 
+                        new XElement("Group", 
+                        new XAttribute("Name", g)))
+                    ),
                     new XElement("Applications",
                         selectedApps.Select(app =>
                         {
@@ -617,6 +621,15 @@ namespace AppRestarter
                                 x.Add(new XElement("GroupName", app.GroupName));
                             return x;
                         })
+                    ),
+                    // save _pcs
+                    new XElement("System",
+                        _pcs.Select(pc =>
+                            new XElement("PC",
+                                new XElement("Name", pc.Name),
+                                new XElement("IP", pc.IP)
+                            )
+                        )
                     )
                 )
             );
@@ -638,6 +651,7 @@ namespace AppRestarter
         private void btnReload_Click(object sender, EventArgs e)
         {
             LoadApplicationsFromXml();
+            LoadPcsFromXml();
             UpdateAppList();
         }
 
@@ -673,6 +687,33 @@ namespace AppRestarter
             catch (Exception ex)
             {
                 MessageBox.Show("Error loading settings and applications from XML: " + ex.Message);
+            }
+        }
+
+        private void LoadPcsFromXml()
+        {
+            try
+            {
+                string configPath = getXMLConfigPath(); // you already have this helper
+                var xml = XDocument.Load(configPath);
+                var root = xml.Root;
+                var systemNode = root?.Element("System");
+                if (systemNode == null) return;
+
+                _pcs.Clear();
+                foreach (var pcEl in systemNode.Elements("PC"))
+                {
+                    var name = pcEl.Element("Name")?.Value ?? "";
+                    var ip = pcEl.Element("IP")?.Value ?? "";
+                    if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(ip))
+                    {
+                        _pcs.Add(new PcInfo { Name = name, IP = ip });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AddToLog("Error loading PCs from XML: " + ex.Message);
             }
         }
 
