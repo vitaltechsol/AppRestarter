@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization;
@@ -12,11 +15,19 @@ namespace AppRestarter
 {
     public partial class Form1 : Form
     {
+        private enum ViewMode
+        {
+            Apps,
+            Pcs
+        }
+
+        private ViewMode _currentView = ViewMode.Apps;
+
         private List<ApplicationDetails> selectedApps = new List<ApplicationDetails>();
 
-        // NEW: central source of truth for groups (loaded from XML)
         private List<string> _groups = new List<string>();
         private List<PcInfo> _pcs = new List<PcInfo>();
+
         private TcpListener server;
         private volatile bool _serverRunning = true;
         private WebServer _webServer;
@@ -33,12 +44,31 @@ namespace AppRestarter
             LoadSettingsFromXml();
             LoadApplicationsFromXml();
             LoadPcsFromXml();
-            UpdateAppList();
+            ShowAppsView();
             AutoStartApps();
             StartWebServer();
+
+            MakeNavButtonsCircular();
         }
 
         private void Form1_Load(object sender, EventArgs e) { }
+
+        private void MakeNavButtonsCircular()
+        {
+            void MakeCircular(Button btn)
+            {
+                try
+                {
+                    var path = new System.Drawing.Drawing2D.GraphicsPath();
+                    path.AddEllipse(0, 0, btn.Width, btn.Height);
+                    btn.Region = new Region(path);
+                }
+                catch { }
+            }
+
+            MakeCircular(btnNavApps);
+            MakeCircular(btnNavPcs);
+        }
 
         private string getXMLConfigPath()
         {
@@ -53,7 +83,6 @@ namespace AppRestarter
                 XDocument xmlDocument = XDocument.Load(configPath);
                 var root = xmlDocument.Root;
 
-                // Load groups first (NEW)
                 _groups = LoadGroups(root);
 
                 var applicationsElement = root.Element("Applications");
@@ -71,7 +100,7 @@ namespace AppRestarter
                         AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
                         NoWarn = bool.TryParse(applicationElement.Element("NoWarn")?.Value, out var noWarn) ? noWarn : false,
                         StartMinimized = bool.TryParse(applicationElement.Element("StartMinimized")?.Value, out var startMinimized) ? startMinimized : false,
-                        GroupName = applicationElement.Element("GroupName")?.Value // NEW
+                        GroupName = applicationElement.Element("GroupName")?.Value
                     };
 
                     selectedApps.Add(app);
@@ -83,7 +112,6 @@ namespace AppRestarter
             }
         }
 
-        // NEW: helper to read <Groups>
         private static List<string> LoadGroups(XElement root)
         {
             var groups = new List<string>();
@@ -97,16 +125,53 @@ namespace AppRestarter
                         groups.Add(name);
                 }
             }
-            return groups.Distinct(StringComparer.OrdinalIgnoreCase)
-                         .OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+            return groups
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
+        // ---------- VIEW SWITCHING ----------
+
+        private void ShowAppsView()
+        {
+            _currentView = ViewMode.Apps;
+            btnAddApp.Text = "Add New App";
+            HighlightNavButton(btnNavApps);
+            AppFlowLayoutPanel.Controls.Clear();
+            RenderGroupsAndApps();
+        }
+
+        private void ShowPcsView()
+        {
+            _currentView = ViewMode.Pcs;
+            btnAddApp.Text = "Add New PC";
+            HighlightNavButton(btnNavPcs);
+            AppFlowLayoutPanel.Controls.Clear();
+            RenderPcButtons();
+        }
+
+        private void HighlightNavButton(Button active)
+        {
+            var activeColor = Color.FromArgb(0, 122, 204);
+            var inactiveColor = Color.FromArgb(64, 64, 64);
+
+            btnNavApps.BackColor = (active == btnNavApps) ? activeColor : inactiveColor;
+            btnNavPcs.BackColor = (active == btnNavPcs) ? activeColor : inactiveColor;
+        }
 
         private void UpdateAppList()
         {
-            AppFlowLayoutPanel.Controls.Clear();
+            if (_currentView != ViewMode.Apps)
+                return;
 
-            // NEW: Group buttons first
+            AppFlowLayoutPanel.Controls.Clear();
+            RenderGroupsAndApps();
+        }
+
+        private void RenderGroupsAndApps()
+        {
+            // Group buttons
             foreach (var g in _groups)
             {
                 var groupBtn = new Button
@@ -122,7 +187,9 @@ namespace AppRestarter
 
                 groupBtn.Click += async (s, e) =>
                 {
-                    var apps = selectedApps.Where(a => string.Equals(a.GroupName, g, StringComparison.OrdinalIgnoreCase)).ToList();
+                    var apps = selectedApps
+                        .Where(a => string.Equals(a.GroupName, g, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
                     foreach (var app in apps)
                     {
                         if (!string.IsNullOrEmpty(app.ClientIP))
@@ -139,7 +206,9 @@ namespace AppRestarter
                         ContextMenuStrip menu = new ContextMenuStrip();
                         menu.Items.Add("Stop").Click += async (ms, me) =>
                         {
-                            var apps = selectedApps.Where(a => string.Equals(a.GroupName, g, StringComparison.OrdinalIgnoreCase)).ToList();
+                            var apps = selectedApps
+                                .Where(a => string.Equals(a.GroupName, g, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
                             foreach (var app in apps)
                             {
                                 if (!string.IsNullOrEmpty(app.ClientIP))
@@ -155,7 +224,7 @@ namespace AppRestarter
                 AppFlowLayoutPanel.Controls.Add(groupBtn);
             }
 
-            // Existing per-app buttons (unchanged)
+            // Per-app buttons
             for (int i = 0; i < selectedApps.Count; i++)
             {
                 var app = selectedApps[i];
@@ -166,7 +235,9 @@ namespace AppRestarter
                     Width = 163,
                     Height = 45,
                     Text = app.Name,
-                    BackColor = !string.IsNullOrEmpty(app.ClientIP) ? Color.FromArgb(90, 143, 240) : Color.FromArgb(94, 103, 240),
+                    BackColor = !string.IsNullOrEmpty(app.ClientIP)
+                        ? Color.FromArgb(90, 143, 240)
+                        : Color.FromArgb(94, 103, 240),
                     FlatStyle = FlatStyle.Flat,
                     ForeColor = SystemColors.ButtonFace
                 };
@@ -193,6 +264,182 @@ namespace AppRestarter
                 };
 
                 AppFlowLayoutPanel.Controls.Add(appButton);
+            }
+        }
+
+        // ---------- PCs VIEW ----------
+
+        private void RenderPcButtons()
+        {
+            AppFlowLayoutPanel.Controls.Clear();
+
+            // "All PCs" button
+            if (_pcs.Count > 0)
+            {
+                var allBtn = new Button
+                {
+                    Width = 163,
+                    Height = 45,
+                    Text = "[All PCs]",
+                    BackColor = Color.FromArgb(128, 64, 64),
+                    FlatStyle = FlatStyle.Flat,
+                    ForeColor = SystemColors.ButtonFace
+                };
+                allBtn.FlatAppearance.BorderSize = 0;
+
+                // Left-click: Shutdown all
+                allBtn.Click += async (s, e) =>
+                {
+                    var confirm = MessageBox.Show(
+                        "Are you sure you want to SHUT DOWN all configured PCs?",
+                        "Confirm Shutdown All",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+
+                    if (confirm != DialogResult.Yes) return;
+
+                    foreach (var pc in _pcs)
+                    {
+                        await PcPowerController.ShutdownAsync(pc, AddToLog);
+                    }
+                };
+
+                // Right-click: context menu
+                allBtn.MouseUp += (s, e) =>
+                {
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        var menu = new ContextMenuStrip();
+                        menu.Items.Add("Shutdown All").Click += async (ms, me) =>
+                        {
+                            var confirm = MessageBox.Show(
+                                "Are you sure you want to SHUT DOWN all configured PCs?",
+                                "Confirm Shutdown All",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Warning);
+
+                            if (confirm != DialogResult.Yes) return;
+
+                            foreach (var pc in _pcs)
+                            {
+                                await PcPowerController.ShutdownAsync(pc, AddToLog);
+                            }
+                        };
+
+                        menu.Items.Add("Restart All").Click += async (ms, me) =>
+                        {
+                            var confirm = MessageBox.Show(
+                                "Are you sure you want to RESTART all configured PCs?",
+                                "Confirm Restart All",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Warning);
+
+                            if (confirm != DialogResult.Yes) return;
+
+                            foreach (var pc in _pcs)
+                            {
+                                await PcPowerController.RestartAsync(pc, AddToLog);
+                            }
+                        };
+
+                        menu.Show(Cursor.Position);
+                    }
+                };
+
+                AppFlowLayoutPanel.Controls.Add(allBtn);
+            }
+
+            // Individual PCs
+            for (int i = 0; i < _pcs.Count; i++)
+            {
+                var pc = _pcs[i];
+                int index = i;
+
+                var pcBtn = new Button
+                {
+                    Width = 163,
+                    Height = 45,
+                    Text = pc.Name,
+                    BackColor = Color.FromArgb(70, 90, 160),
+                    FlatStyle = FlatStyle.Flat,
+                    ForeColor = SystemColors.ButtonFace
+                };
+                pcBtn.FlatAppearance.BorderSize = 0;
+
+                // Left-click: Shutdown
+                pcBtn.Click += async (s, e) =>
+                {
+                    var confirm = MessageBox.Show(
+                        $"Shut down {pc.Name} ({pc.IP})?",
+                        "Confirm Shutdown",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+                    if (confirm != DialogResult.Yes) return;
+
+                    await PcPowerController.ShutdownAsync(pc, AddToLog);
+                };
+
+                // Right-click: context menu
+                pcBtn.MouseUp += (s, e) =>
+                {
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        var menu = new ContextMenuStrip();
+
+                        menu.Items.Add("Shutdown").Click += async (ms, me) =>
+                        {
+                            var confirm = MessageBox.Show(
+                                $"Shut down {pc.Name} ({pc.IP})?",
+                                "Confirm Shutdown",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Warning);
+                            if (confirm != DialogResult.Yes) return;
+
+                            await PcPowerController.ShutdownAsync(pc, AddToLog);
+                        };
+
+                        menu.Items.Add("Restart").Click += async (ms, me) =>
+                        {
+                            var confirm = MessageBox.Show(
+                                $"Restart {pc.Name} ({pc.IP})?",
+                                "Confirm Restart",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Warning);
+                            if (confirm != DialogResult.Yes) return;
+
+                            await PcPowerController.RestartAsync(pc, AddToLog);
+                        };
+
+                        menu.Items.Add("Edit").Click += (ms, me) =>
+                        {
+                            using var dlg = new AddPcForm(pc);
+                            if (dlg.ShowDialog(this) == DialogResult.OK)
+                            {
+                                _pcs[index] = dlg.PcData;
+                                SaveApplicationsToXml();
+                                RenderPcButtons();
+                            }
+                        };
+
+                        menu.Items.Add("Delete").Click += (ms, me) =>
+                        {
+                            var confirm = MessageBox.Show(
+                                $"Delete PC '{pc.Name}' from configuration?",
+                                "Confirm Delete PC",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Warning);
+                            if (confirm != DialogResult.Yes) return;
+
+                            _pcs.RemoveAt(index);
+                            SaveApplicationsToXml();
+                            RenderPcButtons();
+                        };
+
+                        menu.Show(Cursor.Position);
+                    }
+                };
+
+                AppFlowLayoutPanel.Controls.Add(pcBtn);
             }
         }
 
@@ -232,15 +479,14 @@ namespace AppRestarter
             }
         }
 
-        // UPDATED: pass groups and manage callback into AddAppForm (both for edit and add)
         private void EditApp(int index)
         {
             var existing = selectedApps[index];
             using var editForm = new AddAppForm(
                 existing,
                 index,
-                getGroups: () => new List<string>(_groups),  // latest groups
-                manageGroups: ManageGroups                    // callback to edit groups centrally
+                getGroups: () => new List<string>(_groups),
+                manageGroups: ManageGroups
             );
             if (editForm.ShowDialog() == DialogResult.OK)
             {
@@ -265,34 +511,47 @@ namespace AppRestarter
 
         private void btnAddApp_Click(object sender, EventArgs e)
         {
-            using var addForm = new AddAppForm(
-                existing: null,
-                index: -1,
-                getGroups: () => new List<string>(_groups),
-                manageGroups: ManageGroups
-            );
-            if (addForm.ShowDialog() == DialogResult.OK)
+            if (_currentView == ViewMode.Apps)
             {
-                selectedApps.Add(addForm.AppData);
-                SaveApplicationsToXml();
-                UpdateAppList();
+                using var addForm = new AddAppForm(
+                    existing: null,
+                    index: -1,
+                    getGroups: () => new List<string>(_groups),
+                    manageGroups: ManageGroups
+                );
+                if (addForm.ShowDialog() == DialogResult.OK)
+                {
+                    selectedApps.Add(addForm.AppData);
+                    SaveApplicationsToXml();
+                    UpdateAppList();
+                }
+            }
+            else
+            {
+                using var addPcForm = new AddPcForm();
+                if (addPcForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    _pcs.Add(addPcForm.PcData);
+                    SaveApplicationsToXml();
+                    RenderPcButtons();
+                }
             }
         }
 
-        // CENTRAL place to manage groups; keeps everything in sync
         private void ManageGroups()
         {
-            // If you already have a GroupsForm, use it here. Example:
             using var dlg = new GroupsForm(_groups);
             if (dlg.ShowDialog(this) != DialogResult.OK)
                 return;
 
-            var newGroups = dlg.Groups.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+            var newGroups = dlg.Groups
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            // Detect a single rename (optional, nice UX):
-            // If exactly one name removed and one added, assume it's a rename and update apps.
             var removed = _groups.Except(newGroups, StringComparer.OrdinalIgnoreCase).ToList();
             var added = newGroups.Except(_groups, StringComparer.OrdinalIgnoreCase).ToList();
+
             if (removed.Count == 1 && added.Count == 1)
             {
                 string oldName = removed[0];
@@ -308,7 +567,6 @@ namespace AppRestarter
             }
             else
             {
-                // If groups were deleted, unassign those from apps
                 var valid = new HashSet<string>(newGroups, StringComparer.OrdinalIgnoreCase);
                 foreach (var app in selectedApps)
                 {
@@ -319,9 +577,9 @@ namespace AppRestarter
 
             _groups = newGroups;
 
-            // Persist to XML and refresh UI
             SaveApplicationsToXml();
-            UpdateAppList();
+            if (_currentView == ViewMode.Apps)
+                UpdateAppList();
         }
 
         private async Task HandleAppButtonClickAsync(ApplicationDetails app, bool start, bool stop, bool skipConfirm)
@@ -333,29 +591,27 @@ namespace AppRestarter
             else if (!stop && start)
                 actionName = "start";
 
-            if (!skipConfirm)
+            if (!skipConfirm && !app.NoWarn)
             {
-                if (!app.NoWarn)
+                if (InvokeRequired)
                 {
-                    if (InvokeRequired)
-                    {
-                        confirmResult = (DialogResult)await Task.Run(() =>
-                            this.Invoke(new Func<DialogResult>(() =>
-                                MessageBox.Show(
-                                    $"Are you sure you want to {actionName} {app.Name}\n from: {app.RestartPath}",
-                                    "Restart App",
-                                    MessageBoxButtons.YesNo))));
-                    }
-                    else
-                    {
-                        confirmResult = MessageBox.Show(
-                            $"Are you sure you want to {actionName} {app.Name}\n from: {app.RestartPath}",
-                            "Restart App",
-                            MessageBoxButtons.YesNo);
-                    }
+                    confirmResult = (DialogResult)await Task.Run(() =>
+                        this.Invoke(new Func<DialogResult>(() =>
+                            MessageBox.Show(
+                                $"Are you sure you want to {actionName} {app.Name}\n from: {app.RestartPath}",
+                                "Restart App",
+                                MessageBoxButtons.YesNo))));
+                }
+                else
+                {
+                    confirmResult = MessageBox.Show(
+                        $"Are you sure you want to {actionName} {app.Name}\n from: {app.RestartPath}",
+                        "Restart App",
+                        MessageBoxButtons.YesNo);
                 }
             }
-            var stopped = 0;
+
+            int stopped = 0;
             if (skipConfirm || confirmResult == DialogResult.Yes || app.NoWarn)
             {
                 if (stop)
@@ -400,7 +656,8 @@ namespace AppRestarter
                             {
                                 process.WaitForInputIdle();
                                 Thread.Sleep(2000);
-                                if (process.MainWindowHandle != IntPtr.Zero && WinApiHelper.IsWindowVisible(process.MainWindowHandle))
+                                if (process.MainWindowHandle != IntPtr.Zero &&
+                                    WinApiHelper.IsWindowVisible(process.MainWindowHandle))
                                 {
                                     WinApiHelper.ShowWindow(process.MainWindowHandle, WinApiHelper.SW_MINIMIZE);
                                 }
@@ -444,24 +701,21 @@ namespace AppRestarter
                 else if (!stop && start)
                     actionName = "start";
 
-                if (!skipConfirm)
+                if (!skipConfirm && !applicationDetails.NoWarn)
                 {
-                    if (!applicationDetails.NoWarn)
-                    {
-                        confirmResult = MessageBox.Show(
-                            $"Are you sure you want to {actionName} {applicationDetails.Name}\n from: {applicationDetails.RestartPath}\nfrom IP: {applicationDetails.ClientIP}",
-                            "Restart Remote App",
-                            MessageBoxButtons.YesNo);
-                    }
+                    confirmResult = MessageBox.Show(
+                        $"Are you sure you want to {actionName} {applicationDetails.Name}\n from: {applicationDetails.RestartPath}\nfrom IP: {applicationDetails.ClientIP}",
+                        "Restart Remote App",
+                        MessageBoxButtons.YesNo);
                 }
 
                 if (skipConfirm || confirmResult == DialogResult.Yes || applicationDetails.NoWarn)
                 {
-                    AddToLog($"Sending Remote App Request {applicationDetails.Name} on {applicationDetails.ClientIP} to {actionName} " );
+                    AddToLog($"Sending Remote App Request {applicationDetails.Name} on {applicationDetails.ClientIP} to {actionName}");
                     using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
                     client.SendTimeout = 3000;
                     using var stream = client.GetStream();
-                    
+
                     applicationDetails.StopRequested = stop;
                     applicationDetails.StartRequested = start;
                     var serializer = new DataContractSerializer(typeof(ApplicationDetails));
@@ -556,7 +810,11 @@ namespace AppRestarter
                             AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
                                 $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
 
-                            _ = HandleAppButtonClickAsync(applicationDetails, applicationDetails.StartRequested, applicationDetails.StopRequested, true);
+                            _ = HandleAppButtonClickAsync(
+                                    applicationDetails,
+                                    applicationDetails.StartRequested,
+                                    applicationDetails.StopRequested,
+                                    true);
                         }
                         catch (SerializationException serEx)
                         {
@@ -599,10 +857,10 @@ namespace AppRestarter
                         new XElement("StartMinimized", _settings.StartMinimized),
                         new XElement("Schema", _settings.Schema)
                     ),
-                    // save _groups
-                    new XElement("Groups", _groups.Select(g => 
-                        new XElement("Group", 
-                        new XAttribute("Name", g)))
+                    new XElement("Groups",
+                        _groups.Select(g =>
+                            new XElement("Group",
+                                new XAttribute("Name", g)))
                     ),
                     new XElement("Applications",
                         selectedApps.Select(app =>
@@ -622,7 +880,6 @@ namespace AppRestarter
                             return x;
                         })
                     ),
-                    // save _pcs
                     new XElement("System",
                         _pcs.Select(pc =>
                             new XElement("PC",
@@ -652,7 +909,11 @@ namespace AppRestarter
         {
             LoadApplicationsFromXml();
             LoadPcsFromXml();
-            UpdateAppList();
+
+            if (_currentView == ViewMode.Apps)
+                UpdateAppList();
+            else
+                RenderPcButtons();
         }
 
         private void btnOpenWeb_Click(object sender, EventArgs e)
@@ -694,7 +955,7 @@ namespace AppRestarter
         {
             try
             {
-                string configPath = getXMLConfigPath(); // you already have this helper
+                string configPath = getXMLConfigPath();
                 var xml = XDocument.Load(configPath);
                 var root = xml.Root;
                 var systemNode = root?.Element("System");
@@ -717,11 +978,6 @@ namespace AppRestarter
             }
         }
 
-        private void btnGroups_Click(object sender, EventArgs e)
-        {
-
-        }
-
         private void btnSettings_Click(object sender, EventArgs e)
         {
             using var dlg = new SettingsForm(_settings);
@@ -730,60 +986,56 @@ namespace AppRestarter
             var oldAppPort = _settings.AppPort;
             var oldWebPort = _settings.WebPort;
 
-            // Update settings in memory
             _settings = dlg.Updated;
 
-            // Persist settings & apps
-            SaveApplicationsToXml(); // ensure this writes Settings incl. new flags
+            SaveApplicationsToXml();
 
-            // Apply Auto-start (Scheduled Task)
             if (_settings.AutoStartWithWindows)
                 StartupHelper.AddOrUpdateAppStartup(AddToLog);
             else
                 StartupHelper.RemoveAppStartup(AddToLog);
 
-            // Restart TCP listener if AppPort changed
             if (oldAppPort != _settings.AppPort)
             {
-                try
-                {
-                    server?.Stop();
-                }
-                catch { }
-                StartServer(); // use _settings.AppPort inside StartServer
+                try { server?.Stop(); } catch { }
+                StartServer();
                 AddToLog($"App listener restarted on port: {_settings.AppPort}");
             }
 
-            // Restart web server if WebPort changed
             if (oldWebPort != _settings.WebPort)
             {
                 try { _webServer?.Stop(); } catch { }
-                StartWebServer(); // uses _settings.WebPort internally
+                StartWebServer();
                 AddToLog($"Web server restarted on port: {_settings.WebPort}");
             }
 
-            // If StartMinimized changed and currently visible, apply now (optional UX)
             if (_settings.StartMinimized && this.WindowState != FormWindowState.Minimized)
             {
                 this.WindowState = FormWindowState.Minimized;
-                // if you do minimize-to-tray, also set ShowInTaskbar = false here
             }
-
-
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
 
-            // CLI override: pass --minimized to force minimized start (e.g., from Scheduled Task)
-            bool cliMin = Environment.GetCommandLineArgs().Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));
+            bool cliMin = Environment.GetCommandLineArgs()
+                .Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));
 
             if (_settings.StartMinimized || cliMin)
             {
-                // plain minimized to taskbar
                 this.WindowState = FormWindowState.Minimized;
             }
+        }
+
+        private void btnNavApps_Click(object sender, EventArgs e)
+        {
+            ShowAppsView();
+        }
+
+        private void btnNavPcs_Click(object sender, EventArgs e)
+        {
+            ShowPcsView();
         }
     }
 }
