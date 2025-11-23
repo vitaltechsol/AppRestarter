@@ -29,168 +29,191 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
-            AppFlowLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
-            txtLog = new System.Windows.Forms.TextBox();
-            btnReload = new System.Windows.Forms.Button();
-            btnAddApp = new System.Windows.Forms.Button();
-            label1 = new System.Windows.Forms.Label();
-            btnOpenWeb = new System.Windows.Forms.Button();
-            btnSettings = new System.Windows.Forms.Button();
-            panelLeftNav = new System.Windows.Forms.Panel();
-            btnNavPcs = new System.Windows.Forms.Button();
-            btnNavApps = new System.Windows.Forms.Button();
+            AppFlowLayoutPanel = new FlowLayoutPanel();
+            txtLog = new TextBox();
+            btnAddApp = new Button();
+            label1 = new Label();
+            btnOpenWeb = new Button();
+            panelLeftNav = new Panel();
+            lblNavSettings = new Label();
+            btnNavSettings = new Button();
+            lblNavPcs = new Label();
+            btnNavPcs = new Button();
+            lblNavApps = new Label();
+            btnNavApps = new Button();
             panelLeftNav.SuspendLayout();
             SuspendLayout();
             // 
             // AppFlowLayoutPanel
             // 
-            AppFlowLayoutPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                                    | System.Windows.Forms.AnchorStyles.Left)
-                                    | System.Windows.Forms.AnchorStyles.Right)));
+            AppFlowLayoutPanel.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             AppFlowLayoutPanel.AutoScroll = true;
-            AppFlowLayoutPanel.BackColor = System.Drawing.SystemColors.ControlDarkDark;
-            AppFlowLayoutPanel.Location = new System.Drawing.Point(96, 40);
+            AppFlowLayoutPanel.BackColor = SystemColors.ControlDarkDark;
+            AppFlowLayoutPanel.Location = new Point(96, 40);
             AppFlowLayoutPanel.Name = "AppFlowLayoutPanel";
-            AppFlowLayoutPanel.Size = new System.Drawing.Size(626, 340);
+            AppFlowLayoutPanel.Size = new Size(626, 340);
             AppFlowLayoutPanel.TabIndex = 0;
             // 
             // txtLog
             // 
-            txtLog.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
-                                    | System.Windows.Forms.AnchorStyles.Right)));
-            txtLog.Location = new System.Drawing.Point(12, 386);
+            txtLog.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            txtLog.Location = new Point(12, 386);
             txtLog.Multiline = true;
             txtLog.Name = "txtLog";
-            txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            txtLog.Size = new System.Drawing.Size(710, 61);
+            txtLog.ScrollBars = ScrollBars.Vertical;
+            txtLog.Size = new Size(710, 61);
             txtLog.TabIndex = 1;
-            // 
-            // btnReload
-            // 
-            btnReload.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)));
-            btnReload.BackColor = System.Drawing.SystemColors.WindowFrame;
-            btnReload.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            btnReload.ForeColor = System.Drawing.SystemColors.ButtonFace;
-            btnReload.Location = new System.Drawing.Point(289, 8);
-            btnReload.Name = "btnReload";
-            btnReload.Size = new System.Drawing.Size(99, 23);
-            btnReload.TabIndex = 2;
-            btnReload.Text = "Reload Config";
-            btnReload.UseVisualStyleBackColor = false;
-            btnReload.Click += new System.EventHandler(this.btnReload_Click);
             // 
             // btnAddApp
             // 
-            btnAddApp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)));
-            btnAddApp.BackColor = System.Drawing.SystemColors.HotTrack;
-            btnAddApp.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            btnAddApp.ForeColor = System.Drawing.SystemColors.ButtonFace;
-            btnAddApp.Location = new System.Drawing.Point(12, 9);
+            btnAddApp.BackColor = SystemColors.HotTrack;
+            btnAddApp.FlatStyle = FlatStyle.Popup;
+            btnAddApp.ForeColor = SystemColors.ButtonFace;
+            btnAddApp.Location = new Point(12, 9);
             btnAddApp.Name = "btnAddApp";
-            btnAddApp.Size = new System.Drawing.Size(98, 23);
+            btnAddApp.Size = new Size(98, 23);
             btnAddApp.TabIndex = 3;
             btnAddApp.Text = "Add New App";
             btnAddApp.UseVisualStyleBackColor = false;
-            btnAddApp.Click += new System.EventHandler(this.btnAddApp_Click);
+            btnAddApp.Click += btnAddApp_Click;
             // 
             // label1
             // 
-            label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            label1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             label1.AutoSize = true;
-            label1.ForeColor = System.Drawing.SystemColors.ButtonShadow;
-            label1.Location = new System.Drawing.Point(685, 12);
+            label1.ForeColor = SystemColors.ButtonShadow;
+            label1.Location = new Point(685, 12);
             label1.Name = "label1";
-            label1.Size = new System.Drawing.Size(37, 15);
+            label1.Size = new Size(37, 15);
             label1.TabIndex = 4;
             label1.Text = "v1.5.0";
             // 
             // btnOpenWeb
             // 
-            btnOpenWeb.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)));
-            btnOpenWeb.BackColor = System.Drawing.SystemColors.WindowFrame;
-            btnOpenWeb.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            btnOpenWeb.ForeColor = System.Drawing.SystemColors.ButtonFace;
-            btnOpenWeb.Location = new System.Drawing.Point(183, 8);
+            btnOpenWeb.BackColor = SystemColors.WindowFrame;
+            btnOpenWeb.FlatStyle = FlatStyle.Popup;
+            btnOpenWeb.ForeColor = SystemColors.ButtonFace;
+            btnOpenWeb.Location = new Point(183, 8);
             btnOpenWeb.Name = "btnOpenWeb";
-            btnOpenWeb.Size = new System.Drawing.Size(100, 23);
+            btnOpenWeb.Size = new Size(100, 23);
             btnOpenWeb.TabIndex = 5;
             btnOpenWeb.Text = "Web Interface";
             btnOpenWeb.UseVisualStyleBackColor = false;
-            btnOpenWeb.Click += new System.EventHandler(this.btnOpenWeb_Click);
-            // 
-            // btnSettings
-            // 
-            btnSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)));
-            btnSettings.BackColor = System.Drawing.SystemColors.WindowFrame;
-            btnSettings.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            btnSettings.ForeColor = System.Drawing.SystemColors.ButtonFace;
-            btnSettings.Location = new System.Drawing.Point(394, 8);
-            btnSettings.Name = "btnSettings";
-            btnSettings.Size = new System.Drawing.Size(68, 23);
-            btnSettings.TabIndex = 6;
-            btnSettings.Text = "Settings";
-            btnSettings.UseVisualStyleBackColor = false;
-            btnSettings.Click += new System.EventHandler(this.btnSettings_Click);
+            btnOpenWeb.Click += btnOpenWeb_Click;
             // 
             // panelLeftNav
             // 
-            panelLeftNav.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                                    | System.Windows.Forms.AnchorStyles.Left)));
-            panelLeftNav.BackColor = System.Drawing.Color.FromArgb(32, 32, 32);
+            panelLeftNav.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
+            panelLeftNav.BackColor = Color.FromArgb(32, 32, 32);
+            panelLeftNav.Controls.Add(lblNavSettings);
+            panelLeftNav.Controls.Add(btnNavSettings);
+            panelLeftNav.Controls.Add(lblNavPcs);
             panelLeftNav.Controls.Add(btnNavPcs);
+            panelLeftNav.Controls.Add(lblNavApps);
             panelLeftNav.Controls.Add(btnNavApps);
-            panelLeftNav.Location = new System.Drawing.Point(12, 40);
+            panelLeftNav.Location = new Point(12, 40);
             panelLeftNav.Name = "panelLeftNav";
-            panelLeftNav.Size = new System.Drawing.Size(78, 340);
+            panelLeftNav.Size = new Size(78, 340);
             panelLeftNav.TabIndex = 7;
+            // 
+            // lblNavSettings
+            // 
+            lblNavSettings.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblNavSettings.AutoSize = true;
+            lblNavSettings.Font = new Font("Segoe UI", 7F);
+            lblNavSettings.ForeColor = SystemColors.ControlLightLight;
+            lblNavSettings.Location = new Point(18, 255);
+            lblNavSettings.Name = "lblNavSettings";
+            lblNavSettings.Size = new Size(39, 12);
+            lblNavSettings.TabIndex = 5;
+            lblNavSettings.Text = "Settings";
+            lblNavSettings.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // btnNavSettings
+            // 
+            btnNavSettings.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnNavSettings.FlatAppearance.BorderSize = 0;
+            btnNavSettings.FlatStyle = FlatStyle.Flat;
+            btnNavSettings.Font = new Font("Segoe UI Emoji", 12F);
+            btnNavSettings.ForeColor = SystemColors.ControlLightLight;
+            btnNavSettings.Location = new Point(13, 276);
+            btnNavSettings.Name = "btnNavSettings";
+            btnNavSettings.Size = new Size(52, 52);
+            btnNavSettings.TabIndex = 4;
+            btnNavSettings.Text = "⚙️";
+            btnNavSettings.UseVisualStyleBackColor = true;
+            btnNavSettings.Click += btnSettings_Click;
+            // 
+            // lblNavPcs
+            // 
+            lblNavPcs.AutoSize = true;
+            lblNavPcs.Font = new Font("Segoe UI", 7F);
+            lblNavPcs.ForeColor = SystemColors.ControlLightLight;
+            lblNavPcs.Location = new Point(27, 146);
+            lblNavPcs.Name = "lblNavPcs";
+            lblNavPcs.Size = new Size(21, 12);
+            lblNavPcs.TabIndex = 3;
+            lblNavPcs.Text = "PCs";
+            lblNavPcs.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // btnNavPcs
             // 
             btnNavPcs.FlatAppearance.BorderSize = 0;
-            btnNavPcs.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnNavPcs.Font = new System.Drawing.Font("Segoe UI Emoji", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            btnNavPcs.ForeColor = System.Drawing.SystemColors.ControlLightLight;
-            btnNavPcs.Location = new System.Drawing.Point(13, 91);
+            btnNavPcs.FlatStyle = FlatStyle.Flat;
+            btnNavPcs.Font = new Font("Segoe UI Emoji", 12F);
+            btnNavPcs.ForeColor = SystemColors.ControlLightLight;
+            btnNavPcs.Location = new Point(13, 91);
             btnNavPcs.Name = "btnNavPcs";
-            btnNavPcs.Size = new System.Drawing.Size(52, 52);
-            btnNavPcs.TabIndex = 1;
+            btnNavPcs.Size = new Size(52, 52);
+            btnNavPcs.TabIndex = 2;
             btnNavPcs.Text = "💻";
             btnNavPcs.UseVisualStyleBackColor = true;
-            btnNavPcs.Click += new System.EventHandler(this.btnNavPcs_Click);
+            btnNavPcs.Click += btnNavPcs_Click;
+            // 
+            // lblNavApps
+            // 
+            lblNavApps.AutoSize = true;
+            lblNavApps.Font = new Font("Segoe UI", 7F);
+            lblNavApps.ForeColor = SystemColors.ControlLightLight;
+            lblNavApps.Location = new Point(24, 76);
+            lblNavApps.Name = "lblNavApps";
+            lblNavApps.Size = new Size(27, 12);
+            lblNavApps.TabIndex = 1;
+            lblNavApps.Text = "Apps";
+            lblNavApps.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // btnNavApps
             // 
             btnNavApps.FlatAppearance.BorderSize = 0;
-            btnNavApps.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnNavApps.Font = new System.Drawing.Font("Segoe UI Emoji", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            btnNavApps.ForeColor = System.Drawing.SystemColors.ControlLightLight;
-            btnNavApps.Location = new System.Drawing.Point(13, 21);
+            btnNavApps.FlatStyle = FlatStyle.Flat;
+            btnNavApps.Font = new Font("Segoe UI Emoji", 12F);
+            btnNavApps.ForeColor = SystemColors.ControlLightLight;
+            btnNavApps.Location = new Point(13, 21);
             btnNavApps.Name = "btnNavApps";
-            btnNavApps.Size = new System.Drawing.Size(52, 52);
+            btnNavApps.Size = new Size(52, 52);
             btnNavApps.TabIndex = 0;
-            btnNavApps.Text = "🧩";
+            btnNavApps.Text = "🗃️";
             btnNavApps.UseVisualStyleBackColor = true;
-            btnNavApps.Click += new System.EventHandler(this.btnNavApps_Click);
+            btnNavApps.Click += btnNavApps_Click;
             // 
             // Form1
             // 
-            AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            BackColor = System.Drawing.SystemColors.WindowText;
-            ClientSize = new System.Drawing.Size(734, 461);
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            BackColor = SystemColors.WindowText;
+            ClientSize = new Size(734, 461);
             Controls.Add(panelLeftNav);
-            Controls.Add(btnSettings);
             Controls.Add(btnOpenWeb);
             Controls.Add(label1);
             Controls.Add(btnAddApp);
-            Controls.Add(btnReload);
             Controls.Add(txtLog);
             Controls.Add(AppFlowLayoutPanel);
-            Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "AppRestarter";
-            Load += new System.EventHandler(this.Form1_Load);
+            Load += Form1_Load;
             panelLeftNav.ResumeLayout(false);
+            panelLeftNav.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -199,13 +222,15 @@
 
         private System.Windows.Forms.FlowLayoutPanel AppFlowLayoutPanel;
         private System.Windows.Forms.TextBox txtLog;
-        private System.Windows.Forms.Button btnReload;
         private System.Windows.Forms.Button btnAddApp;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button btnOpenWeb;
-        private System.Windows.Forms.Button btnSettings;
         private System.Windows.Forms.Panel panelLeftNav;
         private System.Windows.Forms.Button btnNavApps;
         private System.Windows.Forms.Button btnNavPcs;
+        private System.Windows.Forms.Button btnNavSettings;
+        private System.Windows.Forms.Label lblNavApps;
+        private System.Windows.Forms.Label lblNavPcs;
+        private System.Windows.Forms.Label lblNavSettings;
     }
 }
