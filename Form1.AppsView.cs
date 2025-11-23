@@ -180,8 +180,9 @@ namespace AppRestarter
                     if (e.Button == MouseButtons.Right)
                     {
                         ContextMenuStrip menu = new ContextMenuStrip();
-                        menu.Items.Add("Edit").Click += (ms, me) => EditApp(index);
                         menu.Items.Add("Stop").Click += (ms, me) => StopApp(index);
+                        menu.Items.Add(new ToolStripSeparator());
+                        menu.Items.Add("Edit").Click += (ms, me) => EditApp(index);
                         menu.Show(Cursor.Position);
                     }
                 };

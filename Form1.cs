@@ -89,7 +89,6 @@ namespace AppRestarter
 
             btnNavApps.BackColor = (active == btnNavApps) ? activeColor : inactiveColor;
             btnNavPcs.BackColor = (active == btnNavPcs) ? activeColor : inactiveColor;
-            // Settings button is not part of the view toggle highlighting
         }
 
         private void btnNavApps_Click(object sender, EventArgs e)

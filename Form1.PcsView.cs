@@ -28,7 +28,7 @@ namespace AppRestarter
                 {
                     Width = 163,
                     Height = 45,
-                    Text = "[All PCs]",
+                    Text = "All PCs",
                     BackColor = Color.FromArgb(128, 64, 64),
                     FlatStyle = FlatStyle.Flat,
                     ForeColor = SystemColors.ButtonFace
@@ -58,22 +58,6 @@ namespace AppRestarter
                     if (e.Button == MouseButtons.Right)
                     {
                         var menu = new ContextMenuStrip();
-                        menu.Items.Add("Shutdown All").Click += async (ms, me) =>
-                        {
-                            var confirm = MessageBox.Show(
-                                "Are you sure you want to SHUT DOWN all configured PCs?",
-                                "Confirm Shutdown All",
-                                MessageBoxButtons.YesNo,
-                                MessageBoxIcon.Warning);
-
-                            if (confirm != DialogResult.Yes) return;
-
-                            foreach (var pc in _pcs)
-                            {
-                                await PcPowerController.ShutdownAsync(pc, AddToLog);
-                            }
-                        };
-
                         menu.Items.Add("Restart All").Click += async (ms, me) =>
                         {
                             var confirm = MessageBox.Show(
@@ -133,19 +117,6 @@ namespace AppRestarter
                     if (e.Button == MouseButtons.Right)
                     {
                         var menu = new ContextMenuStrip();
-
-                        menu.Items.Add("Shutdown").Click += async (ms, me) =>
-                        {
-                            var confirm = MessageBox.Show(
-                                $"Shut down {pc.Name} ({pc.IP})?",
-                                "Confirm Shutdown",
-                                MessageBoxButtons.YesNo,
-                                MessageBoxIcon.Warning);
-                            if (confirm != DialogResult.Yes) return;
-
-                            await PcPowerController.ShutdownAsync(pc, AddToLog);
-                        };
-
                         menu.Items.Add("Restart").Click += async (ms, me) =>
                         {
                             var confirm = MessageBox.Show(
@@ -157,7 +128,7 @@ namespace AppRestarter
 
                             await PcPowerController.RestartAsync(pc, AddToLog);
                         };
-
+                        menu.Items.Add(new ToolStripSeparator());
                         menu.Items.Add("Edit").Click += (ms, me) =>
                         {
                             using var dlg = new AddPcForm(pc);

@@ -69,10 +69,10 @@
             btnAddApp.BackColor = SystemColors.HotTrack;
             btnAddApp.FlatStyle = FlatStyle.Popup;
             btnAddApp.ForeColor = SystemColors.ButtonFace;
-            btnAddApp.Location = new Point(12, 9);
+            btnAddApp.Location = new Point(9, 8);
             btnAddApp.Name = "btnAddApp";
             btnAddApp.Size = new Size(98, 23);
-            btnAddApp.TabIndex = 3;
+            btnAddApp.TabIndex = 0;
             btnAddApp.Text = "Add New App";
             btnAddApp.UseVisualStyleBackColor = false;
             btnAddApp.Click += btnAddApp_Click;
@@ -93,7 +93,7 @@
             btnOpenWeb.BackColor = SystemColors.WindowFrame;
             btnOpenWeb.FlatStyle = FlatStyle.Popup;
             btnOpenWeb.ForeColor = SystemColors.ButtonFace;
-            btnOpenWeb.Location = new Point(183, 8);
+            btnOpenWeb.Location = new Point(127, 8);
             btnOpenWeb.Name = "btnOpenWeb";
             btnOpenWeb.Size = new Size(100, 23);
             btnOpenWeb.TabIndex = 5;
@@ -122,7 +122,7 @@
             lblNavSettings.AutoSize = true;
             lblNavSettings.Font = new Font("Segoe UI", 7F);
             lblNavSettings.ForeColor = SystemColors.ControlLightLight;
-            lblNavSettings.Location = new Point(18, 255);
+            lblNavSettings.Location = new Point(18, 261);
             lblNavSettings.Name = "lblNavSettings";
             lblNavSettings.Size = new Size(39, 12);
             lblNavSettings.TabIndex = 5;
@@ -132,7 +132,10 @@
             // btnNavSettings
             // 
             btnNavSettings.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnNavSettings.CausesValidation = false;
+            btnNavSettings.FlatAppearance.BorderColor = Color.Black;
             btnNavSettings.FlatAppearance.BorderSize = 0;
+            btnNavSettings.FlatAppearance.MouseDownBackColor = Color.Black;
             btnNavSettings.FlatStyle = FlatStyle.Flat;
             btnNavSettings.Font = new Font("Segoe UI Emoji", 12F);
             btnNavSettings.ForeColor = SystemColors.ControlLightLight;
@@ -149,7 +152,7 @@
             lblNavPcs.AutoSize = true;
             lblNavPcs.Font = new Font("Segoe UI", 7F);
             lblNavPcs.ForeColor = SystemColors.ControlLightLight;
-            lblNavPcs.Location = new Point(27, 146);
+            lblNavPcs.Location = new Point(27, 162);
             lblNavPcs.Name = "lblNavPcs";
             lblNavPcs.Size = new Size(21, 12);
             lblNavPcs.TabIndex = 3;
@@ -162,7 +165,7 @@
             btnNavPcs.FlatStyle = FlatStyle.Flat;
             btnNavPcs.Font = new Font("Segoe UI Emoji", 12F);
             btnNavPcs.ForeColor = SystemColors.ControlLightLight;
-            btnNavPcs.Location = new Point(13, 91);
+            btnNavPcs.Location = new Point(13, 107);
             btnNavPcs.Name = "btnNavPcs";
             btnNavPcs.Size = new Size(52, 52);
             btnNavPcs.TabIndex = 2;
@@ -191,7 +194,7 @@
             btnNavApps.Location = new Point(13, 21);
             btnNavApps.Name = "btnNavApps";
             btnNavApps.Size = new Size(52, 52);
-            btnNavApps.TabIndex = 0;
+            btnNavApps.TabIndex = 1;
             btnNavApps.Text = "🗃️";
             btnNavApps.UseVisualStyleBackColor = true;
             btnNavApps.Click += btnNavApps_Click;
