@@ -200,7 +200,8 @@ namespace AppRestarter
                 existing,
                 index,
                 getGroups: () => new List<string>(_groups),
-                manageGroups: ManageGroups
+                manageGroups: ManageGroups,
+                pcs: new List<PcInfo>(_pcs)
             );
             if (editForm.ShowDialog() == DialogResult.OK)
             {

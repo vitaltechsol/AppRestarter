@@ -23,7 +23,7 @@
             txtPath = new TextBox();
             btnBrowse = new Button();
             lblClientIP = new Label();
-            txtClientIP = new TextBox();
+            cboClientPc = new ComboBox();
             chkAutoStart = new CheckBox();
             numDelay = new NumericUpDown();
             btnSave = new Button();
@@ -100,12 +100,13 @@
             lblClientIP.TabIndex = 9;
             lblClientIP.Text = "Client IP (optional):";
             // 
-            // txtClientIP
+            // cboClientPc
             // 
-            txtClientIP.Location = new Point(148, 117);
-            txtClientIP.Name = "txtClientIP";
-            txtClientIP.Size = new Size(250, 23);
-            txtClientIP.TabIndex = 10;
+            cboClientPc.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboClientPc.Location = new Point(148, 117);
+            cboClientPc.Name = "cboClientPc";
+            cboClientPc.Size = new Size(250, 23);
+            cboClientPc.TabIndex = 10;
             // 
             // chkAutoStart
             // 
@@ -222,7 +223,7 @@
             Controls.Add(txtPath);
             Controls.Add(btnBrowse);
             Controls.Add(lblClientIP);
-            Controls.Add(txtClientIP);
+            Controls.Add(cboClientPc);
             Controls.Add(chkAutoStart);
             Controls.Add(btnSave);
             Controls.Add(btnCancel);
@@ -245,7 +246,7 @@
         private System.Windows.Forms.TextBox txtPath;
         private System.Windows.Forms.Button btnBrowse;
         private System.Windows.Forms.Label lblClientIP;
-        private System.Windows.Forms.TextBox txtClientIP;
+        private System.Windows.Forms.ComboBox cboClientPc;
         private System.Windows.Forms.CheckBox chkAutoStart;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Button btnCancel;
