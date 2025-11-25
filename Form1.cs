@@ -119,16 +119,25 @@ namespace AppRestarter
 
         // ------------------ WEB SERVER ------------------
 
+
         private void StartWebServer()
         {
             var indexPath = System.IO.Path.Combine(exeDir, "index.html");
-            _webServer = new WebServer(selectedApps, AddToLog, indexPath);
+            _webServer = new WebServer(selectedApps, _pcs, AddToLog, indexPath);
             _webServer.RestartRequested += (s, app) =>
             {
                 if (!string.IsNullOrEmpty(app.ClientIP))
                     HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: true);
                 else
                     _ = HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
+            };
+
+            _webServer.StopRequested += (s, app) =>
+            {
+                if (!string.IsNullOrEmpty(app.ClientIP))
+                    HandleRemoteClientAppClick(app, start: false, stop: true, skipConfirm: true);
+                else
+                    _ = HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
             };
             _webServer.Start(_settings.WebPort);
             AddToLog($"Web server started on port: {_settings.WebPort}");
@@ -360,7 +369,8 @@ namespace AppRestarter
                     existing: null,
                     index: -1,
                     getGroups: () => new List<string>(_groups),
-                    manageGroups: ManageGroups
+                    manageGroups: ManageGroups,
+                    pcs: new List<PcInfo>(_pcs)
                 );
                 if (addForm.ShowDialog() == DialogResult.OK)
                 {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -15,15 +16,20 @@ namespace AppRestarter
     public class WebServer
     {
         private readonly List<ApplicationDetails> _apps;
+        private readonly List<PcInfo> _pcs;
         private readonly Action<string> _logAction;
         private HttpListener _httpListener;
         private volatile bool _running = true;
         private readonly string _htmlFilePath;
         private int _port;
 
-        public WebServer(List<ApplicationDetails> apps, Action<string> logAction, string htmlFilePath)
+        public WebServer(List<ApplicationDetails> apps,
+                         List<PcInfo> pcs,
+                         Action<string> logAction,
+                         string htmlFilePath)
         {
             _apps = apps ?? throw new ArgumentNullException(nameof(apps));
+            _pcs = pcs ?? throw new ArgumentNullException(nameof(pcs));
             _logAction = logAction ?? throw new ArgumentNullException(nameof(logAction));
 
             // If relative, resolve to the EXE directory so auto-start scenarios work
@@ -74,6 +80,7 @@ namespace AppRestarter
                     var request = context.Request;
                     var response = context.Response;
 
+                    // ---- ROOT: serve SPA ----
                     if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/")
                     {
                         // Serve the raw index.html file as-is
@@ -93,6 +100,7 @@ namespace AppRestarter
                             response.OutputStream.Close();
                         }
                     }
+                    // ---- APPS: list ----
                     else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/apps")
                     {
                         var appsToSend = _apps.Select(app => new
@@ -101,7 +109,8 @@ namespace AppRestarter
                             app.ProcessName,
                             app.RestartPath,
                             app.ClientIP,
-                            app.NoWarn
+                            app.NoWarn,
+                            app.GroupName
                         }).ToList();
 
                         var json = JsonSerializer.Serialize(appsToSend);
@@ -111,6 +120,7 @@ namespace AppRestarter
                         await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
                         response.Close();
                     }
+                    // ---- APPS: restart single ----
                     else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/restart")
                     {
                         using var reader = new System.IO.StreamReader(request.InputStream, request.ContentEncoding);
@@ -137,6 +147,143 @@ namespace AppRestarter
                         }
                         response.Close();
                     }
+                    // ---- APPS: stop single ----
+                    else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/stop")
+                    {
+                        using var reader = new System.IO.StreamReader(request.InputStream, request.ContentEncoding);
+                        var body = await reader.ReadToEndAsync();
+                        var stopRequest = JsonSerializer.Deserialize<RestartRequest>(body);
+
+                        var app = _apps.FirstOrDefault(a => a.Name == stopRequest?.Name);
+                        if (app != null)
+                        {
+                            // Fire the stop event/callback for the app
+                            StopRequested?.Invoke(this, app);
+
+                            response.StatusCode = 200;
+                            var respBuf = Encoding.UTF8.GetBytes("Stop triggered");
+                            response.ContentLength64 = respBuf.Length;
+                            await response.OutputStream.WriteAsync(respBuf, 0, respBuf.Length);
+                        }
+                        else
+                        {
+                            response.StatusCode = 404;
+                            var respBuf = Encoding.UTF8.GetBytes("App not found");
+                            response.ContentLength64 = respBuf.Length;
+                            await response.OutputStream.WriteAsync(respBuf, 0, respBuf.Length);
+                        }
+                        response.Close();
+                    }
+                    // ---- APPS: restart group ----
+                    else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/restart-group")
+                    {
+                        using var reader = new System.IO.StreamReader(request.InputStream, request.ContentEncoding);
+                        var body = await reader.ReadToEndAsync();
+                        var groupRequest = JsonSerializer.Deserialize<RestartGroupRequest>(body);
+
+                        var groupName = groupRequest?.GroupName;
+                        if (string.IsNullOrWhiteSpace(groupName))
+                        {
+                            response.StatusCode = 400;
+                            var respBuf = Encoding.UTF8.GetBytes("Missing GroupName");
+                            response.ContentLength64 = respBuf.Length;
+                            await response.OutputStream.WriteAsync(respBuf, 0, respBuf.Length);
+                            response.Close();
+                            continue;
+                        }
+
+                        var appsInGroup = _apps
+                            .Where(a => string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+
+                        if (!appsInGroup.Any())
+                        {
+                            response.StatusCode = 404;
+                            var respBuf = Encoding.UTF8.GetBytes("No apps found in group");
+                            response.ContentLength64 = respBuf.Length;
+                            await response.OutputStream.WriteAsync(respBuf, 0, respBuf.Length);
+                            response.Close();
+                            continue;
+                        }
+
+                        foreach (var app in appsInGroup)
+                        {
+                            RestartRequested?.Invoke(this, app);
+                        }
+
+                        response.StatusCode = 200;
+                        var successMsg = $"Restart triggered for {appsInGroup.Count} app(s) in group '{groupName}'.";
+                        var successBuf = Encoding.UTF8.GetBytes(successMsg);
+                        response.ContentLength64 = successBuf.Length;
+                        await response.OutputStream.WriteAsync(successBuf, 0, successBuf.Length);
+                        response.Close();
+                    }
+                    // ---- PCS: list ----
+                    else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/pcs")
+                    {
+                        var pcsToSend = _pcs.Select(pc => new
+                        {
+                            pc.Name,
+                            pc.IP
+                        }).ToList();
+
+                        var json = JsonSerializer.Serialize(pcsToSend);
+                        var buffer = Encoding.UTF8.GetBytes(json);
+                        response.ContentType = "application/json";
+                        response.ContentLength64 = buffer.Length;
+                        await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+                        response.Close();
+                    }
+                    // ---- PCS: shutdown ----
+                    else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/pc/shutdown")
+                    {
+                        using var reader = new System.IO.StreamReader(request.InputStream, request.ContentEncoding);
+                        var body = await reader.ReadToEndAsync();
+                        var pcReq = JsonSerializer.Deserialize<PcRequest>(body);
+
+                        var pc = FindPc(pcReq);
+                        if (pc == null)
+                        {
+                            response.StatusCode = 404;
+                            var respBuf = Encoding.UTF8.GetBytes("PC not found");
+                            response.ContentLength64 = respBuf.Length;
+                            await response.OutputStream.WriteAsync(respBuf, 0, respBuf.Length);
+                            response.Close();
+                            continue;
+                        }
+
+                        await PcPowerController.ShutdownAsync(pc, _logAction);
+                        response.StatusCode = 200;
+                        var okBuf = Encoding.UTF8.GetBytes("Shutdown command sent");
+                        response.ContentLength64 = okBuf.Length;
+                        await response.OutputStream.WriteAsync(okBuf, 0, okBuf.Length);
+                        response.Close();
+                    }
+                    // ---- PCS: restart ----
+                    else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/pc/restart")
+                    {
+                        using var reader = new System.IO.StreamReader(request.InputStream, request.ContentEncoding);
+                        var body = await reader.ReadToEndAsync();
+                        var pcReq = JsonSerializer.Deserialize<PcRequest>(body);
+
+                        var pc = FindPc(pcReq);
+                        if (pc == null)
+                        {
+                            response.StatusCode = 404;
+                            var respBuf = Encoding.UTF8.GetBytes("PC not found");
+                            response.ContentLength64 = respBuf.Length;
+                            await response.OutputStream.WriteAsync(respBuf, 0, respBuf.Length);
+                            response.Close();
+                            continue;
+                        }
+
+                        await PcPowerController.RestartAsync(pc, _logAction);
+                        response.StatusCode = 200;
+                        var okBuf = Encoding.UTF8.GetBytes("Restart command sent");
+                        response.ContentLength64 = okBuf.Length;
+                        await response.OutputStream.WriteAsync(okBuf, 0, okBuf.Length);
+                        response.Close();
+                    }
                     else
                     {
                         response.StatusCode = 404;
@@ -155,7 +302,29 @@ namespace AppRestarter
             }
         }
 
+        private PcInfo FindPc(PcRequest pcReq)
+        {
+            if (pcReq == null) return null;
+
+            PcInfo pc = null;
+
+            if (!string.IsNullOrWhiteSpace(pcReq.Name))
+            {
+                pc = _pcs.FirstOrDefault(p =>
+                    string.Equals(p.Name, pcReq.Name, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (pc == null && !string.IsNullOrWhiteSpace(pcReq.IP))
+            {
+                pc = _pcs.FirstOrDefault(p =>
+                    string.Equals(p.IP, pcReq.IP, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return pc;
+        }
+
         public event EventHandler<ApplicationDetails> RestartRequested;
+        public event EventHandler<ApplicationDetails> StopRequested;
 
         public void OpenWebInterfaceInBrowser()
         {
@@ -208,4 +377,14 @@ namespace AppRestarter
         public string Name { get; set; }
     }
 
+    public class RestartGroupRequest
+    {
+        public string GroupName { get; set; }
+    }
+
+    public class PcRequest
+    {
+        public string Name { get; set; }
+        public string IP { get; set; }
+    }
 }
