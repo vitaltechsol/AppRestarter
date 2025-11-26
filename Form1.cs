@@ -24,7 +24,7 @@ namespace AppRestarter
 
         private ViewMode _currentView = ViewMode.Apps;
 
-        private readonly List<ApplicationDetails> selectedApps = new();
+        private readonly List<ApplicationDetails> _apps = new();
         private List<string> _groups = new();
         private readonly List<PcInfo> _pcs = new();
 
@@ -185,7 +185,7 @@ namespace AppRestarter
             try
             {
                 var indexPath = Path.Combine(exeDir, "index.html");
-                _webServer = new WebServer(selectedApps, _pcs, AddToLog, indexPath);
+                _webServer = new WebServer(_apps, _pcs, AddToLog, indexPath);
 
                 _webServer.RestartRequested += (s, app) =>
                 {
@@ -193,6 +193,14 @@ namespace AppRestarter
                         HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: true);
                     else
                         _ = HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
+                };
+
+                _webServer.StopRequested += (s, app) =>
+                {
+                    if (!string.IsNullOrEmpty(app.ClientIP))
+                        HandleRemoteClientAppClick(app, start: false, stop: true, skipConfirm: true);
+                    else
+                        _ = HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
                 };
 
                 _webServer.Start(_settings.WebPort);
@@ -365,7 +373,7 @@ namespace AppRestarter
                                 new XAttribute("Name", g)))
                     ),
                     new XElement("Applications",
-                        selectedApps.Select(app =>
+                        _apps.Select(app =>
                         {
                             var x = new XElement("Application",
                                 new XElement("Name", app.Name),
@@ -438,7 +446,7 @@ namespace AppRestarter
                 );
                 if (addForm.ShowDialog() == DialogResult.OK)
                 {
-                    selectedApps.Add(addForm.AppData);
+                    _apps.Add(addForm.AppData);
                     SaveApplicationsToXml();
                     UpdateAppList();
                 }

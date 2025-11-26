@@ -27,7 +27,7 @@ namespace AppRestarter
                 _groups = LoadGroups(root);
 
                 var applicationsElement = root.Element("Applications");
-                selectedApps.Clear();
+                _apps.Clear();
 
                 if (applicationsElement != null)
                 {
@@ -46,7 +46,7 @@ namespace AppRestarter
                             GroupName = applicationElement.Element("GroupName")?.Value
                         };
 
-                        selectedApps.Add(app);
+                        _apps.Add(app);
                     }
                 }
             }
@@ -179,7 +179,7 @@ namespace AppRestarter
             AppFlowLayoutPanel.WrapContents = false;
             AppFlowLayoutPanel.AutoScroll = true;
 
-            if (selectedApps.Count == 0)
+            if (_apps.Count == 0)
             {
                 var empty = new Label
                 {
@@ -199,7 +199,7 @@ namespace AppRestarter
 
         private void RenderGroupsAndApps()
         {
-            var ungroupedApps = selectedApps
+            var ungroupedApps = _apps
                 .Where(a => string.IsNullOrWhiteSpace(a.GroupName))
                 .ToList();
 
@@ -227,7 +227,7 @@ namespace AppRestarter
                 }
                 else
                 {
-                    appsInGroup = selectedApps
+                    appsInGroup = _apps
                         .Where(a => string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
                         .ToList();
                     headerTitle = groupName;
@@ -330,9 +330,9 @@ namespace AppRestarter
                 };
 
                 // Add cards
-                for (int i = 0; i < selectedApps.Count; i++)
+                for (int i = 0; i < _apps.Count; i++)
                 {
-                    var app = selectedApps[i];
+                    var app = _apps[i];
                     int index = i;
 
                     if (groupName == "(Ungrouped)")
@@ -446,7 +446,7 @@ namespace AppRestarter
 
         private void EditApp(int index)
         {
-            var existing = selectedApps[index];
+            var existing = _apps[index];
             using var editForm = new AddAppForm(
                 existing,
                 index,
@@ -457,9 +457,9 @@ namespace AppRestarter
             if (editForm.ShowDialog() == DialogResult.OK)
             {
                 if (editForm.DeleteRequested)
-                    selectedApps.RemoveAt(index);
+                    _apps.RemoveAt(index);
                 else
-                    selectedApps[index] = editForm.AppData;
+                    _apps[index] = editForm.AppData;
 
                 SaveApplicationsToXml();
                 UpdateAppList();
@@ -468,7 +468,7 @@ namespace AppRestarter
 
         private void StopApp(int index)
         {
-            var existing = selectedApps[index];
+            var existing = _apps[index];
             if (!string.IsNullOrEmpty(existing.ClientIP))
                 HandleRemoteClientAppClick(existing, start: false, stop: true, skipConfirm: false);
             else
@@ -477,7 +477,7 @@ namespace AppRestarter
 
         private void AutoStartApps()
         {
-            foreach (var app in selectedApps.Where(a => a.AutoStart))
+            foreach (var app in _apps.Where(a => a.AutoStart))
             {
                 AddToLog($"Auto starting {app.Name} in {app.AutoStartDelayInSeconds} seconds");
 
@@ -515,7 +515,7 @@ namespace AppRestarter
             {
                 string oldName = removed[0];
                 string newName = added[0];
-                foreach (var app in selectedApps)
+                foreach (var app in _apps)
                 {
                     if (!string.IsNullOrEmpty(app.GroupName) &&
                         app.GroupName.Equals(oldName, StringComparison.OrdinalIgnoreCase))
@@ -527,7 +527,7 @@ namespace AppRestarter
             else
             {
                 var valid = new HashSet<string>(newGroups, StringComparer.OrdinalIgnoreCase);
-                foreach (var app in selectedApps)
+                foreach (var app in _apps)
                 {
                     if (!string.IsNullOrEmpty(app.GroupName) && !valid.Contains(app.GroupName))
                         app.GroupName = null;
