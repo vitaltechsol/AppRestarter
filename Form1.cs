@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Linq;
+using System.IO;
 
 namespace AppRestarter
 {
@@ -23,14 +24,14 @@ namespace AppRestarter
 
         private ViewMode _currentView = ViewMode.Apps;
 
-        private List<ApplicationDetails> selectedApps = new List<ApplicationDetails>();
-        private List<string> _groups = new List<string>();
-        private List<PcInfo> _pcs = new List<PcInfo>();
+        private readonly List<ApplicationDetails> selectedApps = new();
+        private List<string> _groups = new();
+        private readonly List<PcInfo> _pcs = new();
 
         private TcpListener server;
         private volatile bool _serverRunning = true;
         private WebServer _webServer;
-        private AppSettings _settings = new AppSettings();
+        private AppSettings _settings = new();
         private readonly string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
         private int _timeout = 8000;
 
@@ -39,19 +40,26 @@ namespace AppRestarter
             InitializeComponent();
             this.FormClosing += MainForm_FormClosing;
 
-            StartServer();
+            ApplyDarkTheme();
             LoadSettingsFromXml();
             LoadApplicationsFromXml();
             LoadPcsFromXml();
+            MakeNavButtonsCircular();
+
+            // Make group “cards” fluid width
+            AppFlowLayoutPanel.Resize += AppFlowLayoutPanel_Resize;
+
+            StartServer();
+            StartWebServer();
 
             ShowAppsView();      // default view
             AutoStartApps();
-            StartWebServer();
-
-            MakeNavButtonsCircular();
         }
 
-        private void Form1_Load(object sender, EventArgs e) { }
+        private void Form1_Load(object sender, EventArgs e)
+        {
+        }
+
 
         private void MakeNavButtonsCircular()
         {
@@ -74,22 +82,76 @@ namespace AppRestarter
             MakeCircular(btnNavPcs);
             MakeCircular(btnNavSettings);
         }
-
         private string getXMLConfigPath()
         {
-            return System.IO.Path.Combine(exeDir, "applications.xml");
+            return Path.Combine(exeDir, "applications.xml");
         }
 
-        // ------------------ NAV / VIEW SWITCH ------------------
+        // When the right pane resizes, stretch group panels to 100% width
+        private void AppFlowLayoutPanel_Resize(object sender, EventArgs e)
+        {
+            AdjustGroupPanelWidths();
+        }
+
+        // ------------------ THEME / NAV STYLE ------------------
+
+        private void ApplyDarkTheme()
+        {
+            BackColor = Color.FromArgb(2, 6, 23);
+
+            AppFlowLayoutPanel.BackColor = Color.FromArgb(15, 23, 42);
+            AppFlowLayoutPanel.ForeColor = Color.FromArgb(229, 231, 235);
+
+            txtLog.BackColor = Color.FromArgb(15, 23, 42);
+            txtLog.ForeColor = Color.FromArgb(229, 231, 235);
+            txtLog.BorderStyle = BorderStyle.FixedSingle;
+
+            panelLeftNav.BackColor = Color.FromArgb(3, 7, 18);
+
+            lblNavApps.ForeColor = Color.FromArgb(226, 232, 240);
+            lblNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
+            lblNavSettings.ForeColor = Color.FromArgb(226, 232, 240);
+
+            foreach (var btn in new[] { btnNavApps, btnNavPcs, btnNavSettings })
+            {
+                btn.BackColor = Color.FromArgb(15, 23, 42);
+                btn.FlatStyle = FlatStyle.Flat;
+                btn.FlatAppearance.BorderSize = 0;
+                btn.ForeColor = Color.FromArgb(226, 232, 240);
+            }
+
+            btnAddApp.BackColor = Color.FromArgb(34, 197, 94);
+            btnAddApp.ForeColor = Color.FromArgb(15, 23, 42);
+            btnAddApp.FlatStyle = FlatStyle.Flat;
+            btnAddApp.FlatAppearance.BorderSize = 0;
+
+            btnOpenWeb.BackColor = Color.FromArgb(31, 41, 55);
+            btnOpenWeb.ForeColor = Color.FromArgb(226, 232, 240);
+            btnOpenWeb.FlatStyle = FlatStyle.Flat;
+            btnOpenWeb.FlatAppearance.BorderSize = 0;
+
+            label1.ForeColor = Color.FromArgb(148, 163, 184);
+        }
 
         private void HighlightNavButton(Button active)
         {
-            var activeColor = Color.FromArgb(0, 122, 204);
-            var inactiveColor = Color.FromArgb(64, 64, 64);
+            var activeBg = Color.FromArgb(34, 197, 94);   // accent green
+            var inactiveBg = Color.FromArgb(15, 23, 42);  // dark
+            var activeFg = Color.FromArgb(15, 23, 42);
+            var inactiveFg = Color.FromArgb(226, 232, 240);
 
-            btnNavApps.BackColor = (active == btnNavApps) ? activeColor : inactiveColor;
-            btnNavPcs.BackColor = (active == btnNavPcs) ? activeColor : inactiveColor;
+            foreach (var btn in new[] { btnNavApps, btnNavPcs })
+            {
+                bool isActive = (btn == active);
+                btn.BackColor = isActive ? activeBg : inactiveBg;
+                btn.ForeColor = isActive ? activeFg : inactiveFg;
+            }
+
+            btnNavSettings.BackColor = inactiveBg;
+            btnNavSettings.ForeColor = inactiveFg;
         }
+
+        // ------------------ NAV / VIEW SWITCH ------------------
 
         private void btnNavApps_Click(object sender, EventArgs e)
         {
@@ -119,33 +181,33 @@ namespace AppRestarter
 
         // ------------------ WEB SERVER ------------------
 
-
         private void StartWebServer()
         {
-            var indexPath = System.IO.Path.Combine(exeDir, "index.html");
-            _webServer = new WebServer(selectedApps, _pcs, AddToLog, indexPath);
-            _webServer.RestartRequested += (s, app) =>
+            try
             {
-                if (!string.IsNullOrEmpty(app.ClientIP))
-                    HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: true);
-                else
-                    _ = HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
-            };
+                var indexPath = Path.Combine(exeDir, "index.html");
+                _webServer = new WebServer(selectedApps, _pcs, AddToLog, indexPath);
 
-            _webServer.StopRequested += (s, app) =>
+                _webServer.RestartRequested += (s, app) =>
+                {
+                    if (!string.IsNullOrEmpty(app.ClientIP))
+                        HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: true);
+                    else
+                        _ = HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
+                };
+
+                _webServer.Start(_settings.WebPort);
+                AddToLog($"Web server started on port: {_settings.WebPort}");
+            }
+            catch (Exception ex)
             {
-                if (!string.IsNullOrEmpty(app.ClientIP))
-                    HandleRemoteClientAppClick(app, start: false, stop: true, skipConfirm: true);
-                else
-                    _ = HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
-            };
-            _webServer.Start(_settings.WebPort);
-            AddToLog($"Web server started on port: {_settings.WebPort}");
+                AddToLog($"Failed to start Web Server: {ex.Message}");
+            }
         }
 
         private void btnOpenWeb_Click(object sender, EventArgs e)
         {
-            _webServer.OpenWebInterfaceInBrowser();
+            _webServer?.OpenWebInterfaceInBrowser();
         }
 
         // ------------------ TCP SERVER ------------------
@@ -154,10 +216,10 @@ namespace AppRestarter
         {
             try
             {
-                server = new TcpListener(System.Net.IPAddress.Any, _settings.AppPort);
+                server = new TcpListener(IPAddress.Any, _settings.AppPort);
                 server.Start();
 
-                Thread serverThread = new Thread(ServerThread)
+                var serverThread = new System.Threading.Thread(ServerThread)
                 {
                     IsBackground = true
                 };
@@ -184,7 +246,7 @@ namespace AppRestarter
 
                         client.ReceiveTimeout = _timeout;
 
-                        using var ms = new System.IO.MemoryStream();
+                        using var ms = new MemoryStream();
                         byte[] buffer = new byte[8192];
                         int bytesRead;
 
@@ -195,7 +257,7 @@ namespace AppRestarter
                                 ms.Write(buffer, 0, bytesRead);
                             }
                         }
-                        catch (System.IO.IOException ioEx)
+                        catch (IOException ioEx)
                         {
                             AddToLog("IO reading client stream: " + ioEx.Message);
                         }
@@ -217,16 +279,17 @@ namespace AppRestarter
                                      $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
 
                             _ = HandleAppButtonClickAsync(
-                                    applicationDetails,
-                                    applicationDetails.StartRequested,
-                                    applicationDetails.StopRequested,
-                                    skipConfirm: true);
+                                applicationDetails,
+                                applicationDetails.StartRequested,
+                                applicationDetails.StopRequested,
+                                skipConfirm: true);
                         }
                         catch (SerializationException serEx)
                         {
                             string raw = Encoding.UTF8.GetString(ms.ToArray());
                             AddToLog("Serialization error: " + serEx.Message);
-                            AddToLog("Raw payload (first 1000 chars): " + (raw.Length > 1000 ? raw.Substring(0, 1000) + "..." : raw));
+                            AddToLog("Raw payload (first 1000 chars): " +
+                                     (raw.Length > 1000 ? raw.Substring(0, 1000) + "..." : raw));
                         }
                         catch (Exception ex)
                         {
@@ -264,8 +327,10 @@ namespace AppRestarter
                 var settingsElement = root.Element("Settings");
                 if (settingsElement != null)
                 {
-                    _settings.AppPort = int.TryParse(settingsElement.Element("AppPort")?.Value, out var appPort) ? appPort : 2024;
-                    _settings.WebPort = int.TryParse(settingsElement.Element("WebPort")?.Value, out var webPort) ? webPort : 8090;
+                    _settings.AppPort = int.TryParse(settingsElement.Element("AppPort")?.Value, out var appPort)
+                        ? appPort : 2024;
+                    _settings.WebPort = int.TryParse(settingsElement.Element("WebPort")?.Value, out var webPort)
+                        ? webPort : 8090;
                     _settings.AutoStartWithWindows = bool.TryParse(settingsElement.Element("AutoStartWithWindows")?.Value, out autoStartWithWindows);
                     _settings.StartMinimized = bool.TryParse(settingsElement.Element("StartMinimized")?.Value, out var sm) && sm;
                     _settings.Schema = settingsElement.Element("Schema")?.Value;
@@ -421,16 +486,6 @@ namespace AppRestarter
                 StartWebServer();
                 AddToLog($"Web server restarted on port: {_settings.WebPort}");
             }
-
-            if (_settings.StartMinimized && this.WindowState != FormWindowState.Minimized)
-            {
-                this.WindowState = FormWindowState.Minimized;
-            }
-        }
-
-        protected override void OnShown(EventArgs e)
-        {
-            base.OnShown(e);
 
             bool cliMin = Environment.GetCommandLineArgs()
                 .Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));

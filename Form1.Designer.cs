@@ -1,16 +1,25 @@
-﻿namespace AppRestarter
+﻿using System.Drawing;
+using System.Windows.Forms;
+
+namespace AppRestarter
 {
     partial class Form1
     {
-        /// <summary>
-        ///  Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        ///  Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        private FlowLayoutPanel AppFlowLayoutPanel;
+        private TextBox txtLog;
+        private Button btnAddApp;
+        private Label label1;
+        private Button btnOpenWeb;
+        private Panel panelLeftNav;
+        private Label lblNavSettings;
+        private Button btnNavSettings;
+        private Label lblNavPcs;
+        private Button btnNavPcs;
+        private Label lblNavApps;
+        private Button btnNavApps;
+
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,10 +31,6 @@
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        ///  Required method for Designer support - do not modify
-        ///  the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
@@ -48,27 +53,30 @@
             // 
             AppFlowLayoutPanel.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             AppFlowLayoutPanel.AutoScroll = true;
-            AppFlowLayoutPanel.BackColor = SystemColors.ControlDarkDark;
-            AppFlowLayoutPanel.Location = new Point(96, 40);
+            AppFlowLayoutPanel.BackColor = Color.FromArgb(15, 23, 42);
+            AppFlowLayoutPanel.Location = new Point(84, 40);
             AppFlowLayoutPanel.Name = "AppFlowLayoutPanel";
-            AppFlowLayoutPanel.Size = new Size(626, 340);
+            AppFlowLayoutPanel.Size = new Size(668, 340);
             AppFlowLayoutPanel.TabIndex = 0;
             // 
             // txtLog
             // 
             txtLog.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            txtLog.BackColor = Color.FromArgb(15, 23, 42);
+            txtLog.BorderStyle = BorderStyle.FixedSingle;
+            txtLog.ForeColor = Color.FromArgb(229, 231, 235);
             txtLog.Location = new Point(12, 386);
             txtLog.Multiline = true;
             txtLog.Name = "txtLog";
             txtLog.ScrollBars = ScrollBars.Vertical;
-            txtLog.Size = new Size(710, 61);
+            txtLog.Size = new Size(740, 61);
             txtLog.TabIndex = 1;
             // 
             // btnAddApp
             // 
-            btnAddApp.BackColor = SystemColors.HotTrack;
-            btnAddApp.FlatStyle = FlatStyle.Popup;
-            btnAddApp.ForeColor = SystemColors.ButtonFace;
+            btnAddApp.BackColor = Color.FromArgb(0, 192, 192);
+            btnAddApp.FlatStyle = FlatStyle.Flat;
+            btnAddApp.ForeColor = Color.FromArgb(15, 23, 42);
             btnAddApp.Location = new Point(9, 8);
             btnAddApp.Name = "btnAddApp";
             btnAddApp.Size = new Size(98, 23);
@@ -82,7 +90,7 @@
             label1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             label1.AutoSize = true;
             label1.ForeColor = SystemColors.ButtonShadow;
-            label1.Location = new Point(685, 12);
+            label1.Location = new Point(715, 12);
             label1.Name = "label1";
             label1.Size = new Size(37, 15);
             label1.TabIndex = 4;
@@ -90,9 +98,9 @@
             // 
             // btnOpenWeb
             // 
-            btnOpenWeb.BackColor = SystemColors.WindowFrame;
-            btnOpenWeb.FlatStyle = FlatStyle.Popup;
-            btnOpenWeb.ForeColor = SystemColors.ButtonFace;
+            btnOpenWeb.BackColor = Color.FromArgb(31, 41, 55);
+            btnOpenWeb.FlatStyle = FlatStyle.Flat;
+            btnOpenWeb.ForeColor = Color.FromArgb(226, 232, 240);
             btnOpenWeb.Location = new Point(127, 8);
             btnOpenWeb.Name = "btnOpenWeb";
             btnOpenWeb.Size = new Size(100, 23);
@@ -104,7 +112,7 @@
             // panelLeftNav
             // 
             panelLeftNav.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
-            panelLeftNav.BackColor = Color.FromArgb(32, 32, 32);
+            panelLeftNav.BackColor = Color.FromArgb(3, 7, 18);
             panelLeftNav.Controls.Add(lblNavSettings);
             panelLeftNav.Controls.Add(btnNavSettings);
             panelLeftNav.Controls.Add(lblNavPcs);
@@ -113,7 +121,7 @@
             panelLeftNav.Controls.Add(btnNavApps);
             panelLeftNav.Location = new Point(12, 40);
             panelLeftNav.Name = "panelLeftNav";
-            panelLeftNav.Size = new Size(78, 340);
+            panelLeftNav.Size = new Size(66, 340);
             panelLeftNav.TabIndex = 7;
             // 
             // lblNavSettings
@@ -121,8 +129,8 @@
             lblNavSettings.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblNavSettings.AutoSize = true;
             lblNavSettings.Font = new Font("Segoe UI", 7F);
-            lblNavSettings.ForeColor = SystemColors.ControlLightLight;
-            lblNavSettings.Location = new Point(18, 261);
+            lblNavSettings.ForeColor = Color.FromArgb(226, 232, 240);
+            lblNavSettings.Location = new Point(13, 261);
             lblNavSettings.Name = "lblNavSettings";
             lblNavSettings.Size = new Size(39, 12);
             lblNavSettings.TabIndex = 5;
@@ -138,8 +146,8 @@
             btnNavSettings.FlatAppearance.MouseDownBackColor = Color.Black;
             btnNavSettings.FlatStyle = FlatStyle.Flat;
             btnNavSettings.Font = new Font("Segoe UI Emoji", 12F);
-            btnNavSettings.ForeColor = SystemColors.ControlLightLight;
-            btnNavSettings.Location = new Point(13, 276);
+            btnNavSettings.ForeColor = Color.FromArgb(226, 232, 240);
+            btnNavSettings.Location = new Point(6, 276);
             btnNavSettings.Name = "btnNavSettings";
             btnNavSettings.Size = new Size(52, 52);
             btnNavSettings.TabIndex = 4;
@@ -151,8 +159,8 @@
             // 
             lblNavPcs.AutoSize = true;
             lblNavPcs.Font = new Font("Segoe UI", 7F);
-            lblNavPcs.ForeColor = SystemColors.ControlLightLight;
-            lblNavPcs.Location = new Point(27, 162);
+            lblNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
+            lblNavPcs.Location = new Point(22, 162);
             lblNavPcs.Name = "lblNavPcs";
             lblNavPcs.Size = new Size(21, 12);
             lblNavPcs.TabIndex = 3;
@@ -164,8 +172,8 @@
             btnNavPcs.FlatAppearance.BorderSize = 0;
             btnNavPcs.FlatStyle = FlatStyle.Flat;
             btnNavPcs.Font = new Font("Segoe UI Emoji", 12F);
-            btnNavPcs.ForeColor = SystemColors.ControlLightLight;
-            btnNavPcs.Location = new Point(13, 107);
+            btnNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
+            btnNavPcs.Location = new Point(6, 107);
             btnNavPcs.Name = "btnNavPcs";
             btnNavPcs.Size = new Size(52, 52);
             btnNavPcs.TabIndex = 2;
@@ -177,8 +185,8 @@
             // 
             lblNavApps.AutoSize = true;
             lblNavApps.Font = new Font("Segoe UI", 7F);
-            lblNavApps.ForeColor = SystemColors.ControlLightLight;
-            lblNavApps.Location = new Point(24, 76);
+            lblNavApps.ForeColor = Color.FromArgb(226, 232, 240);
+            lblNavApps.Location = new Point(19, 76);
             lblNavApps.Name = "lblNavApps";
             lblNavApps.Size = new Size(27, 12);
             lblNavApps.TabIndex = 1;
@@ -190,8 +198,8 @@
             btnNavApps.FlatAppearance.BorderSize = 0;
             btnNavApps.FlatStyle = FlatStyle.Flat;
             btnNavApps.Font = new Font("Segoe UI Emoji", 12F);
-            btnNavApps.ForeColor = SystemColors.ControlLightLight;
-            btnNavApps.Location = new Point(13, 21);
+            btnNavApps.ForeColor = Color.FromArgb(226, 232, 240);
+            btnNavApps.Location = new Point(6, 21);
             btnNavApps.Name = "btnNavApps";
             btnNavApps.Size = new Size(52, 52);
             btnNavApps.TabIndex = 1;
@@ -203,8 +211,8 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = SystemColors.WindowText;
-            ClientSize = new Size(734, 461);
+            BackColor = Color.FromArgb(2, 6, 23);
+            ClientSize = new Size(764, 461);
             Controls.Add(panelLeftNav);
             Controls.Add(btnOpenWeb);
             Controls.Add(label1);
@@ -222,18 +230,5 @@
         }
 
         #endregion
-
-        private System.Windows.Forms.FlowLayoutPanel AppFlowLayoutPanel;
-        private System.Windows.Forms.TextBox txtLog;
-        private System.Windows.Forms.Button btnAddApp;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Button btnOpenWeb;
-        private System.Windows.Forms.Panel panelLeftNav;
-        private System.Windows.Forms.Button btnNavApps;
-        private System.Windows.Forms.Button btnNavPcs;
-        private System.Windows.Forms.Button btnNavSettings;
-        private System.Windows.Forms.Label lblNavApps;
-        private System.Windows.Forms.Label lblNavPcs;
-        private System.Windows.Forms.Label lblNavSettings;
     }
 }

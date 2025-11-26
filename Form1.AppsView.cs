@@ -21,7 +21,7 @@ namespace AppRestarter
             try
             {
                 string configPath = getXMLConfigPath();
-                XDocument xmlDocument = XDocument.Load(configPath);
+                var xmlDocument = XDocument.Load(configPath);
                 var root = xmlDocument.Root;
 
                 _groups = LoadGroups(root);
@@ -29,22 +29,25 @@ namespace AppRestarter
                 var applicationsElement = root.Element("Applications");
                 selectedApps.Clear();
 
-                foreach (XElement applicationElement in applicationsElement.Elements("Application"))
+                if (applicationsElement != null)
                 {
-                    ApplicationDetails app = new ApplicationDetails
+                    foreach (XElement applicationElement in applicationsElement.Elements("Application"))
                     {
-                        Name = applicationElement.Element("Name").Value,
-                        ProcessName = applicationElement.Element("ProcessName").Value,
-                        RestartPath = applicationElement.Element("RestartPath")?.Value,
-                        ClientIP = applicationElement.Element("ClientIP")?.Value,
-                        AutoStart = bool.TryParse(applicationElement.Element("AutoStart")?.Value, out var autoStart) && autoStart,
-                        AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
-                        NoWarn = bool.TryParse(applicationElement.Element("NoWarn")?.Value, out var noWarn) ? noWarn : false,
-                        StartMinimized = bool.TryParse(applicationElement.Element("StartMinimized")?.Value, out var startMinimized) ? startMinimized : false,
-                        GroupName = applicationElement.Element("GroupName")?.Value
-                    };
+                        ApplicationDetails app = new ApplicationDetails
+                        {
+                            Name = applicationElement.Element("Name")?.Value ?? "",
+                            ProcessName = applicationElement.Element("ProcessName")?.Value ?? "",
+                            RestartPath = applicationElement.Element("RestartPath")?.Value,
+                            ClientIP = applicationElement.Element("ClientIP")?.Value,
+                            AutoStart = bool.TryParse(applicationElement.Element("AutoStart")?.Value, out var autoStart) && autoStart,
+                            AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
+                            NoWarn = bool.TryParse(applicationElement.Element("NoWarn")?.Value, out var noWarn) && noWarn,
+                            StartMinimized = bool.TryParse(applicationElement.Element("StartMinimized")?.Value, out var startMinimized) && startMinimized,
+                            GroupName = applicationElement.Element("GroupName")?.Value
+                        };
 
-                    selectedApps.Add(app);
+                        selectedApps.Add(app);
+                    }
                 }
             }
             catch (Exception ex)
@@ -72,6 +75,88 @@ namespace AppRestarter
                 .ToList();
         }
 
+        // ---------- CARD STYLE HELPERS (APPS) ----------
+
+        private static readonly Color CardNormalBack = Color.FromArgb(31, 41, 55); // #1f2937
+        private static readonly Color CardHoverBack = Color.FromArgb(51, 65, 85); // #334155
+
+        private void StyleGroupPanel(Panel panel)
+        {
+            panel.BackColor = Color.FromArgb(15, 23, 42); // #0f172a
+            panel.ForeColor = Color.FromArgb(229, 231, 235);
+            panel.Padding = new Padding(10, 8, 10, 10);
+            panel.Margin = new Padding(0, 8, 0, 4);      // no horizontal margin -> no horiz scroll
+            panel.BorderStyle = BorderStyle.FixedSingle;
+
+            int fullWidth = Math.Max(100, AppFlowLayoutPanel.ClientSize.Width - 4);
+            panel.AutoSize = false;
+            panel.AutoSizeMode = AutoSizeMode.GrowOnly;
+            panel.MinimumSize = new Size(fullWidth, 0);
+            panel.MaximumSize = new Size(fullWidth, int.MaxValue);
+            panel.Width = fullWidth;
+        }
+
+        private void StyleAppCardPanel(Panel panel)
+        {
+            // smaller cards to fit more
+            panel.BackColor = CardNormalBack;
+            panel.ForeColor = Color.FromArgb(229, 231, 235);
+            panel.Padding = new Padding(6, 3, 6, 3);
+            panel.Margin = new Padding(6);
+            panel.Width = 200;  // narrower
+            panel.Height = 52;  // slightly shorter
+            panel.Cursor = Cursors.Hand;
+            panel.BorderStyle = BorderStyle.FixedSingle;
+        }
+
+        private void AttachCardHover(Panel card, params Control[] children)
+        {
+            void HandleEnter(object _, EventArgs __)
+            {
+                card.BackColor = CardHoverBack;
+            }
+
+            void HandleLeave(object _, EventArgs __)
+            {
+                // Only revert if mouse is truly outside the card
+                var pos = card.PointToClient(Cursor.Position);
+                if (!card.ClientRectangle.Contains(pos))
+                {
+                    card.BackColor = CardNormalBack;
+                }
+            }
+
+            // Attach to card + all children so the hover feels unified
+            var all = new List<Control> { card };
+            all.AddRange(children);
+            foreach (var c in all)
+            {
+                c.MouseEnter += HandleEnter;
+                c.MouseLeave += HandleLeave;
+            }
+        }
+
+        private string GetClientLabel(string clientIP)
+        {
+            if (string.IsNullOrWhiteSpace(clientIP))
+                return "This PC";
+
+            var match = _pcs.FirstOrDefault(p => p.IP == clientIP);
+            return match != null ? match.Name : clientIP;
+        }
+
+        /// <summary>
+        /// Called from Form1.AppFlowLayoutPanel_Resize.
+        /// We simply rebuild the view to keep widths fluid and avoid horizontal scroll.
+        /// </summary>
+        private void AdjustGroupPanelWidths()
+        {
+            if (_currentView == ViewMode.Apps)
+            {
+                UpdateAppList();
+            }
+        }
+
         // ---------- VIEW: APPS ----------
 
         private void ShowAppsView()
@@ -79,8 +164,8 @@ namespace AppRestarter
             _currentView = ViewMode.Apps;
             btnAddApp.Text = "Add New App";
             HighlightNavButton(btnNavApps);
-            AppFlowLayoutPanel.Controls.Clear();
-            RenderGroupsAndApps();
+
+            UpdateAppList();
         }
 
         private void UpdateAppList()
@@ -88,106 +173,297 @@ namespace AppRestarter
             if (_currentView != ViewMode.Apps)
                 return;
 
+            AppFlowLayoutPanel.SuspendLayout();
             AppFlowLayoutPanel.Controls.Clear();
-            RenderGroupsAndApps();
+            AppFlowLayoutPanel.FlowDirection = FlowDirection.TopDown;
+            AppFlowLayoutPanel.WrapContents = false;
+            AppFlowLayoutPanel.AutoScroll = true;
+
+            if (selectedApps.Count == 0)
+            {
+                var empty = new Label
+                {
+                    AutoSize = true,
+                    ForeColor = Color.FromArgb(148, 163, 184),
+                    Text = "No applications configured yet."
+                };
+                AppFlowLayoutPanel.Controls.Add(empty);
+            }
+            else
+            {
+                RenderGroupsAndApps();
+            }
+
+            AppFlowLayoutPanel.ResumeLayout();
         }
 
         private void RenderGroupsAndApps()
         {
-            // Group buttons
-            foreach (var g in _groups)
-            {
-                var groupBtn = new Button
-                {
-                    Width = 163,
-                    Height = 45,
-                    Text = $"[{g}]",
-                    BackColor = Color.FromArgb(8, 111, 118),
-                    FlatStyle = FlatStyle.Flat,
-                    ForeColor = SystemColors.ButtonFace
-                };
-                groupBtn.FlatAppearance.BorderSize = 0;
+            var ungroupedApps = selectedApps
+                .Where(a => string.IsNullOrWhiteSpace(a.GroupName))
+                .ToList();
 
-                groupBtn.Click += async (s, e) =>
+            var namedGroups = _groups
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var orderedGroupNames = new List<string>();
+            if (ungroupedApps.Any())
+                orderedGroupNames.Add("(Ungrouped)");
+            orderedGroupNames.AddRange(namedGroups);
+
+            foreach (var groupName in orderedGroupNames)
+            {
+                List<ApplicationDetails> appsInGroup;
+                string headerTitle;
+
+                if (groupName == "(Ungrouped)")
                 {
-                    var apps = selectedApps
-                        .Where(a => string.Equals(a.GroupName, g, StringComparison.OrdinalIgnoreCase))
+                    appsInGroup = ungroupedApps;
+                    headerTitle = "Ungrouped apps";
+                    if (appsInGroup.Count == 0)
+                        continue;
+                }
+                else
+                {
+                    appsInGroup = selectedApps
+                        .Where(a => string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
                         .ToList();
-                    foreach (var app in apps)
+                    headerTitle = groupName;
+                    if (appsInGroup.Count == 0)
+                        continue;
+                }
+
+                // === Group "card" ===
+                var groupPanel = new Panel();
+                StyleGroupPanel(groupPanel);
+
+                int padLeft = groupPanel.Padding.Left;
+                int padRight = groupPanel.Padding.Right;
+                int padTop = groupPanel.Padding.Top;
+
+                int innerWidth = groupPanel.ClientSize.Width - padLeft - padRight;
+                if (innerWidth < 220) innerWidth = 220;
+
+                // ---------- Header row (TOP) ----------
+                var headerPanel = new Panel
+                {
+                    BackColor = Color.Transparent,
+                    Location = new Point(padLeft, padTop),
+                    Size = new Size(innerWidth, 30)
+                };
+
+                var boldFont = new Font(this.Font, FontStyle.Bold);
+                var regularFont = new Font(this.Font, FontStyle.Regular);
+
+                var lblTitle = new Label
+                {
+                    AutoSize = true,
+                    Text = headerTitle,
+                    Font = boldFont,
+                    ForeColor = Color.FromArgb(226, 232, 240),
+                    Location = new Point(4, 6)
+                };
+
+                var lblMeta = new Label
+                {
+                    AutoSize = true,
+                    Text = $"{appsInGroup.Count} app{(appsInGroup.Count == 1 ? "" : "s")}",
+                    Font = regularFont,
+                    ForeColor = Color.FromArgb(148, 163, 184),
+                    Location = new Point(lblTitle.Right + 8, 8)
+                };
+
+                // Button text now includes the GROUP NAME so it's visible
+                var btnRestartGroup = new Button
+                {
+                    Text = $"Restart {headerTitle}",
+                    AutoSize = true,
+                    Font = regularFont,
+                    BackColor = Color.FromArgb(34, 197, 94),
+                    ForeColor = Color.FromArgb(15, 23, 42),
+                    FlatStyle = FlatStyle.Flat
+                };
+                btnRestartGroup.FlatAppearance.BorderSize = 0;
+                btnRestartGroup.Padding = new Padding(6, 2, 6, 2);
+
+                headerPanel.Controls.Add(btnRestartGroup);
+                headerPanel.Controls.Add(lblTitle);
+                headerPanel.Controls.Add(lblMeta);
+
+                headerPanel.Resize += (s, e) =>
+                {
+                    btnRestartGroup.Location = new Point(
+                        headerPanel.Width - btnRestartGroup.Width - 4,
+                        3);
+                };
+
+                btnRestartGroup.Click += async (s, e) =>
+                {
+                    var confirmMsg = groupName == "(Ungrouped)"
+                        ? $"Restart all {appsInGroup.Count} ungrouped app(s)?"
+                        : $"Restart all {appsInGroup.Count} app(s) in group \"{groupName}\"?";
+                    var dr = MessageBox.Show(confirmMsg, "Restart group",
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (dr != DialogResult.Yes) return;
+
+                    foreach (var app in appsInGroup)
                     {
                         if (!string.IsNullOrEmpty(app.ClientIP))
-                            HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: false);
+                            HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: true);
                         else
-                            await HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: false);
+                            await HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
                     }
                 };
 
-                groupBtn.MouseUp += (s, e) =>
+                headerPanel.MouseUp += (s, e) =>
                 {
-                    if (e.Button == MouseButtons.Right)
+                    if (e.Button != MouseButtons.Right) return;
+                    var menu = new ContextMenuStrip();
+                    menu.Items.Add("Stop group").Click += async (ms, me) =>
                     {
-                        ContextMenuStrip menu = new ContextMenuStrip();
-                        menu.Items.Add("Stop").Click += async (ms, me) =>
+                        var confirmMsg = groupName == "(Ungrouped)"
+                            ? $"Stop all {appsInGroup.Count} ungrouped app(s)?"
+                            : $"Stop all {appsInGroup.Count} app(s) in group \"{groupName}\"?";
+                        var dr = MessageBox.Show(confirmMsg, "Stop group",
+                            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                        if (dr != DialogResult.Yes) return;
+
+                        foreach (var app in appsInGroup)
                         {
-                            var apps = selectedApps
-                                .Where(a => string.Equals(a.GroupName, g, StringComparison.OrdinalIgnoreCase))
-                                .ToList();
-                            foreach (var app in apps)
-                            {
-                                if (!string.IsNullOrEmpty(app.ClientIP))
-                                    HandleRemoteClientAppClick(app, start: false, stop: true, skipConfirm: true);
-                                else
-                                    await HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
-                            }
-                        };
-                        menu.Show(Cursor.Position);
-                    }
+                            if (!string.IsNullOrEmpty(app.ClientIP))
+                                HandleRemoteClientAppClick(app, start: false, stop: true, skipConfirm: true);
+                            else
+                                await HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
+                        }
+                    };
+                    menu.Show(Cursor.Position);
                 };
 
-                AppFlowLayoutPanel.Controls.Add(groupBtn);
-            }
+                groupPanel.Controls.Add(headerPanel);
 
-            // Per-app buttons
-            for (int i = 0; i < selectedApps.Count; i++)
-            {
-                var app = selectedApps[i];
-                int index = i;
+                // ---------- Inner flow for cards (MULTI-ROW) ----------
 
-                var appButton = new Button
+                var innerFlow = new FlowLayoutPanel
                 {
-                    Width = 163,
-                    Height = 45,
-                    Text = app.Name,
-                    BackColor = !string.IsNullOrEmpty(app.ClientIP)
-                        ? Color.FromArgb(90, 143, 240)
-                        : Color.FromArgb(94, 103, 240),
-                    FlatStyle = FlatStyle.Flat,
-                    ForeColor = SystemColors.ButtonFace
+                    FlowDirection = FlowDirection.LeftToRight,
+                    WrapContents = true,
+                    AutoScroll = false,
+                    BackColor = Color.Transparent,
+                    Margin = new Padding(0),
+                    Padding = new Padding(0),
+                    Location = new Point(padLeft, headerPanel.Bottom + 6),
+                    Size = new Size(innerWidth, 10) // height updated after layout
                 };
 
-                appButton.FlatAppearance.BorderSize = 0;
-
-                appButton.Click += (s, e) =>
+                // Add cards
+                for (int i = 0; i < selectedApps.Count; i++)
                 {
-                    if (!string.IsNullOrEmpty(app.ClientIP))
-                        HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: false);
-                    else
-                        _ = HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: false);
-                };
+                    var app = selectedApps[i];
+                    int index = i;
 
-                appButton.MouseUp += (s, e) =>
-                {
-                    if (e.Button == MouseButtons.Right)
+                    if (groupName == "(Ungrouped)")
                     {
-                        ContextMenuStrip menu = new ContextMenuStrip();
-                        menu.Items.Add("Stop").Click += (ms, me) => StopApp(index);
-                        menu.Items.Add(new ToolStripSeparator());
-                        menu.Items.Add("Edit").Click += (ms, me) => EditApp(index);
-                        menu.Show(Cursor.Position);
+                        if (!string.IsNullOrWhiteSpace(app.GroupName))
+                            continue;
                     }
-                };
+                    else
+                    {
+                        if (!string.Equals(app.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
+                            continue;
+                    }
 
-                AppFlowLayoutPanel.Controls.Add(appButton);
+                    var appCard = new Panel();
+                    StyleAppCardPanel(appCard);
+
+                    var clientLabel = GetClientLabel(app.ClientIP);
+                    var metaText = !string.IsNullOrWhiteSpace(app.ProcessName)
+                        ? $"{app.ProcessName} · {clientLabel}"
+                        : clientLabel;
+
+                    float baseSize = this.Font.Size;
+                    var nameFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 1), FontStyle.Bold);
+                    var metaFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 2), FontStyle.Regular);
+
+                    var lblName = new Label
+                    {
+                        AutoSize = false,
+                        Text = string.IsNullOrWhiteSpace(app.Name) ? "(no name)" : app.Name,
+                        Font = nameFont,
+                        ForeColor = Color.FromArgb(243, 244, 246),
+                        Location = new Point(6, 3),
+                        Size = new Size(appCard.Width - 12, 18)
+                    };
+
+                    var lblMeta2 = new Label
+                    {
+                        AutoSize = false,
+                        Text = metaText,
+                        Font = metaFont,
+                        ForeColor = Color.FromArgb(148, 163, 184),
+                        Location = new Point(6, 24),
+                        Size = new Size(appCard.Width - 12, 18)
+                    };
+
+                    appCard.Controls.Add(lblMeta2);
+                    appCard.Controls.Add(lblName);
+
+                    // Context menu for stop/edit
+                    var ctxMenu = new ContextMenuStrip();
+                    ctxMenu.Items.Add("Stop").Click += (ms, me) => StopApp(index);
+                    ctxMenu.Items.Add("Edit").Click += (ms, me) => EditApp(index);
+
+                    appCard.ContextMenuStrip = ctxMenu;
+                    lblName.ContextMenuStrip = ctxMenu;
+                    lblMeta2.ContextMenuStrip = ctxMenu;
+
+                    // Hover on full card (panel + labels)
+                    AttachCardHover(appCard, lblName, lblMeta2);
+
+                    // Left-click anywhere on the card => restart
+                    void AttachClick(Control c)
+                    {
+                        c.Click += (s, e) =>
+                        {
+                            if (!string.IsNullOrEmpty(app.ClientIP))
+                                HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: false);
+                            else
+                                _ = HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: false);
+                        };
+                    }
+
+                    AttachClick(appCard);
+                    AttachClick(lblName);
+                    AttachClick(lblMeta2);
+
+                    innerFlow.Controls.Add(appCard);
+                }
+
+                // Let FlowLayoutPanel compute row wrapping using the fixed width
+                innerFlow.PerformLayout();
+
+                int maxBottom = 0;
+                foreach (Control child in innerFlow.Controls)
+                {
+                    if (child.Bottom > maxBottom)
+                        maxBottom = child.Bottom;
+                }
+
+                innerFlow.Height = maxBottom + innerFlow.Padding.Bottom;
+                groupPanel.Controls.Add(innerFlow);
+
+                // Now set group height to fit header + innerFlow
+                int totalHeight =
+                    groupPanel.Padding.Top +
+                    headerPanel.Height +
+                    6 +
+                    innerFlow.Height +
+                    groupPanel.Padding.Bottom;
+
+                groupPanel.Height = totalHeight;
+
+                AppFlowLayoutPanel.Controls.Add(groupPanel);
             }
         }
 
@@ -321,13 +597,16 @@ namespace AppRestarter
                 }
             }
 
-            int stopped = 0;
-            if (skipConfirm || confirmResult == DialogResult.Yes || app.NoWarn)
+            bool proceed = skipConfirm || app.NoWarn || confirmResult == DialogResult.Yes;
+            if (!proceed)
             {
-                if (stop)
-                {
-                    stopped = await ProcessTerminator.StopAsync(app, AddToLog, timeoutMs: _timeout);
-                }
+                return;
+            }
+
+            int stopped = 0;
+            if (stop)
+            {
+                stopped = await ProcessTerminator.StopAsync(app, AddToLog, timeoutMs: _timeout);
             }
 
             if (start && stopped > 0)
@@ -365,7 +644,7 @@ namespace AppRestarter
                             if (process != null)
                             {
                                 process.WaitForInputIdle();
-                                Thread.Sleep(2000);
+                                System.Threading.Thread.Sleep(2000);
                                 if (process.MainWindowHandle != IntPtr.Zero &&
                                     WinApiHelper.IsWindowVisible(process.MainWindowHandle))
                                 {
@@ -421,19 +700,22 @@ namespace AppRestarter
                         MessageBoxButtons.YesNo);
                 }
 
-                if (skipConfirm || confirmResult == DialogResult.Yes || applicationDetails.NoWarn)
+                bool proceed = skipConfirm || applicationDetails.NoWarn || confirmResult == DialogResult.Yes;
+                if (!proceed)
                 {
-                    AddToLog($"Sending Remote App Request {applicationDetails.Name} on {applicationDetails.ClientIP} to {actionName}");
-                    using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
-                    client.SendTimeout = 3000;
-                    using var stream = client.GetStream();
-
-                    applicationDetails.StopRequested = stop;
-                    applicationDetails.StartRequested = start;
-                    var serializer = new DataContractSerializer(typeof(ApplicationDetails));
-                    serializer.WriteObject(stream, applicationDetails);
-                    stream.Flush();
+                    return;
                 }
+
+                AddToLog($"Sending Remote App Request {applicationDetails.Name} on {applicationDetails.ClientIP} to {actionName}");
+                using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
+                client.SendTimeout = 3000;
+                using var stream = client.GetStream();
+
+                applicationDetails.StopRequested = stop;
+                applicationDetails.StartRequested = start;
+                var serializer = new DataContractSerializer(typeof(ApplicationDetails));
+                serializer.WriteObject(stream, applicationDetails);
+                stream.Flush();
             }
             catch (Exception ex)
             {
