@@ -60,7 +60,6 @@ namespace AppRestarter
         {
         }
 
-
         private void MakeNavButtonsCircular()
         {
             void MakeCircular(Button btn)
@@ -120,7 +119,7 @@ namespace AppRestarter
                 btn.ForeColor = Color.FromArgb(226, 232, 240);
             }
 
-            btnAddApp.BackColor = Color.FromArgb(34, 197, 94);
+            btnAddApp.BackColor = Color.FromArgb(2, 205, 215);
             btnAddApp.ForeColor = Color.FromArgb(15, 23, 42);
             btnAddApp.FlatStyle = FlatStyle.Flat;
             btnAddApp.FlatAppearance.BorderSize = 0;
@@ -135,7 +134,7 @@ namespace AppRestarter
 
         private void HighlightNavButton(Button active)
         {
-            var activeBg = Color.FromArgb(34, 197, 94);   // accent green
+            var activeBg = Color.FromArgb(0, 172, 182);   // accent green
             var inactiveBg = Color.FromArgb(15, 23, 42);  // dark
             var activeFg = Color.FromArgb(15, 23, 42);
             var inactiveFg = Color.FromArgb(226, 232, 240);

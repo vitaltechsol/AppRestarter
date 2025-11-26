@@ -19,30 +19,15 @@ namespace AppRestarter
 
         private void StylePcCardPanel(Panel panel, bool isAll = false)
         {
-            panel.BackColor = isAll
-                ? Color.FromArgb(30, 64, 175)   // blue-ish for All PCs
-                : Color.FromArgb(31, 41, 55);   // card bg
-
+            // Use the same base card colors as app cards so UI matches
+            panel.BackColor = CardNormalBack;
             panel.ForeColor = Color.FromArgb(229, 231, 235);
             panel.Padding = new Padding(6, 3, 6, 3);
-            panel.Margin = new Padding(6);
-            panel.Width = 200;
-            panel.Height = 52;
+            panel.Margin = new Padding(8);
+            panel.Width = 206;
+            panel.Height = 64;
             panel.Cursor = Cursors.Hand;
             panel.BorderStyle = BorderStyle.FixedSingle;
-
-            panel.MouseEnter += (s, e) =>
-            {
-                panel.BackColor = isAll
-                    ? Color.FromArgb(37, 99, 235)
-                    : Color.FromArgb(51, 65, 85);
-            };
-            panel.MouseLeave += (s, e) =>
-            {
-                panel.BackColor = isAll
-                    ? Color.FromArgb(30, 64, 175)
-                    : Color.FromArgb(31, 41, 55);
-            };
         }
 
         private void RenderPcButtons()
@@ -67,10 +52,10 @@ namespace AppRestarter
             }
 
             float baseSize = this.Font.Size;
-            var nameFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 1), FontStyle.Regular);
-            var ipFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 2), FontStyle.Regular);
+            var nameFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize + 2), FontStyle.Regular);
+            var ipFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 1), FontStyle.Regular);
 
-            // "All PCs" card
+            // ---------- "All PCs" card ----------
             {
                 var allPanel = new Panel();
                 StylePcCardPanel(allPanel, isAll: true);
@@ -80,22 +65,25 @@ namespace AppRestarter
                     AutoSize = false,
                     Text = "All PCs",
                     Font = nameFont,
-                    Location = new Point(6, 3),
+                    Location = new Point(6, 8),
                     Size = new Size(allPanel.Width - 12, 18)
                 };
 
                 var lblMeta = new Label
                 {
                     AutoSize = false,
-                    Text = "Restart or shut down every configured PC.",
+                    Text = "Shut down every configured PC.",
                     Font = ipFont,
                     ForeColor = Color.FromArgb(191, 219, 254),
-                    Location = new Point(6, 24),
+                    Location = new Point(6, 32),
                     Size = new Size(allPanel.Width - 12, 18)
                 };
 
                 allPanel.Controls.Add(lblMeta);
                 allPanel.Controls.Add(lblTitle);
+
+                // Full-card hover (panel + labels)
+                AttachCardHover(allPanel, lblTitle, lblMeta);
 
                 // Context menu for All PCs
                 var ctxMenu = new ContextMenuStrip();
@@ -146,7 +134,7 @@ namespace AppRestarter
                 AppFlowLayoutPanel.Controls.Add(allPanel);
             }
 
-            // Individual PC cards
+            // ---------- Individual PC cards ----------
             for (int i = 0; i < _pcs.Count; i++)
             {
                 var pc = _pcs[i];
@@ -160,7 +148,7 @@ namespace AppRestarter
                     AutoSize = false,
                     Text = pc.Name,
                     Font = nameFont,
-                    Location = new Point(6, 3),
+                    Location = new Point(6, 8),
                     Size = new Size(pcPanel.Width - 12, 18)
                 };
 
@@ -170,12 +158,15 @@ namespace AppRestarter
                     Text = pc.IP,
                     Font = ipFont,
                     ForeColor = Color.FromArgb(148, 163, 184),
-                    Location = new Point(6, 24),
+                    Location = new Point(6, 32),
                     Size = new Size(pcPanel.Width - 12, 18)
                 };
 
                 pcPanel.Controls.Add(lblIp);
                 pcPanel.Controls.Add(lblName);
+
+                // Full-card hover (panel + labels), same as app cards
+                AttachCardHover(pcPanel, lblName, lblIp);
 
                 // Right-click context menu
                 var ctxMenuPc = new ContextMenuStrip();
@@ -221,7 +212,7 @@ namespace AppRestarter
                 lblName.ContextMenuStrip = ctxMenuPc;
                 lblIp.ContextMenuStrip = ctxMenuPc;
 
-                // Left-click => shutdown
+                // Left-click => shutdown this PC
                 void AttachPcClick(Control c)
                 {
                     c.Click += async (s, e) =>

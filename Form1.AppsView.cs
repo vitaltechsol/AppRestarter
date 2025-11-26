@@ -82,9 +82,9 @@ namespace AppRestarter
 
         private void StyleGroupPanel(Panel panel)
         {
-            panel.BackColor = Color.FromArgb(15, 23, 42); // #0f172a
+            panel.BackColor = Color.FromArgb(15, 23, 42); 
             panel.ForeColor = Color.FromArgb(229, 231, 235);
-            panel.Padding = new Padding(10, 8, 10, 10);
+            panel.Padding = new Padding(5, 8, 5, 12);
             panel.Margin = new Padding(0, 8, 0, 4);      // no horizontal margin -> no horiz scroll
             panel.BorderStyle = BorderStyle.FixedSingle;
 
@@ -104,7 +104,7 @@ namespace AppRestarter
             panel.Padding = new Padding(6, 3, 6, 3);
             panel.Margin = new Padding(6);
             panel.Width = 200;  // narrower
-            panel.Height = 52;  // slightly shorter
+            panel.Height = 42;  // slightly shorter
             panel.Cursor = Cursors.Hand;
             panel.BorderStyle = BorderStyle.FixedSingle;
         }
@@ -139,7 +139,7 @@ namespace AppRestarter
         private string GetClientLabel(string clientIP)
         {
             if (string.IsNullOrWhiteSpace(clientIP))
-                return "This PC";
+                return "Local";
 
             var match = _pcs.FirstOrDefault(p => p.IP == clientIP);
             return match != null ? match.Name : clientIP;
@@ -251,54 +251,26 @@ namespace AppRestarter
                 {
                     BackColor = Color.Transparent,
                     Location = new Point(padLeft, padTop),
-                    Size = new Size(innerWidth, 30)
+                    Size = new Size(innerWidth, 30),
                 };
-
+                headerPanel.Location = new Point(-5, 0);
                 var boldFont = new Font(this.Font, FontStyle.Bold);
                 var regularFont = new Font(this.Font, FontStyle.Regular);
 
-                var lblTitle = new Label
-                {
-                    AutoSize = true,
-                    Text = headerTitle,
-                    Font = boldFont,
-                    ForeColor = Color.FromArgb(226, 232, 240),
-                    Location = new Point(4, 6)
-                };
-
-                var lblMeta = new Label
-                {
-                    AutoSize = true,
-                    Text = $"{appsInGroup.Count} app{(appsInGroup.Count == 1 ? "" : "s")}",
-                    Font = regularFont,
-                    ForeColor = Color.FromArgb(148, 163, 184),
-                    Location = new Point(lblTitle.Right + 8, 8)
-                };
-
-                // Button text now includes the GROUP NAME so it's visible
                 var btnRestartGroup = new Button
                 {
                     Text = $"Restart {headerTitle}",
                     AutoSize = true,
                     Font = regularFont,
-                    BackColor = Color.FromArgb(34, 197, 94),
-                    ForeColor = Color.FromArgb(15, 23, 42),
+                    BackColor = Color.FromArgb(15, 89, 117), // Restart button Color
+                    ForeColor = Color.FromArgb(250, 250, 250),
                     FlatStyle = FlatStyle.Flat
+                    
                 };
                 btnRestartGroup.FlatAppearance.BorderSize = 0;
-                btnRestartGroup.Padding = new Padding(6, 2, 6, 2);
-
+                btnRestartGroup.Padding = new Padding(2, 2, 2, 2);
                 headerPanel.Controls.Add(btnRestartGroup);
-                headerPanel.Controls.Add(lblTitle);
-                headerPanel.Controls.Add(lblMeta);
-
-                headerPanel.Resize += (s, e) =>
-                {
-                    btnRestartGroup.Location = new Point(
-                        headerPanel.Width - btnRestartGroup.Width - 4,
-                        3);
-                };
-
+                
                 btnRestartGroup.Click += async (s, e) =>
                 {
                     var confirmMsg = groupName == "(Ungrouped)"
@@ -383,26 +355,28 @@ namespace AppRestarter
                         : clientLabel;
 
                     float baseSize = this.Font.Size;
-                    var nameFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 1), FontStyle.Bold);
-                    var metaFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 2), FontStyle.Regular);
+                    var nameFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize + 2), FontStyle.Regular);
+                    var metaFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 3), FontStyle.Regular);
 
+                    // App Name Style
                     var lblName = new Label
                     {
                         AutoSize = false,
                         Text = string.IsNullOrWhiteSpace(app.Name) ? "(no name)" : app.Name,
                         Font = nameFont,
                         ForeColor = Color.FromArgb(243, 244, 246),
-                        Location = new Point(6, 3),
+                        Location = new Point(4, 3),
                         Size = new Size(appCard.Width - 12, 18)
                     };
 
+                    // PC Name Style
                     var lblMeta2 = new Label
                     {
                         AutoSize = false,
                         Text = metaText,
                         Font = metaFont,
                         ForeColor = Color.FromArgb(148, 163, 184),
-                        Location = new Point(6, 24),
+                        Location = new Point(6, 22),
                         Size = new Size(appCard.Width - 12, 18)
                     };
 
@@ -412,6 +386,7 @@ namespace AppRestarter
                     // Context menu for stop/edit
                     var ctxMenu = new ContextMenuStrip();
                     ctxMenu.Items.Add("Stop").Click += (ms, me) => StopApp(index);
+                    ctxMenu.Items.Add(new ToolStripSeparator());
                     ctxMenu.Items.Add("Edit").Click += (ms, me) => EditApp(index);
 
                     appCard.ContextMenuStrip = ctxMenu;
