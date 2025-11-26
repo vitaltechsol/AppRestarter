@@ -7,7 +7,8 @@
     <AutoStartWithWindows>true</AutoStartWithWindows>
     <StartMinimized>false</StartMinimized>
   </Settings>
-	<Applications>
+  <Groups />
+  <Applications>
     <Application>
       <Name>MSPaint</Name>
       <ProcessName>mspaint</ProcessName>
@@ -16,7 +17,8 @@
       <AutoStart>false</AutoStart>
       <AutoStartDelayInSeconds>0</AutoStartDelayInSeconds>
       <NoWarn>false</NoWarn>
-      <StartMinimized>true</StartMinimized>
+      <StartMinimized>false</StartMinimized>
     </Application>
-	</Applications>
+  </Applications>
+  <Systems />
 </Root>

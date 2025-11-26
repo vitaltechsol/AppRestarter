@@ -1,117 +1,196 @@
 ﻿# AppRestarter
 
-AppRestarter is a Windows Forms application designed to allow you to remotely restart applications on other PCs via a client/server model.
+AppRestarter is a Windows Forms application designed to allow you to remotely restart applications on other PCs via a client/server model. 
+It also allows you to shut down or restart remote PCs.
 
-AppRestarter gracefully stops the target application before restarting it, ensuring a clean restart process. 
-
+AppRestarter gracefully stops the target application before restarting it, ensuring a clean restart process.  
 If the application is frozen or unresponsive, AppRestarter can forcefully terminate it.
+
+The application includes **Apps** and **PCs** navigation tabs, allowing you to manage applications and remote PCs separately.
+
+---
 
 ## Features
 
 * Start or stop applications remotely or locally.
 * Restart applications using a web browser (Web UI).
 * Create groups to start/stop groups of applications.
+* Add remote PCs and perform **Shutdown** and **Restart** commands.
 * Keep logs of actions performed.
 * Lightweight and easy to deploy.
+* Supports optional auto-start with Windows.
+* Supports start-minimized mode.
+
+---
 
 ## Requirements
 
-* Windows 10 and newer
+* Windows 10 or newer
 * Application must be installed and accessible from the specified path.
-* To use remote restart apps, the client machine must run this app and listen on port 2024.
+* To use **remote restart**, **shutdown**, or **restart PC** features, the remote machine must also be running AppRestarter.
+
+---
 
 ## Installation & Setup
 
 ### 1. Download
-
-Download the ZIP and extract it. https://github.com/vitaltechsol/AppRestarter/releases
-
+Download the ZIP and extract it:  
+https://github.com/vitaltechsol/AppRestarter/releases
 
 ### 2. Deployment
+You must run **AppRestarter** on:
 
-You need to run **AppRestarter** on both:
-
-* The **remote PC** (which has the applications you want to restart).
-* The **local PC** (from where you want to initiate remote restarts).
+* The **remote PC** (where the applications actually run)
+* The **local PC** (the controller)
 
 ### 3. Run AppRestarter as Administrator
+To stop/start elevated applications or send shutdown/restart commands:
 
-To ensure you can start/stop applications that require elevated (admin) permissions, you must run **AppRestarter.exe as Administrator**.
+1. Right-click the EXE  
+2. Choose **Properties → Compatibility**  
+3. Check **Run this program as administrator**
 
-To do this:
+### 4. Windows Defender Firewall
 
-* Right-click the EXE or shortcut
-* Go to **Properties → Compatibility** and check **"Run this program as administrator"**
+Allow inbound TCP on AppRestarter's port (default **2024**):
 
-### 4. Windows Defender
-Allow the app to communicate over the network when prompted, or:
-1. Open "Windows Defender Firewall with Advanced Security".
-2. Go to **Inbound Rules** > **New Rule**.
-3. Choose **Port**, then click Next.
-4. Select **TCP**, and enter port **2024**.
-5. Allow the connection, name the rule `AppRestarter`, and finish the wizard.
+1. Open *Windows Defender Firewall with Advanced Security*
+2. Select **Inbound Rules → New Rule**
+3. Choose **Port**, then *Next*
+4. Select **TCP**, enter **2024**
+5. Allow the connection
+6. Name it **AppRestarter**
 
+---
 
-### 5. Configure New Applications
+## The New Navigation System
 
-Use the UI to add applications.
-**You don't need to add the applications on both Server and Client.** Only add the applications to the Server
+AppRestarter provides two main tabs on the left sidebar:
 
-Click the *Add New* Button
+### **Apps**
+This tab shows:
+- Your configured applications  
+- Group buttons  
+- App/group restart and stop actions
 
-* **Name:** Friendly name
-* **Restart Path:** Full path to the `.exe` of the app. IF the app is remote, should be the path in the remote PC.
-* **Process Name (Optional):** e.g. `notepad` (without `.exe`) (See more instructions bellow)
-* * **Client IP (Optional):** If the application is located on a different PC. Add the IP address.
-* **Auto-start app after:** Will automatically start the application after that many seconds when AppRestarter starts
-* **Auto-start minimized:** Will start the application minimized
-* **Don't Warn when restarting:** Will not show the confirmation modal when restarting the apps.
+This is where you manage **application-level operations**.
 
-**Process name:**
+---
 
-The Process Name is optional and should only be used when the application runs as a background process or when no valid executable path is available.
+### **PCs**
+This tab shows:
+- All remote PCs you’ve added  
+- A special **[All PCs]** button that can shut down or restart every PC at once  
+- Per-PC shutdown/restart options  
+- Context menu options (right-click)
 
-**To find the process name:**
+This tab handles **PC-level power control**.
 
-1. Press **Ctrl + Shift + Esc** to open **Task Manager**
-2. Go to the **Details** tab
-3. Look at the **Name** column (e.g. `FlightSimulator.exe`, `notepad.exe`)
-4. Enter just the name without `.exe` in the app configuration
+---
 
-### 5. Edit / Remove Applications
-After entering the applications, you can edit it by right-clicking the button and selecting `Edit`
+## Adding Remote PCs
 
-### 6. Restart or Stop Applications
-Click the button to restart an application. You can also right-click and select `Stop` to stop the application.
+To send shutdown/restart commands or restart remote applications, you must add PCs to AppRestarter.
 
-### 7. Groups
+### To Add a PC
+1. Switch to the **PCs** tab  
+2. Click **Add New PC**  
+3. Enter:
+   - **PC Name** (e.g., “Gaming Rig”, “Sim Machine”)
+   - **PC IP Address**
+4. Save
 
-You can organize applications into Groups to manage multiple related apps together.
+This creates an entry under the `Systems` node in `applications.xml`.
 
-**Creating a Group**
+### Editing or Removing a PC
+Right-click any PC button:
+- **Edit** – change name or IP  
+- **Delete** – remove the PC from the config  
+- **Shutdown**  
+- **Restart**
 
-* Click the Add New App button or edit an existing app in the main AppRestarter window.
-* Click `Manage` next to the groups drop down.
-* Enter a descriptive name for the group (e.g., Flight Sim Tools, Audio Services) under `Group Name`.
-* Click `Add Grouo` Button
-* The group will appear as a green button in the main AppRestarter UI and on the web interface.
+### PC Power Controls
+From the **PCs** tab:
 
-**Assigning an App to a Group**
- 
-* When adding or editing an application, use the Group dropdown.
-* Select one of the available groups or choose None to leave it unassigned.
-* When saved, the group name will be stored in the XML configuration file under that application.
+| Action | How |
+|--------|-----|
+| Shutdown a PC | Click the PC button |
+| Restart a PC | Right-click → Restart |
+| Shutdown ALL PCs | Click **[All PCs]** or right-click |
+| Restart ALL PCs | Right-click **[All PCs]** |
 
-**Using Groups**
+A confirmation modal always appears to prevent accidental shutdowns.
 
-* Clicking a group button will restart all applications in that group.
-* Right-clicking a group button and selecting Stop will stop all apps in that group.
- 
-Groups also appear in the web interface, allowing you to remotely restart all apps in the group.
+---
 
-### Using a web browser
-* Enter the PC's IP with port 8090 to view the web version. 
-  For example `http://192.168.1.123:8090`.
+## Adding & Configuring Applications
+
+In the **Apps** tab:
+
+### Configure New Applications
+
+Click **Add New App**.
+
+Fields:
+
+| Field | Description |
+|--------|-------------|
+| **Name** | Friendly name |
+| **Restart Path** | Full path to `.exe` (local or remote!) |
+| **Process Name (Optional)** | Needed only if the app runs in background or path is unknown |
+| **Client IP** | Select the remote PC (leave this pc selected if local) |
+| **Auto-start app after X seconds** | Delay before auto-start on AppRestarter launch |
+| **Auto-start minimized** | Starts app minimized |
+| **Don't warn** | Skips confirmation modal |
+| **Group** | Assigns app to a group |
+
+---
+
+## Process Name (Optional)
+
+Process Name is **optional** and used only when:
+- The application runs as a background process  
+- The executable path isn’t enough to identify the process  
+- Multiple paths share similar names  
+
+How to find Process Name:
+
+1. Press **Ctrl + Shift + Esc**
+2. Go to **Details**
+3. Locate the process (e.g. `notepad.exe`)
+4. Enter only **notepad** in the Process Name field
+
+---
+
+## Groups
+
+AppRestarter supports application grouping for batch operations.
+
+### Creating a Group
+
+1. Add or edit an application
+2. Open the **Manage Groups** dialog
+3. Add new group name(s)
+
+### Assigning Applications to a Group
+
+- When adding/editing an app, select a group from the dropdown  
+- Choose **None** to leave unassigned  
+
+### Using Groups
+
+- Clicking a group button restarts **all apps in that group**  
+- Right-click → **Stop** stops them all  
+- Groups also appear in the **web interface**
+
+---
+
+## Using the Web Interface
+
+AppRestarter includes a built-in web UI.
+
+Access it at: http://<local-ip>:<WebPort>
+For example `http://192.168.1.123:8090`.
 * Note that AppRestarter must run as administrator for this work.
 * You can change the web port in Settings
 

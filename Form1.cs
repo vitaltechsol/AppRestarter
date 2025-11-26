@@ -400,7 +400,7 @@ namespace AppRestarter
                             return x;
                         })
                     ),
-                    new XElement("System",
+                    new XElement("Systems",
                         _pcs.Select(pc =>
                             new XElement("PC",
                                 new XElement("Name", pc.Name),
@@ -421,7 +421,7 @@ namespace AppRestarter
                 string configPath = getXMLConfigPath();
                 var xml = XDocument.Load(configPath);
                 var root = xml.Root;
-                var systemNode = root?.Element("System");
+                var systemNode = root?.Element("Systems");
                 if (systemNode == null) return;
 
                 _pcs.Clear();
