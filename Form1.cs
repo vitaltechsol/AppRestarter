@@ -341,6 +341,13 @@ namespace AppRestarter
                     _settings.AutoStartWithWindows = bool.TryParse(settingsElement.Element("AutoStartWithWindows")?.Value, out autoStartWithWindows);
                     _settings.StartMinimized = bool.TryParse(settingsElement.Element("StartMinimized")?.Value, out var sm) && sm;
                     _settings.Schema = settingsElement.Element("Schema")?.Value;
+
+                    // NEW: restore main form size if present
+                    if (int.TryParse(settingsElement.Element("MainFormWidth")?.Value, out var w) && w > 0 &&
+                        int.TryParse(settingsElement.Element("MainFormHeight")?.Value, out var h) && h > 0)
+                    {
+                        this.ClientSize = new Size(w, h);
+                    }
                 }
 
                 if (autoStartWithWindows)
@@ -365,7 +372,10 @@ namespace AppRestarter
                         new XElement("WebPort", _settings.WebPort),
                         new XElement("AutoStartWithWindows", _settings.AutoStartWithWindows),
                         new XElement("StartMinimized", _settings.StartMinimized),
-                        new XElement("Schema", _settings.Schema)
+                        new XElement("Schema", _settings.Schema),
+                        // persist main form size
+                        new XElement("MainFormWidth", this.ClientSize.Width),
+                        new XElement("MainFormHeight", this.ClientSize.Height)
                     ),
                     new XElement("Groups",
                         _groups.Select(g =>
@@ -509,6 +519,7 @@ namespace AppRestarter
         {
             try
             {
+                SaveApplicationsToXml();
                 _serverRunning = false;
                 server?.Stop();
                 _webServer?.Stop();
