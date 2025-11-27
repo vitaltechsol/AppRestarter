@@ -1,58 +1,46 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Net.Sockets;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
 namespace AppRestarter
 {
     public static class PcPowerController
     {
-        public static Task ShutdownAsync(PcInfo pc, Action<string> log, int timeoutMs = 10000)
-            => RunShutdownCommandAsync(pc, "/s /t 0 /f", log, timeoutMs);
+        public static Task RestartAsync(PcInfo pc, int port, Action<string> log)
+            => SendPcCommand(pc, port, log, RemoteActionType.PcRestart);
 
-        public static Task RestartAsync(PcInfo pc, Action<string> log, int timeoutMs = 10000)
-            => RunShutdownCommandAsync(pc, "/r /t 0 /f", log, timeoutMs);
+        public static Task ShutdownAsync(PcInfo pc, int port, Action<string> log)
+            => SendPcCommand(pc, port, log, RemoteActionType.PcShutdown);
 
-        private static async Task RunShutdownCommandAsync(
-            PcInfo pc,
-            string coreArgs,
-            Action<string> log,
-            int timeoutMs)
+        private static async Task SendPcCommand(PcInfo pc, int port, Action<string> log, RemoteActionType action)
         {
-            if (pc == null || string.IsNullOrWhiteSpace(pc.IP))
-            {
-                log?.Invoke("PC info is missing IP, cannot send shutdown/restart command.");
-                return;
-            }
-
-            // Use Windows shutdown command against a remote computer
-            string args = $"{coreArgs} /m \\\\{pc.IP}";
-            var psi = new ProcessStartInfo
-            {
-                FileName = "shutdown",
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
             try
             {
-                using var proc = Process.Start(psi);
-                if (proc == null)
-                {
-                    log?.Invoke($"Failed to start shutdown.exe for {pc.Name} ({pc.IP}).");
-                    return;
-                }
+                log?.Invoke($"Sending {action} to {pc.Name} ({pc.IP})");
 
-                if (timeoutMs > 0)
+                using var client = new TcpClient(pc.IP, port)
                 {
-                    await Task.Run(() => proc.WaitForExit(timeoutMs));
-                }
+                    SendTimeout = 3000
+                };
+                using var stream = client.GetStream();
 
-                log?.Invoke($"Sent command '{coreArgs}' to {pc.Name} ({pc.IP}).");
+                var msg = new ApplicationDetails
+                {
+                    ActionType = action,
+                    Name = pc.Name,
+                    ClientIP = pc.IP
+                };
+
+                var serializer = new DataContractSerializer(typeof(ApplicationDetails));
+                serializer.WriteObject(stream, msg);
+                stream.Flush();
+
+                log?.Invoke($"{action} TCP command sent to {pc.Name}");
             }
             catch (Exception ex)
             {
-                log?.Invoke($"Error sending shutdown/restart to {pc.Name} ({pc.IP}): {ex.Message}");
+                log?.Invoke($"Failed sending PC {action} to {pc.Name} ({pc.IP}): {ex.Message}");
             }
         }
     }

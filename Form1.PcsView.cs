@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
@@ -99,7 +100,7 @@ namespace AppRestarter
 
                     foreach (var pc in _pcs.ToList())
                     {
-                        await PcPowerController.RestartAsync(pc, AddToLog);
+                        await PcPowerController.RestartAsync(pc, _settings.AppPort, AddToLog);
                     }
                 };
 
@@ -122,7 +123,7 @@ namespace AppRestarter
 
                         foreach (var pc in _pcs.ToList())
                         {
-                            await PcPowerController.ShutdownAsync(pc, AddToLog);
+                            await PcPowerController.ShutdownAsync(pc, _settings.AppPort, AddToLog);
                         }
                     };
                 }
@@ -179,7 +180,7 @@ namespace AppRestarter
                         MessageBoxIcon.Warning);
                     if (confirm != DialogResult.Yes) return;
 
-                    await PcPowerController.RestartAsync(pc, AddToLog);
+                    await PcPowerController.RestartAsync(pc, _settings.AppPort, AddToLog);
                 };
 
                 ctxMenuPc.Items.Add(new ToolStripSeparator());
@@ -224,7 +225,7 @@ namespace AppRestarter
                             MessageBoxIcon.Warning);
                         if (confirm != DialogResult.Yes) return;
 
-                        await PcPowerController.ShutdownAsync(pc, AddToLog);
+                        await PcPowerController.ShutdownAsync(pc, _settings.AppPort, AddToLog);
                     };
                 }
 
@@ -236,6 +237,106 @@ namespace AppRestarter
             }
 
             AppFlowLayoutPanel.ResumeLayout();
+        }
+
+        private void HandleRemotePcRestart(ApplicationDetails details)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var targetIp = details.ClientIP;
+                    AddToLog($"Remote PC RESTART requested for IP {targetIp ?? "(null)"}.");
+
+                    // 1) Select only apps that belong to this PC AND are not AppRestarter itself
+                    var targetApps = _apps
+                        .Where(app =>
+                            !IsAppRestarterSelf(app) &&
+                            (
+                                string.IsNullOrWhiteSpace(app.ClientIP) ||  // local apps on this machine
+                                string.Equals(app.ClientIP, targetIp, StringComparison.OrdinalIgnoreCase)
+                            ))
+                        .ToList();
+
+                    AddToLog($"Stopping {targetApps.Count} app(s) for this PC before restart.");
+
+                    foreach (var app in targetApps)
+                    {
+                        await HandleAppButtonClickAsync(
+                            app,
+                            start: false,
+                            stop: true,
+                            skipConfirm: true);
+                    }
+
+                    // 2) Small pause so processes can exit
+                    await Task.Delay(2000);
+
+                    // 3) Graceful restart (no /f)
+                    AddToLog("Issuing OS restart (shutdown /r /t 0).");
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "shutdown",
+                        Arguments = "/r /t 0",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    AddToLog("Error during remote PC restart: " + ex.Message);
+                }
+            });
+        }
+
+        private void HandleRemotePcShutdown(ApplicationDetails details)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var targetIp = details.ClientIP;
+                    AddToLog($"Remote PC SHUTDOWN requested for IP {targetIp ?? "(null)"}.");
+
+                    // 1) Select only apps that belong to this PC AND are not AppRestarter itself
+                    var targetApps = _apps
+                        .Where(app =>
+                            !IsAppRestarterSelf(app) &&
+                            (
+                                string.IsNullOrWhiteSpace(app.ClientIP) ||
+                                string.Equals(app.ClientIP, targetIp, StringComparison.OrdinalIgnoreCase)
+                            ))
+                        .ToList();
+
+                    AddToLog($"Stopping {targetApps.Count} app(s) for this PC before shutdown.");
+
+                    foreach (var app in targetApps)
+                    {
+                        await HandleAppButtonClickAsync(
+                            app,
+                            start: false,
+                            stop: true,
+                            skipConfirm: true);
+                    }
+
+                    // 2) Small pause so processes can exit
+                    await Task.Delay(2000);
+
+                    // 3) Graceful shutdown (no /f)
+                    AddToLog("Issuing OS shutdown (shutdown /s /t 0).");
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "shutdown",
+                        Arguments = "/s /t 0",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    AddToLog("Error during remote PC shutdown: " + ex.Message);
+                }
+            });
         }
     }
 }

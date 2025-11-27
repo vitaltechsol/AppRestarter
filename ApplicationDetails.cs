@@ -2,10 +2,20 @@
 
 namespace AppRestarter
 {
+
+    public enum RemoteActionType
+    {
+        AppControl,
+        PcRestart,
+        PcShutdown
+    }
+
     [DataContract]
     public class ApplicationDetails
     {
         [DataMember]
+        public RemoteActionType ActionType { get; set; } = RemoteActionType.AppControl;
+
         public string Name { get; set; }
         [DataMember]
         public string ProcessName { get; set; }
@@ -27,7 +37,8 @@ namespace AppRestarter
         public bool StartMinimized { get; set; } = false;
         [DataMember]
         public string? GroupName { get; set; }
-
+        [DataMember] 
+        public string MachineName { get; set; }
 
 
     }

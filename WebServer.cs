@@ -17,6 +17,7 @@ namespace AppRestarter
     {
         private readonly List<ApplicationDetails> _apps;
         private readonly List<PcInfo> _pcs;
+        private readonly AppSettings _settings;
         private readonly Action<string> _logAction;
         private HttpListener _httpListener;
         private volatile bool _running = true;
@@ -26,11 +27,15 @@ namespace AppRestarter
         public WebServer(List<ApplicationDetails> apps,
                          List<PcInfo> pcs,
                          Action<string> logAction,
-                         string htmlFilePath)
+                         string htmlFilePath,
+                         AppSettings settings)
+
+            
         {
             _apps = apps ?? throw new ArgumentNullException(nameof(apps));
             _pcs = pcs ?? throw new ArgumentNullException(nameof(pcs));
             _logAction = logAction ?? throw new ArgumentNullException(nameof(logAction));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
             // If relative, resolve to the EXE directory so auto-start scenarios work
             if (!Path.IsPathRooted(htmlFilePath))
@@ -252,7 +257,7 @@ namespace AppRestarter
                             continue;
                         }
 
-                        await PcPowerController.ShutdownAsync(pc, _logAction);
+                        await PcPowerController.ShutdownAsync(pc, _settings.AppPort, _logAction);
                         response.StatusCode = 200;
                         var okBuf = Encoding.UTF8.GetBytes("Shutdown command sent");
                         response.ContentLength64 = okBuf.Length;
@@ -277,7 +282,7 @@ namespace AppRestarter
                             continue;
                         }
 
-                        await PcPowerController.RestartAsync(pc, _logAction);
+                        await PcPowerController.RestartAsync(pc, _settings.AppPort, _logAction);
                         response.StatusCode = 200;
                         var okBuf = Encoding.UTF8.GetBytes("Restart command sent");
                         response.ContentLength64 = okBuf.Length;

@@ -185,7 +185,7 @@ namespace AppRestarter
             try
             {
                 var indexPath = Path.Combine(exeDir, "index.html");
-                _webServer = new WebServer(_apps, _pcs, AddToLog, indexPath);
+                _webServer = new WebServer(_apps, _pcs, AddToLog, indexPath, _settings);
 
                 _webServer.RestartRequested += (s, app) =>
                 {
@@ -285,11 +285,26 @@ namespace AppRestarter
                             AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
                                      $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
 
-                            _ = HandleAppButtonClickAsync(
-                                applicationDetails,
-                                applicationDetails.StartRequested,
-                                applicationDetails.StopRequested,
-                                skipConfirm: true);
+                            AddToLog($"Received TCP Message: Action={applicationDetails.ActionType}, Name={applicationDetails.Name}");
+
+                            switch (applicationDetails.ActionType)
+                            {
+                                case RemoteActionType.AppControl:
+                                    _ = HandleAppButtonClickAsync(
+                                        applicationDetails,
+                                        applicationDetails.StartRequested,
+                                        applicationDetails.StopRequested,
+                                        skipConfirm: true);
+                                    break;
+
+                                case RemoteActionType.PcRestart:
+                                    HandleRemotePcRestart(applicationDetails);
+                                    break;
+
+                                case RemoteActionType.PcShutdown:
+                                    HandleRemotePcShutdown(applicationDetails);
+                                    break;
+                            }
                         }
                         catch (SerializationException serEx)
                         {
@@ -439,6 +454,22 @@ namespace AppRestarter
             {
                 AddToLog("Error loading PCs from XML: " + ex.Message);
             }
+        }
+
+        private bool IsAppRestarterSelf(ApplicationDetails app)
+        {
+            if (app == null)
+                return false;
+
+            bool nameHas =
+                !string.IsNullOrWhiteSpace(app.Name) &&
+                app.Name.IndexOf("AppRestarter", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            bool procHas =
+                !string.IsNullOrWhiteSpace(app.ProcessName) &&
+                app.ProcessName.IndexOf("AppRestarter", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            return nameHas || procHas;
         }
 
         // ------------------ TOP BUTTONS ------------------
