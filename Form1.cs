@@ -369,6 +369,11 @@ namespace AppRestarter
                     StartupHelper.AddOrUpdateAppStartup(AddToLog);
                 else
                     StartupHelper.RemoveAppStartup(AddToLog);
+
+                if (_settings.StartMinimized)
+                {
+                    this.WindowState = FormWindowState.Minimized;
+                }
             }
             catch (Exception ex)
             {
@@ -538,10 +543,6 @@ namespace AppRestarter
             bool cliMin = Environment.GetCommandLineArgs()
                 .Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));
 
-            if (_settings.StartMinimized || cliMin)
-            {
-                this.WindowState = FormWindowState.Minimized;
-            }
         }
 
         // ------------------ LIFECYCLE ------------------
