@@ -342,6 +342,13 @@ namespace AppRestarter
             try
             {
                 string configPath = getXMLConfigPath();
+
+                if (!System.IO.File.Exists(configPath))
+                {
+                    AddToLog("Applications.xml not found. New xml will be created");
+                    return;
+                }
+
                 var xmlDocument = XDocument.Load(configPath);
                 var root = xmlDocument.Root;
                 bool autoStartWithWindows = false;
@@ -377,7 +384,7 @@ namespace AppRestarter
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error loading settings and applications from XML: " + ex.Message);
+                AddToLog("Error loading settings and applications from XML: " + ex.Message);
             }
         }
 

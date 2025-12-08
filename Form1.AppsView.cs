@@ -14,21 +14,53 @@ namespace AppRestarter
 {
     public partial class Form1
     {
-        // ---------- LOAD APPS / GROUPS ----------
+        private enum AppRunVisualState
+        {
+            Stopped,
+            Running,
+            UnexpectedlyStopped
+        }
+
+        private readonly Dictionary<ApplicationDetails, bool> _appStartedByUs = new Dictionary<ApplicationDetails, bool>();
+        private readonly Dictionary<ApplicationDetails, Control> _appStatusIndicators = new Dictionary<ApplicationDetails, Control>();
+        private System.Windows.Forms.Timer _appStatusTimer;
+
+        private static readonly Color StatusGray = Color.FromArgb(55, 65, 81);
+        private static readonly Color StatusGreen = Color.FromArgb(34, 197, 94);
+        private static readonly Color StatusRed = Color.FromArgb(248, 113, 113);
+
+        private static string getSettingsXMLConfigPath()
+        {
+            string exePath = Application.ExecutablePath;
+            string directory = System.IO.Path.GetDirectoryName(exePath);
+
+            return System.IO.Path.Combine(directory, "Settings.xml");
+        }
 
         private void LoadApplicationsFromXml()
         {
             try
             {
                 string configPath = getXMLConfigPath();
-                var xmlDocument = XDocument.Load(configPath);
-                var root = xmlDocument.Root;
+                string settingsPath = getSettingsXMLConfigPath();
 
-                _groups = LoadGroups(root);
+                if (!System.IO.File.Exists(configPath))
+                {
+                    AddToLog("Applications.xml not found. Will create new XML");
+                    return;
+                }
 
-                var applicationsElement = root.Element("Applications");
+                var doc = XDocument.Load(configPath);
+                var root = doc.Root;
+                if (root == null)
+                {
+                    AddToLog("Applications.xml is empty or invalid.");
+                    return;
+                }
+
                 _apps.Clear();
 
+                var applicationsElement = root.Element("Applications");
                 if (applicationsElement != null)
                 {
                     foreach (XElement applicationElement in applicationsElement.Elements("Application"))
@@ -43,10 +75,23 @@ namespace AppRestarter
                             AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
                             NoWarn = bool.TryParse(applicationElement.Element("NoWarn")?.Value, out var noWarn) && noWarn,
                             StartMinimized = bool.TryParse(applicationElement.Element("StartMinimized")?.Value, out var startMinimized) && startMinimized,
-                            GroupName = applicationElement.Element("GroupName")?.Value
+                            GroupName = applicationElement.Element("GroupName")?.Value ?? ""
                         };
 
                         _apps.Add(app);
+                    }
+                }
+
+                _groups = LoadGroups(root);
+
+                if (System.IO.File.Exists(settingsPath))
+                {
+                    var settingsDoc = XDocument.Load(settingsPath);
+                    var settingsRoot = settingsDoc.Root;
+                    if (settingsRoot != null)
+                    {
+                        _settings.AppPort = int.TryParse(settingsRoot.Element("AppPort")?.Value, out var appPort) ? appPort : _settings.AppPort;
+                        _timeout = int.TryParse(settingsRoot.Element("TimeoutMs")?.Value, out var timeoutMs) ? timeoutMs : _timeout;
                     }
                 }
             }
@@ -64,15 +109,17 @@ namespace AppRestarter
             {
                 foreach (var g in groupsEl.Elements("Group"))
                 {
-                    var name = g.Attribute("Name")?.Value;
-                    if (!string.IsNullOrWhiteSpace(name))
-                        groups.Add(name);
+                    var nameAttr = g.Attribute("Name");
+                    if (nameAttr != null && !string.IsNullOrWhiteSpace(nameAttr.Value))
+                    {
+                        groups.Add(nameAttr.Value.Trim());
+                    }
                 }
             }
             return groups
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+               .Distinct(StringComparer.OrdinalIgnoreCase)
+               .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+               .ToList();
         }
 
         // ---------- CARD STYLE HELPERS (APPS) ----------
@@ -82,7 +129,7 @@ namespace AppRestarter
 
         private void StyleGroupPanel(Panel panel)
         {
-            panel.BackColor = Color.FromArgb(15, 23, 42); 
+            panel.BackColor = Color.FromArgb(15, 23, 42);
             panel.ForeColor = Color.FromArgb(229, 231, 235);
             panel.Padding = new Padding(5, 8, 5, 12);
             panel.Margin = new Padding(0, 8, 0, 4);      // no horizontal margin -> no horiz scroll
@@ -118,7 +165,6 @@ namespace AppRestarter
 
             void HandleLeave(object _, EventArgs __)
             {
-                // Only revert if mouse is truly outside the card
                 var pos = card.PointToClient(Cursor.Position);
                 if (!card.ClientRectangle.Contains(pos))
                 {
@@ -126,7 +172,6 @@ namespace AppRestarter
                 }
             }
 
-            // Attach to card + all children so the hover feels unified
             var all = new List<Control> { card };
             all.AddRange(children);
             foreach (var c in all)
@@ -166,6 +211,16 @@ namespace AppRestarter
             HighlightNavButton(btnNavApps);
 
             UpdateAppList();
+
+            if (_appStatusTimer == null)
+            {
+                _appStatusTimer = new System.Windows.Forms.Timer();
+                _appStatusTimer.Interval = 10_000;
+                _appStatusTimer.Tick += AppStatusTimer_Tick;
+                _appStatusTimer.Start();
+            }
+
+            RefreshAppStatuses();
         }
 
         private void UpdateAppList()
@@ -197,8 +252,90 @@ namespace AppRestarter
             AppFlowLayoutPanel.ResumeLayout();
         }
 
+        private void AppStatusTimer_Tick(object sender, EventArgs e)
+        {
+            RefreshAppStatuses();
+        }
+
+        private void RefreshAppStatuses()
+        {
+            if (_currentView != ViewMode.Apps)
+                return;
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(RefreshAppStatuses));
+                return;
+            }
+
+            foreach (var app in _apps)
+            {
+                var state = ComputeAppState(app);
+                UpdateAppStatusIndicator(app, state);
+            }
+        }
+
+        private AppRunVisualState ComputeAppState(ApplicationDetails app)
+        {
+            bool isRunning = false;
+
+            if (string.IsNullOrWhiteSpace(app.ClientIP))
+            {
+                isRunning = ProcessTerminator.IsRunning(app);
+            }
+            else
+            {
+                // TODO: for remote apps, extend protocol to ask remote client for status.
+                isRunning = false;
+            }
+
+            bool startedByUs = _appStartedByUs.TryGetValue(app, out var val) && val;
+
+            if (isRunning)
+                return AppRunVisualState.Running;
+
+            return startedByUs ? AppRunVisualState.UnexpectedlyStopped : AppRunVisualState.Stopped;
+        }
+
+        private void UpdateAppStatusIndicator(ApplicationDetails app, AppRunVisualState state)
+        {
+            if (!_appStatusIndicators.TryGetValue(app, out var ctrl))
+                return;
+
+            Color color = StatusGray;
+            switch (state)
+            {
+                case AppRunVisualState.Running:
+                    color = StatusGreen;
+                    break;
+                case AppRunVisualState.UnexpectedlyStopped:
+                    color = StatusRed;
+                    break;
+                case AppRunVisualState.Stopped:
+                    color = StatusGray;
+                    break;
+            }
+
+            if (ctrl is Label lbl)
+                lbl.ForeColor = color;
+            else
+                ctrl.BackColor = color;
+        }
+
+        private void MarkAppStartedByUs(ApplicationDetails app)
+        {
+            _appStartedByUs[app] = true;
+        }
+
+        private void MarkAppStoppedByUs(ApplicationDetails app)
+        {
+            _appStartedByUs[app] = false;
+        }
+
         private void RenderGroupsAndApps()
         {
+            _appStatusIndicators.Clear();
+
             var ungroupedApps = _apps
                 .Where(a => string.IsNullOrWhiteSpace(a.GroupName))
                 .ToList();
@@ -221,7 +358,7 @@ namespace AppRestarter
                 if (groupName == "(Ungrouped)")
                 {
                     appsInGroup = ungroupedApps;
-                    headerTitle = "Ungrouped apps";
+                    headerTitle = "Ungrouped";
                     if (appsInGroup.Count == 0)
                         continue;
                 }
@@ -230,15 +367,16 @@ namespace AppRestarter
                     appsInGroup = _apps
                         .Where(a => string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
                         .ToList();
+
                     headerTitle = groupName;
-                    if (appsInGroup.Count == 0)
+                    if (!appsInGroup.Any())
                         continue;
+
+                    headerTitle = groupName;
                 }
 
-                // === Group "card" ===
                 var groupPanel = new Panel();
                 StyleGroupPanel(groupPanel);
-
                 int padLeft = groupPanel.Padding.Left;
                 int padRight = groupPanel.Padding.Right;
                 int padTop = groupPanel.Padding.Top;
@@ -259,18 +397,18 @@ namespace AppRestarter
 
                 var btnRestartGroup = new Button
                 {
-                    Text = $"Restart {headerTitle}",
+                    Text = $"Restart {headerTitle} Apps",
                     AutoSize = true,
                     Font = regularFont,
                     BackColor = Color.FromArgb(15, 89, 117), // Restart button Color
                     ForeColor = Color.FromArgb(250, 250, 250),
                     FlatStyle = FlatStyle.Flat
-                    
+
                 };
                 btnRestartGroup.FlatAppearance.BorderSize = 0;
                 btnRestartGroup.Padding = new Padding(2, 2, 2, 2);
                 headerPanel.Controls.Add(btnRestartGroup);
-                
+
                 btnRestartGroup.Click += async (s, e) =>
                 {
                     var confirmMsg = groupName == "(Ungrouped)"
@@ -288,8 +426,7 @@ namespace AppRestarter
                             await HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
                     }
                 };
-
-                headerPanel.MouseUp += (s, e) =>
+                btnRestartGroup.MouseUp += (s, e) =>
                 {
                     if (e.Button != MouseButtons.Right) return;
                     var menu = new ContextMenuStrip();
@@ -312,12 +449,10 @@ namespace AppRestarter
                     };
                     menu.Show(Cursor.Position);
                 };
-
                 groupPanel.Controls.Add(headerPanel);
+            // ---------- Inner flow for cards (MULTI-ROW) ----------
 
-                // ---------- Inner flow for cards (MULTI-ROW) ----------
-
-                var innerFlow = new FlowLayoutPanel
+            var innerFlow = new FlowLayoutPanel
                 {
                     FlowDirection = FlowDirection.LeftToRight,
                     WrapContents = true,
@@ -329,11 +464,14 @@ namespace AppRestarter
                     Size = new Size(innerWidth, 10) // height updated after layout
                 };
 
-                // Add cards
-                for (int i = 0; i < _apps.Count; i++)
+                // ---------- Apps (cards) row(s) ----------
+                innerFlow.Size = new Size(innerWidth, 0);
+                innerFlow.Location = new Point(padLeft, headerPanel.Bottom + 4);
+
+                foreach (var app in appsInGroup.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
                 {
-                    var app = _apps[i];
-                    int index = i;
+                    int index = _apps.IndexOf(app);
+                    if (index < 0) continue;
 
                     if (groupName == "(Ungrouped)")
                     {
@@ -380,8 +518,23 @@ namespace AppRestarter
                         Size = new Size(appCard.Width - 12, 18)
                     };
 
+                    // Status indicator (small colored dot)
+                    var statusLabel = new Label
+                    {
+                        AutoSize = false,
+                        Text = "●",
+                        Font = new Font(this.Font.FontFamily, Math.Max(6, baseSize + 2), FontStyle.Bold),
+                        ForeColor = StatusGray,
+                        Size = new Size(18, 18),
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Location = new Point(appCard.Width - 20, (appCard.Height / 2) - 2)
+                    };
+
+                    appCard.Controls.Add(statusLabel);
                     appCard.Controls.Add(lblMeta2);
                     appCard.Controls.Add(lblName);
+
+                    _appStatusIndicators[app] = statusLabel;
 
                     // Context menu for stop/edit
                     var ctxMenu = new ContextMenuStrip();
@@ -392,9 +545,10 @@ namespace AppRestarter
                     appCard.ContextMenuStrip = ctxMenu;
                     lblName.ContextMenuStrip = ctxMenu;
                     lblMeta2.ContextMenuStrip = ctxMenu;
+                    statusLabel.ContextMenuStrip = ctxMenu;
 
-                    // Hover on full card (panel + labels)
-                    AttachCardHover(appCard, lblName, lblMeta2);
+                    // Hover on full card (panel + labels + status)
+                    AttachCardHover(appCard, lblName, lblMeta2, statusLabel);
 
                     // Left-click anywhere on the card => restart
                     void AttachClick(Control c)
@@ -411,11 +565,11 @@ namespace AppRestarter
                     AttachClick(appCard);
                     AttachClick(lblName);
                     AttachClick(lblMeta2);
+                    AttachClick(statusLabel);
 
                     innerFlow.Controls.Add(appCard);
                 }
 
-                // Let FlowLayoutPanel compute row wrapping using the fixed width
                 innerFlow.PerformLayout();
 
                 int maxBottom = 0;
@@ -425,10 +579,10 @@ namespace AppRestarter
                         maxBottom = child.Bottom;
                 }
 
-                innerFlow.Height = maxBottom + innerFlow.Padding.Bottom;
+                innerFlow.Height = maxBottom + 4;
+
                 groupPanel.Controls.Add(innerFlow);
 
-                // Now set group height to fit header + innerFlow
                 int totalHeight =
                     groupPanel.Padding.Top +
                     headerPanel.Height +
@@ -440,6 +594,8 @@ namespace AppRestarter
 
                 AppFlowLayoutPanel.Controls.Add(groupPanel);
             }
+
+            RefreshAppStatuses();
         }
 
         // ---------- APPS: EDIT / STOP / AUTO-START / GROUPS ----------
@@ -582,6 +738,7 @@ namespace AppRestarter
             if (stop)
             {
                 stopped = await ProcessTerminator.StopAsync(app, AddToLog, timeoutMs: _timeout);
+                MarkAppStoppedByUs(app);
             }
 
             if (start && stopped > 0)
@@ -591,10 +748,24 @@ namespace AppRestarter
 
             try
             {
-                bool isAppRunning = start && ProcessTerminator.IsRunning(app);
-                if (start && isAppRunning)
+                var isAppRunning = ProcessTerminator.IsRunning(app);
+
+                if (stop && !start)
                 {
-                    AddToLog($"Skipped starting {app.Name}: already running.");
+                    AddToLog($"Stop requested for {app.Name}; killed {stopped} instances.");
+                    return;
+                }
+
+                if (!start && !stop)
+                {
+                    AddToLog($"No start/stop action for {app.Name} requested.");
+                    return;
+                }
+
+                if (!start && isAppRunning)
+                {
+                    AddToLog($"{app.Name} is already running.");
+                    return;
                 }
 
                 if (start && !string.IsNullOrWhiteSpace(app.RestartPath) && !isAppRunning)
@@ -635,6 +806,7 @@ namespace AppRestarter
                     }
 
                     Debug.WriteLine($"Started {app.Name}");
+                    MarkAppStartedByUs(app);
                 }
             }
             catch (Exception ex)
@@ -652,9 +824,9 @@ namespace AppRestarter
                     MessageBox.Show($"Error starting {app.ProcessName} {ex.Message}");
                 }
             }
-        }
 
-        // ---------- APP (REMOTE) START/STOP LOGIC ----------
+            RefreshAppStatuses();
+        }
 
         private void HandleRemoteClientAppClick(ApplicationDetails applicationDetails, bool start, bool stop, bool skipConfirm)
         {
@@ -670,7 +842,7 @@ namespace AppRestarter
                 if (!skipConfirm && !applicationDetails.NoWarn)
                 {
                     confirmResult = MessageBox.Show(
-                        $"Are you sure you want to {actionName} {applicationDetails.Name}\n from: {applicationDetails.RestartPath}\nfrom IP: {applicationDetails.ClientIP}",
+                        $"Are you sure you want to {actionName} {applicationDetails.Name}\nfrom: {applicationDetails.RestartPath}\nfrom IP: {applicationDetails.ClientIP}",
                         "Restart Remote App",
                         MessageBoxButtons.YesNo);
                 }
@@ -682,6 +854,12 @@ namespace AppRestarter
                 }
 
                 AddToLog($"Sending Remote App Request {applicationDetails.Name} on {applicationDetails.ClientIP} to {actionName}");
+
+                if (start && !stop)
+                    MarkAppStartedByUs(applicationDetails);
+                else if (stop && !start)
+                    MarkAppStoppedByUs(applicationDetails);
+
                 using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
                 client.SendTimeout = 3000;
                 using var stream = client.GetStream();
@@ -691,6 +869,8 @@ namespace AppRestarter
                 var serializer = new DataContractSerializer(typeof(ApplicationDetails));
                 serializer.WriteObject(stream, applicationDetails);
                 stream.Flush();
+
+                RefreshAppStatuses();
             }
             catch (Exception ex)
             {
