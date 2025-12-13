@@ -7,7 +7,8 @@ namespace AppRestarter
     {
         AppControl,
         PcRestart,
-        PcShutdown
+        PcShutdown,
+        AppStatusBatch
     }
 
     [DataContract]
@@ -39,7 +40,24 @@ namespace AppRestarter
         public string? GroupName { get; set; }
         [DataMember] 
         public string MachineName { get; set; }
+        [DataMember]
+        public List<ApplicationDetails> StatusBatchApps { get; set; }
 
+    }
+
+    /// <summary>
+    /// DTO for batched app status requests.
+    /// This is used only for STATUS polling; all existing per-app control
+    /// (start/stop, restart) continues to use ApplicationDetails.
+    /// </summary>
+    [DataContract]
+    public class AppStatusBatchRequest
+    {
+        [DataMember]
+        public RemoteActionType ActionType { get; set; }
+
+        [DataMember]
+        public List<ApplicationDetails> Apps { get; set; }
 
     }
 

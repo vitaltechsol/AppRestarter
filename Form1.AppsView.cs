@@ -18,16 +18,21 @@ namespace AppRestarter
         {
             Stopped,
             Running,
-            UnexpectedlyStopped
+            UnexpectedlyStopped,
+            AutoStartPending
         }
 
         private readonly Dictionary<ApplicationDetails, bool> _appStartedByUs = new Dictionary<ApplicationDetails, bool>();
         private readonly Dictionary<ApplicationDetails, Control> _appStatusIndicators = new Dictionary<ApplicationDetails, Control>();
-        private System.Windows.Forms.Timer _appStatusTimer;
+        private readonly Dictionary<ApplicationDetails, AppRunVisualState> _lastAppRunStates = new Dictionary<ApplicationDetails, AppRunVisualState>();
+        private readonly HashSet<ApplicationDetails> _appHasRunAtLeastOnce = new HashSet<ApplicationDetails>();
 
+        private System.Windows.Forms.Timer _appStatusTimer;
+        private bool _statusRefreshInProgress = false;
         private static readonly Color StatusGray = Color.FromArgb(55, 65, 81);
         private static readonly Color StatusGreen = Color.FromArgb(34, 197, 94);
-        private static readonly Color StatusRed = Color.FromArgb(248, 113, 113);
+        private static readonly Color StatusRed = Color.FromArgb(228, 8, 10);
+        private static readonly Color StatusOrange = Color.FromArgb(255, 203, 91);
 
         private static string getSettingsXMLConfigPath()
         {
@@ -215,7 +220,7 @@ namespace AppRestarter
             if (_appStatusTimer == null)
             {
                 _appStatusTimer = new System.Windows.Forms.Timer();
-                _appStatusTimer.Interval = 10_000;
+                _appStatusTimer.Interval = 3_000; // 3 seconds
                 _appStatusTimer.Tick += AppStatusTimer_Tick;
                 _appStatusTimer.Start();
             }
@@ -250,6 +255,9 @@ namespace AppRestarter
             }
 
             AppFlowLayoutPanel.ResumeLayout();
+
+            // Immediately kick off a status refresh whenever the list is rebuilt
+            RefreshAppStatuses();
         }
 
         private void AppStatusTimer_Tick(object sender, EventArgs e)
@@ -257,22 +265,225 @@ namespace AppRestarter
             RefreshAppStatuses();
         }
 
+        // ---------- STATUS & BATCH HELPERS ----------
+
+        /// <summary>
+        /// Shared logic to convert a simple "isRunning" flag into the visual state
+        /// (green/orange/red/gray) while tracking first-run and started-by-us flags.
+        /// </summary>
+        private AppRunVisualState ComputeVisualState(ApplicationDetails app, bool isRunning)
+        {
+            bool startedByUs = _appStartedByUs.TryGetValue(app, out var val) && val;
+
+            // Track if this app has ever been observed running during this session
+            if (isRunning)
+            {
+                _appHasRunAtLeastOnce.Add(app);
+            }
+            bool hasEverRun = _appHasRunAtLeastOnce.Contains(app);
+
+            // Orange only before the app has ever started (initial delayed auto-start window)
+            if (!isRunning &&
+                !hasEverRun &&
+                app.AutoStart &&
+                app.AutoStartDelayInSeconds > 0)
+            {
+                return AppRunVisualState.AutoStartPending;
+            }
+
+            if (isRunning)
+                return AppRunVisualState.Running;
+
+            return startedByUs ? AppRunVisualState.UnexpectedlyStopped : AppRunVisualState.Stopped;
+        }
+            
+
+        /// <summary>
+        /// Main status refresh: locals are checked individually, remotes are checked in batches
+        /// per remote PC (one TCP connection per IP per cycle).
+        /// </summary>
         private void RefreshAppStatuses()
         {
             if (_currentView != ViewMode.Apps)
                 return;
 
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(RefreshAppStatuses));
+            if (_statusRefreshInProgress)
                 return;
+
+            _statusRefreshInProgress = true;
+
+            var appsSnapshot = _apps.ToList();
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    var results = new List<(ApplicationDetails app, AppRunVisualState state)>();
+
+                    // Local first (cheap)
+                    foreach (var app in appsSnapshot.Where(a => string.IsNullOrWhiteSpace(a.ClientIP)))
+                    {
+                        bool isRunning = ProcessTerminator.IsRunning(app);
+                        results.Add((app, ComputeVisualState(app, isRunning)));
+                    }
+
+                    // Remote: one batch per unique IP
+                    var groups = appsSnapshot
+                        .Where(a => !string.IsNullOrWhiteSpace(a.ClientIP))
+                        .GroupBy(a => a.ClientIP);
+
+                    foreach (var g in groups)
+                    {
+                        results.AddRange(GetRemoteBatchStatesForGroup(g.Key, g.ToList()));
+                    }
+
+                    if (!IsDisposed && IsHandleCreated)
+                    {
+                        BeginInvoke(new Action(() =>
+                        {
+                            foreach (var r in results)
+                                UpdateAppStatusIndicator(r.app, r.state);
+                        }));
+                    }
+                }
+                finally
+                {
+                    _statusRefreshInProgress = false;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Batch status request per remote IP: sends one request containing all apps for that
+        /// PC and parses a single STATUSBATCH reply.
+        /// </summary>
+
+        private List<(ApplicationDetails app, AppRunVisualState state)> GetRemoteBatchStatesForGroup(
+            string clientIp,
+            List<ApplicationDetails> appsOnThisPc)
+        {
+            var results = new List<(ApplicationDetails app, AppRunVisualState state)>();
+
+            if (string.IsNullOrWhiteSpace(clientIp) || appsOnThisPc == null || appsOnThisPc.Count == 0)
+                return results;
+
+            try
+            {
+                AddToLog($"Batch status -> {clientIp}: {appsOnThisPc.Count} app(s)");
+
+                // Build request matching server-side AppStatusBatchRequest contract
+                var batchRequest = new AppStatusBatchRequest
+                {
+                    ActionType = RemoteActionType.AppStatusBatch,
+                    Apps = appsOnThisPc.Select(a => new ApplicationDetails
+                    {
+                        Name = a.Name,
+                        ProcessName = a.ProcessName,
+                        RestartPath = a.RestartPath,
+                        ClientIP = null, // remote treats as local
+                        AutoStart = a.AutoStart,
+                        AutoStartDelayInSeconds = a.AutoStartDelayInSeconds,
+                        NoWarn = a.NoWarn,
+                        StartMinimized = a.StartMinimized,
+                        GroupName = a.GroupName
+                    }).ToList()
+                };
+
+                using var client = new TcpClient(AddressFamily.InterNetwork);
+                client.SendTimeout = 3000;
+                client.ReceiveTimeout = 3000;
+
+                client.Connect(clientIp, _settings.AppPort);
+
+                using var stream = client.GetStream();
+                var serializer = new DataContractSerializer(typeof(AppStatusBatchRequest));
+                serializer.WriteObject(stream, batchRequest);
+                stream.Flush();
+
+                // Tell server we’re done sending
+                try { client.Client.Shutdown(SocketShutdown.Send); } catch { }
+
+                // Read response
+                using var ms = new System.IO.MemoryStream();
+                byte[] buffer = new byte[2048];
+                int bytesRead;
+
+                while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    ms.Write(buffer, 0, bytesRead);
+                    if (ms.Length > 64 * 1024) break; // safety cap
+                }
+
+                string reply = Encoding.UTF8.GetString(ms.ToArray());
+                if (string.IsNullOrWhiteSpace(reply))
+                {
+                    AddToLog($"Batch status <- {clientIp}: EMPTY reply");
+                    foreach (var app in appsOnThisPc)
+                        results.Add((app, ComputeVisualState(app, isRunning: false)));
+                    return results;
+                }
+
+                // Parse lines
+                var lines = reply
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Trim())
+                    .ToArray();
+
+                AddToLog($"Batch status <- {clientIp}: bytes={ms.Length}, lines={lines.Length}, head='{lines[0]}'");
+
+                if (lines.Length == 0 || !lines[0].Equals("STATUSBATCH", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddToLog($"Batch status <- {clientIp}: INVALID header");
+                    foreach (var app in appsOnThisPc)
+                        results.Add((app, ComputeVisualState(app, isRunning: false)));
+                    return results;
+                }
+
+                // Map reply -> running flag (Name + ProcessName)
+                var mapByPath = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+                for (int i = 1; i < lines.Length; i++)
+                {
+                    AddToLog($"Batch line status recieved<- {clientIp}: {lines[i]}");
+
+                    var parts = lines[i].Split('|');
+                    if (parts.Length < 5) continue;
+
+                    string path = parts[2] ?? string.Empty;
+                    bool isRunning = parts[3].Equals("Running", StringComparison.OrdinalIgnoreCase);
+
+                    if (!string.IsNullOrWhiteSpace(path))
+                        mapByPath[path] = isRunning;
+                }
+
+                int matched = 0;
+                foreach (var app in appsOnThisPc)
+                {
+                    bool isRunning = false;
+
+                    if (!string.IsNullOrWhiteSpace(app.RestartPath) &&
+                        mapByPath.TryGetValue(app.RestartPath, out var running))
+                    {
+                        isRunning = running;
+                        matched++;
+                    }
+
+                    results.Add((app, ComputeVisualState(app, isRunning)));
+                }
+
+                AddToLog($"Batch status <- {clientIp}: parsed={mapByPath.Count}, matched={matched}/{appsOnThisPc.Count}");
+
+            }
+            catch (Exception ex)
+            {
+                AddToLog($"Error checking remote batch status for {clientIp}: {ex.Message}");
+
+                // Treat all as stopped for this cycle
+                foreach (var app in appsOnThisPc)
+                    results.Add((app, ComputeVisualState(app, isRunning: false)));
             }
 
-            foreach (var app in _apps)
-            {
-                var state = ComputeAppState(app);
-                UpdateAppStatusIndicator(app, state);
-            }
+            return results;
         }
 
         private AppRunVisualState ComputeAppState(ApplicationDetails app)
@@ -281,26 +492,92 @@ namespace AppRestarter
 
             if (string.IsNullOrWhiteSpace(app.ClientIP))
             {
+                // Local app: just check the process
                 isRunning = ProcessTerminator.IsRunning(app);
             }
             else
             {
-                // TODO: for remote apps, extend protocol to ask remote client for status.
-                isRunning = false;
+                // Remote app: single-app status over TCP.
+                // Timer-driven status uses batch requests now, but this is still used
+                // in other flows and for compatibility.
+                try
+                {
+                    using var client = new TcpClient();
+                    client.SendTimeout = 6000;
+                    client.ReceiveTimeout = 6000;
+
+                    client.Connect(app.ClientIP, _settings.AppPort);
+                    using var stream = client.GetStream();
+
+                    var request = new ApplicationDetails
+                    {
+                        Name = app.Name,
+                        ProcessName = app.ProcessName,
+                        RestartPath = app.RestartPath,
+                        ClientIP = null, // on the remote, this is a local app
+                        AutoStart = app.AutoStart,
+                        AutoStartDelayInSeconds = app.AutoStartDelayInSeconds,
+                        NoWarn = app.NoWarn,
+                        StartMinimized = app.StartMinimized,
+                        GroupName = app.GroupName,
+                        ActionType = RemoteActionType.AppControl,
+                        StartRequested = false,
+                        StopRequested = false
+                    };
+
+                    var serializer = new DataContractSerializer(typeof(ApplicationDetails));
+                    serializer.WriteObject(stream, request);
+                    stream.Flush();
+
+                    // IMPORTANT: tell the server we're done sending, so its read loop can finish
+                    try
+                    {
+                        client.Client.Shutdown(SocketShutdown.Send);
+                    }
+                    catch (Exception ex)
+                    {
+                        AddToLog($"Warning: could not shutdown send side for status request to {app.ClientIP}: {ex.Message}");
+                    }
+
+                    using var ms = new System.IO.MemoryStream();
+                    byte[] buffer = new byte[256];
+                    int bytesRead;
+                    while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        ms.Write(buffer, 0, bytesRead);
+                        if (ms.Length > 1024) break; // safety cap
+                    }
+
+                    var reply = Encoding.UTF8.GetString(ms.ToArray());
+
+                    // Expect: STATUS|Name|ProcessName|Running|Color
+                    if (!string.IsNullOrWhiteSpace(reply))
+                    {
+                        var parts = reply.Split('|');
+                        if (parts.Length >= 5 && parts[0].Equals("STATUS", StringComparison.OrdinalIgnoreCase))
+                        {
+                            isRunning = parts[3].Equals("Running", StringComparison.OrdinalIgnoreCase);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // If remote is offline or any error, treat as "stopped" but log it
+                    AddToLog($"Error checking remote status for {app.Name} on {app.ClientIP}: {ex.Message}");
+                    isRunning = false;
+                }
             }
 
-            bool startedByUs = _appStartedByUs.TryGetValue(app, out var val) && val;
-
-            if (isRunning)
-                return AppRunVisualState.Running;
-
-            return startedByUs ? AppRunVisualState.UnexpectedlyStopped : AppRunVisualState.Stopped;
+            return ComputeVisualState(app, isRunning);
         }
 
         private void UpdateAppStatusIndicator(ApplicationDetails app, AppRunVisualState state)
         {
             if (!_appStatusIndicators.TryGetValue(app, out var ctrl))
                 return;
+
+            // Remember last known state so we can preserve colors during layout rebuilds
+            _lastAppRunStates[app] = state;
 
             Color color = StatusGray;
             switch (state)
@@ -310,6 +587,9 @@ namespace AppRestarter
                     break;
                 case AppRunVisualState.UnexpectedlyStopped:
                     color = StatusRed;
+                    break;
+                case AppRunVisualState.AutoStartPending:
+                    color = StatusOrange;
                     break;
                 case AppRunVisualState.Stopped:
                     color = StatusGray;
@@ -322,9 +602,11 @@ namespace AppRestarter
                 ctrl.BackColor = color;
         }
 
+
         private void MarkAppStartedByUs(ApplicationDetails app)
         {
             _appStartedByUs[app] = true;
+            _appHasRunAtLeastOnce.Add(app);
         }
 
         private void MarkAppStoppedByUs(ApplicationDetails app)
@@ -402,11 +684,10 @@ namespace AppRestarter
                     Font = regularFont,
                     BackColor = Color.FromArgb(15, 89, 117), // Restart button Color
                     ForeColor = Color.FromArgb(250, 250, 250),
-                    FlatStyle = FlatStyle.Flat
-
+                    FlatStyle = FlatStyle.Flat,
+                    Size = new Size(98, 23)
                 };
                 btnRestartGroup.FlatAppearance.BorderSize = 0;
-                btnRestartGroup.Padding = new Padding(2, 2, 2, 2);
                 headerPanel.Controls.Add(btnRestartGroup);
 
                 btnRestartGroup.Click += async (s, e) =>
@@ -450,9 +731,9 @@ namespace AppRestarter
                     menu.Show(Cursor.Position);
                 };
                 groupPanel.Controls.Add(headerPanel);
-            // ---------- Inner flow for cards (MULTI-ROW) ----------
+                // ---------- Inner flow for cards (MULTI-ROW) ----------
 
-            var innerFlow = new FlowLayoutPanel
+                var innerFlow = new FlowLayoutPanel
                 {
                     FlowDirection = FlowDirection.LeftToRight,
                     WrapContents = true,
@@ -492,19 +773,20 @@ namespace AppRestarter
                         ? $"{app.ProcessName} · {clientLabel}"
                         : clientLabel;
 
-                    float baseSize = this.Font.Size;
+                    float baseSize = this.Font.SizeInPoints;
                     var nameFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize + 2), FontStyle.Regular);
                     var metaFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 3), FontStyle.Regular);
 
                     // App Name Style
                     var lblName = new Label
                     {
-                        AutoSize = false,
+                        AutoSize = true,
                         Text = string.IsNullOrWhiteSpace(app.Name) ? "(no name)" : app.Name,
                         Font = nameFont,
                         ForeColor = Color.FromArgb(243, 244, 246),
                         Location = new Point(4, 3),
-                        Size = new Size(appCard.Width - 12, 18)
+                        Size = new Size(appCard.Width - 12, 18),
+                        AutoEllipsis = true
                     };
 
                     // PC Name Style
@@ -529,6 +811,28 @@ namespace AppRestarter
                         TextAlign = ContentAlignment.MiddleCenter,
                         Location = new Point(appCard.Width - 20, (appCard.Height / 2) - 2)
                     };
+
+                    // If we already know the last state of this app, keep that color when rebuilding the UI
+                    if (_lastAppRunStates.TryGetValue(app, out var lastStateForApp))
+                    {
+                        Color initialColor = StatusGray;
+                        switch (lastStateForApp)
+                        {
+                            case AppRunVisualState.Running:
+                                initialColor = StatusGreen;
+                                break;
+                            case AppRunVisualState.UnexpectedlyStopped:
+                                initialColor = StatusRed;
+                                break;
+                            case AppRunVisualState.AutoStartPending:
+                                initialColor = StatusOrange;
+                                break;
+                            case AppRunVisualState.Stopped:
+                                initialColor = StatusGray;
+                                break;
+                        }
+                        statusLabel.ForeColor = initialColor;
+                    }
 
                     appCard.Controls.Add(statusLabel);
                     appCard.Controls.Add(lblMeta2);
@@ -861,7 +1165,7 @@ namespace AppRestarter
                     MarkAppStoppedByUs(applicationDetails);
 
                 using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
-                client.SendTimeout = 3000;
+                client.SendTimeout = 6000;
                 using var stream = client.GetStream();
 
                 applicationDetails.StopRequested = stop;
