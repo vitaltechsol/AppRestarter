@@ -353,9 +353,6 @@ namespace AppRestarter
                                     {
                                         AddToLog($"Status probe received for {applicationDetails.Name} (no start/stop).");
                                     }
-
-                                    // Always respond with STATUS so callers can update UI
-                                    _statusManager?.SendAppStatusResponse(stream, applicationDetails);
                                     break;
 
                                 case RemoteActionType.PcRestart:

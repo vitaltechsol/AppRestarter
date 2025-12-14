@@ -36,11 +36,16 @@ namespace AppRestarter
         // Stable-keyed state (works across clones/deserialization/batch requests)
         private readonly Dictionary<string, Control> _appStatusIndicators = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AppRunVisualState> _lastAppRunStates = new(StringComparer.OrdinalIgnoreCase);
+        // Don't hammer offline PCs every tick
+        private readonly Dictionary<string, DateTime> _nextRemoteRetryUtc = new(StringComparer.OrdinalIgnoreCase);
 
-        // green at any time" tracking
+        // Limit simultaneous remote connects so you don’t create a connection storm
+        private readonly System.Threading.SemaphoreSlim _remoteConcurrency = new(initialCount: 4, maxCount: 4);
+
+        // NEW: "green at any time" tracking
         private readonly HashSet<string> _hasEverBeenRunning = new(StringComparer.OrdinalIgnoreCase);
 
-        // "stopped by us" tracking
+        // NEW: "stopped by us" tracking
         // If true and app is stopped, we show GRAY (not RED) until it runs again
         private readonly Dictionary<string, bool> _lastStopWasByUs = new(StringComparer.OrdinalIgnoreCase);
 
@@ -165,37 +170,91 @@ namespace AppRestarter
             if (_statusRefreshInProgress) return;
 
             _statusRefreshInProgress = true;
+
             var appsSnapshot = _getAppsSnapshot?.Invoke() ?? new List<ApplicationDetails>();
 
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 try
                 {
-                    var results = new List<(ApplicationDetails app, AppRunVisualState state)>();
-
-                    // Local
+                    // 1) Local updates first (never blocked by remote)
+                    var localResults = new List<(ApplicationDetails app, AppRunVisualState state)>();
                     foreach (var app in appsSnapshot.Where(a => string.IsNullOrWhiteSpace(a.ClientIP)))
                     {
                         bool isRunning = ProcessTerminator.IsRunning(app);
-                        results.Add((app, ComputeVisualState(app, isRunning)));
+                        localResults.Add((app, ComputeVisualState(app, isRunning)));
                     }
 
-                    // Remote grouped batch
-                    var groups = appsSnapshot
+                    SafeUiUpdate(localResults);
+
+                    // 2) Remote updates in parallel (per-IP)
+                    var remoteGroups = appsSnapshot
                         .Where(a => !string.IsNullOrWhiteSpace(a.ClientIP))
-                        .GroupBy(a => a.ClientIP);
+                        .GroupBy(a => a.ClientIP)
+                        .ToList();
 
-                    foreach (var g in groups)
-                        results.AddRange(GetRemoteBatchStatesForGroup(g.Key, g.ToList()));
+                    var tasks = new List<Task>();
 
-                    if (_uiInvoker != null && !_uiInvoker.IsDisposed && _uiInvoker.IsHandleCreated)
+                    foreach (var g in remoteGroups)
                     {
-                        _uiInvoker.BeginInvoke(new Action(() =>
+                        string ip = g.Key;
+
+                        // cooldown: skip retrying offline PCs too often
+                        if (_nextRemoteRetryUtc.TryGetValue(ip, out var nextUtc) && DateTime.UtcNow < nextUtc)
+                            continue;
+
+                        var appsForIp = g.ToList();
+
+                        tasks.Add(Task.Run(async () =>
                         {
-                            foreach (var r in results)
-                                UpdateIndicator(r.app, r.state);
+                            await _remoteConcurrency.WaitAsync().ConfigureAwait(false);
+                            try
+                            {
+                                // Per-IP hard timeout (connect+read+parse)
+                                var timeoutMs = 1500; // tune as you like
+                                var remoteTask = GetRemoteBatchStatesForGroupAsync(ip, appsForIp);
+
+                                var completed = await Task.WhenAny(remoteTask, Task.Delay(timeoutMs)).ConfigureAwait(false);
+                                if (completed != remoteTask)
+                                {
+                                    // timed out: mark offline briefly and don't block others
+                                    _nextRemoteRetryUtc[ip] = DateTime.UtcNow.AddSeconds(15);
+                                    _log($"Batch status <- {ip}: TIMEOUT (cooldown 15s)");
+
+                                    // You can either:
+                                    // A) do nothing (keep last indicator state), OR
+                                    // B) set gray/unknown here.
+                                    // I recommend A to avoid flicker.
+                                    return;
+                                }
+
+                                var results = await remoteTask.ConfigureAwait(false);
+
+                                // Success: allow immediate retries next tick
+                                _nextRemoteRetryUtc[ip] = DateTime.UtcNow;
+
+                                SafeUiUpdate(results);
+                            }
+                            catch (SocketException)
+                            {
+                                _nextRemoteRetryUtc[ip] = DateTime.UtcNow.AddSeconds(15);
+                                _log($"Batch status <- {ip}: offline (cooldown 15s)");
+                            }
+                            catch (Exception ex)
+                            {
+                                _nextRemoteRetryUtc[ip] = DateTime.UtcNow.AddSeconds(15);
+                                _log($"Batch status <- {ip}: {ex.Message} (cooldown 15s)");
+                            }
+                            finally
+                            {
+                                _remoteConcurrency.Release();
+                            }
                         }));
                     }
+
+                    // Don’t block the whole UI on remotes, but do allow the refresh flag to reset
+                    // after remote tasks finish (or you can set it earlier if you prefer).
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -203,6 +262,21 @@ namespace AppRestarter
                 }
             });
         }
+
+        private void SafeUiUpdate(List<(ApplicationDetails app, AppRunVisualState state)> results)
+        {
+            if (results == null || results.Count == 0) return;
+
+            if (_uiInvoker != null && !_uiInvoker.IsDisposed && _uiInvoker.IsHandleCreated)
+            {
+                _uiInvoker.BeginInvoke(new Action(() =>
+                {
+                    foreach (var r in results)
+                        UpdateIndicator(r.app, r.state);
+                }));
+            }
+        }
+
 
         // ----------------- NEW RED LOGIC -----------------
 
@@ -268,9 +342,18 @@ namespace AppRestarter
 
         // ----------------- REMOTE BATCH -----------------
 
-        private List<(ApplicationDetails app, AppRunVisualState state)> GetRemoteBatchStatesForGroup(
+        private async Task<List<(ApplicationDetails app, AppRunVisualState state)>> GetRemoteBatchStatesForGroupAsync(
             string clientIp,
             List<ApplicationDetails> appsOnThisPc)
+        {
+            // call existing sync function inside Task.Run
+            // (works fine because we already cap concurrency + have a hard timeout outside)
+            return await Task.Run(() => GetRemoteBatchStatesForGroup(clientIp, appsOnThisPc)).ConfigureAwait(false);
+        }
+
+        private List<(ApplicationDetails app, AppRunVisualState state)> GetRemoteBatchStatesForGroup(
+             string clientIp,
+             List<ApplicationDetails> appsOnThisPc)
         {
             var results = new List<(ApplicationDetails app, AppRunVisualState state)>();
 
@@ -345,7 +428,8 @@ namespace AppRestarter
                     return results;
                 }
 
-                var mapByPath = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+                // Map by RestartPath: (isRunning, color)
+                var mapByPath = new Dictionary<string, (bool isRunning, string color)>(StringComparer.OrdinalIgnoreCase);
 
                 for (int i = 1; i < lines.Length; i++)
                 {
@@ -354,22 +438,43 @@ namespace AppRestarter
 
                     string path = parts[2] ?? string.Empty;
                     bool isRunning = parts[3].Equals("Running", StringComparison.OrdinalIgnoreCase);
+                    string color = (parts[4] ?? "").Trim().ToLowerInvariant();
 
                     if (!string.IsNullOrWhiteSpace(path))
-                        mapByPath[path] = isRunning;
+                        mapByPath[path] = (isRunning, color);
                 }
 
                 foreach (var app in appsOnThisPc)
                 {
+                    // default fallback
                     bool isRunning = false;
+                    string color = "gray";
 
                     if (!string.IsNullOrWhiteSpace(app.RestartPath) &&
-                        mapByPath.TryGetValue(app.RestartPath, out var running))
+                        mapByPath.TryGetValue(app.RestartPath, out var v))
                     {
-                        isRunning = running;
+                        isRunning = v.isRunning;
+                        color = v.color;
                     }
 
-                    results.Add((app, ComputeVisualState(app, isRunning)));
+                    // Honor the remote-reported color for non-running states (orange/red/gray).
+                    // Green is implied by isRunning anyway.
+                    AppRunVisualState state;
+                    if (isRunning)
+                    {
+                        state = AppRunVisualState.Running;
+                    }
+                    else
+                    {
+                        state = color switch
+                        {
+                            "orange" => AppRunVisualState.AutoStartPending,
+                            "red" => AppRunVisualState.UnexpectedlyStopped,
+                            _ => AppRunVisualState.Stopped
+                        };
+                    }
+
+                    results.Add((app, state));
                 }
             }
             catch (Exception ex)
@@ -382,6 +487,7 @@ namespace AppRestarter
             return results;
         }
 
+
         // ----------------- TCP SERVER HELPERS -----------------
 
         public void HandleAppStatusBatchReceived(NetworkStream stream, AppStatusBatchRequest batchRequest)
@@ -391,11 +497,47 @@ namespace AppRestarter
 
             try
             {
+                // Snapshot of THIS machine's configured apps (important for remote orange)
+                var localApps = _getAppsSnapshot?.Invoke() ?? new List<ApplicationDetails>();
+
                 var lines = new List<string>();
-                foreach (var app in batchRequest.Apps)
+
+                foreach (var reqApp in batchRequest.Apps)
                 {
-                    string appStatus = BuildStatusLine(app, includeHeader: false, batchFormat: true);
-                    lines.Add(appStatus);
+                    // Try to find the real local app config so AutoStartDelayInSeconds is accurate
+                    ApplicationDetails appToUse = null;
+
+                    if (!string.IsNullOrWhiteSpace(reqApp?.RestartPath))
+                    {
+                        appToUse = localApps.FirstOrDefault(a =>
+                            !string.IsNullOrWhiteSpace(a.RestartPath) &&
+                            string.Equals(a.RestartPath, reqApp.RestartPath, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    if (appToUse == null && !string.IsNullOrWhiteSpace(reqApp?.ProcessName))
+                    {
+                        appToUse = localApps.FirstOrDefault(a =>
+                            !string.IsNullOrWhiteSpace(a.ProcessName) &&
+                            string.Equals(a.ProcessName, reqApp.ProcessName, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    if (appToUse == null && !string.IsNullOrWhiteSpace(reqApp?.Name))
+                    {
+                        appToUse = localApps.FirstOrDefault(a =>
+                            !string.IsNullOrWhiteSpace(a.Name) &&
+                            string.Equals(a.Name, reqApp.Name, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    // Fallback to request object if not found
+                    appToUse ??= reqApp;
+
+                    // Important: treat as local on this machine when computing key/state
+                    if (appToUse != null)
+                        appToUse.ClientIP = null;
+
+                    // Name|ProcessName|RestartPath|Running|Color  (Color includes orange)
+                    string line = BuildStatusLine(appToUse, includeHeader: false, batchFormat: true);
+                    lines.Add(line);
                 }
 
                 string payload = "STATUSBATCH\n" + string.Join("\n", lines);
@@ -409,23 +551,6 @@ namespace AppRestarter
             }
         }
 
-        public void SendAppStatusResponse(NetworkStream stream, ApplicationDetails app)
-        {
-            if (stream == null || app == null)
-                return;
-
-            try
-            {
-                string payload = BuildStatusLine(app, includeHeader: true, batchFormat: false);
-                byte[] bytes = Encoding.UTF8.GetBytes(payload);
-                stream.Write(bytes, 0, bytes.Length);
-                stream.Flush();
-            }
-            catch (Exception ex)
-            {
-                _log("Error sending app status over TCP: " + ex.Message);
-            }
-        }
 
         public string BuildStatusLine(ApplicationDetails app, bool includeHeader, bool batchFormat)
         {
