@@ -36,6 +36,9 @@ namespace AppRestarter
         private readonly string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
         private int _timeout = 8000;
 
+        // NEW: all app status logic moved out of Form1/AppView into this manager
+        private AppStatusManager _statusManager;
+
         public Form1()
         {
             InitializeComponent();
@@ -46,6 +49,16 @@ namespace AppRestarter
             LoadApplicationsFromXml();
             LoadPcsFromXml();
             MakeNavButtonsCircular();
+
+            // NEW: centralized app status logic (UI polling + TCP STATUS/STATUSBATCH responses)
+            _statusManager = new AppStatusManager(
+                uiInvoker: this,
+                log: AddToLog,
+                isAppsViewActive: () => _currentView == ViewMode.Apps,
+                getAppsSnapshot: () => _apps.ToList(),
+                getAppPort: () => _settings.AppPort,
+                getTimeoutMs: () => _timeout
+            );
 
             // Make group “cards” fluid width
             AppFlowLayoutPanel.Resize += AppFlowLayoutPanel_Resize;
@@ -81,6 +94,7 @@ namespace AppRestarter
             MakeCircular(btnNavPcs);
             MakeCircular(btnNavSettings);
         }
+
         private string getXMLConfigPath()
         {
             return Path.Combine(exeDir, "applications.xml");
@@ -134,7 +148,7 @@ namespace AppRestarter
 
         private void HighlightNavButton(Button active)
         {
-            var activeBg = Color.FromArgb(0, 172, 182);   // accent green
+            var activeBg = Color.FromArgb(0, 172, 182);   // accent
             var inactiveBg = Color.FromArgb(15, 23, 42);  // dark
             var activeFg = Color.FromArgb(15, 23, 42);
             var inactiveFg = Color.FromArgb(226, 232, 240);
@@ -224,7 +238,7 @@ namespace AppRestarter
             try
             {
                 server = new TcpListener(IPAddress.Any, _settings.AppPort);
-                server.Start(200);
+                server.Start();
 
                 var serverThread = new System.Threading.Thread(ServerThread)
                 {
@@ -246,89 +260,102 @@ namespace AppRestarter
             {
                 try
                 {
-                   
-                    using var client = server.AcceptTcpClient();
-                    using var stream = client.GetStream();
-
-                    client.ReceiveTimeout = _timeout;
-
-                    using var ms = new MemoryStream();
-                    byte[] buffer = new byte[8192];
-                    int bytesRead;
-
-                    try
+                    if (server.Pending())
                     {
-                        while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-                        {
-                            ms.Write(buffer, 0, bytesRead);
-                        }
-                    }
-                    catch (IOException ioEx)
-                    {
-                        AddToLog("IO reading client stream: " + ioEx.Message);
-                    }
+                        using var client = server.AcceptTcpClient();
+                        using var stream = client.GetStream();
 
-                    ms.Position = 0;
+                        client.ReceiveTimeout = _timeout;
 
-                    if (ms.Length == 0)
-                    {
-                        AddToLog("Received empty payload from client.");
-                        continue;
-                    }
+                        using var ms = new MemoryStream();
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
 
-                    try
-                    {
-                        ApplicationDetails applicationDetails = null;
-                        AppStatusBatchRequest batchRequest = null;
-
-                        // First try to deserialize as ApplicationDetails (existing protocol)
                         try
                         {
-                            var serializer = new DataContractSerializer(typeof(ApplicationDetails));
-                            applicationDetails = (ApplicationDetails)serializer.ReadObject(ms);
+                            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                            {
+                                ms.Write(buffer, 0, bytesRead);
+                            }
                         }
-                        catch (SerializationException serEx)
+                        catch (IOException ioEx)
                         {
-                            // If that fails, try AppStatusBatchRequest (new batch protocol)
-                            ms.Position = 0;
-                            try
-                            {
-                                var batchSerializer = new DataContractSerializer(typeof(AppStatusBatchRequest));
-                                batchRequest = (AppStatusBatchRequest)batchSerializer.ReadObject(ms);
-                            }
-                            catch (SerializationException)
-                            {
-                                string raw = Encoding.UTF8.GetString(ms.ToArray());
-                                AddToLog("Serialization error: " + serEx.Message);
-                                AddToLog("Raw payload (first 1000 chars): " +
-                                            (raw.Length > 1000 ? raw.Substring(0, 1000) + "..." : raw));
-                                continue;
-                            }
+                            AddToLog("IO reading client stream: " + ioEx.Message);
                         }
 
-                        if (batchRequest != null)
+                        ms.Position = 0;
+
+                        if (ms.Length == 0)
                         {
-                            AddToLog($"Received TCP Batch Status Request for {batchRequest.Apps?.Count ?? 0} app(s).");
-                            HandleAppStatusBatchReceived(stream, batchRequest);
+                            AddToLog("Received empty payload from client.");
+                            continue;
                         }
-                        else if (applicationDetails != null)
+
+                        try
                         {
+                            ApplicationDetails applicationDetails = null;
+                            AppStatusBatchRequest batchRequest = null;
+
+                            // Try ApplicationDetails first
+                            try
+                            {
+                                var serializer = new DataContractSerializer(typeof(ApplicationDetails));
+                                applicationDetails = (ApplicationDetails)serializer.ReadObject(ms);
+                            }
+                            catch (SerializationException serEx)
+                            {
+                                // If that fails, try AppStatusBatchRequest (STATUSBATCH)
+                                ms.Position = 0;
+                                try
+                                {
+                                    var batchSerializer = new DataContractSerializer(typeof(AppStatusBatchRequest));
+                                    batchRequest = (AppStatusBatchRequest)batchSerializer.ReadObject(ms);
+                                }
+                                catch (SerializationException)
+                                {
+                                    string raw = Encoding.UTF8.GetString(ms.ToArray());
+                                    AddToLog("Serialization error: " + serEx.Message);
+                                    AddToLog("Raw payload (first 1000 chars): " +
+                                             (raw.Length > 1000 ? raw.Substring(0, 1000) + "..." : raw));
+                                    continue;
+                                }
+                            }
+
+                            // Handle batch status request
+                            if (batchRequest != null)
+                            {
+                                AddToLog($"Received TCP Batch Status Request for {batchRequest.Apps?.Count ?? 0} app(s).");
+                                _statusManager?.HandleAppStatusBatchReceived(stream, batchRequest);
+                                continue;
+                            }
+
+                            if (applicationDetails == null)
+                                continue;
+
                             AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
-                                        $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
+                                     $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
 
                             AddToLog($"Received TCP Message: Action={applicationDetails.ActionType}, Name={applicationDetails.Name}");
 
                             switch (applicationDetails.ActionType)
                             {
                                 case RemoteActionType.AppControl:
-                                    _ = HandleAppButtonClickAsync(
-                                        applicationDetails,
-                                        applicationDetails.StartRequested,
-                                        applicationDetails.StopRequested,
-                                        skipConfirm: true);
+                                    // If this is a real control request, do it.
+                                    if (applicationDetails.StartRequested || applicationDetails.StopRequested)
+                                    {
+                                        _ = HandleAppButtonClickAsync(
+                                            applicationDetails,
+                                            applicationDetails.StartRequested,
+                                            applicationDetails.StopRequested,
+                                            skipConfirm: true);
+                                    }
+                                    else
+                                    {
+                                        AddToLog($"Status probe received for {applicationDetails.Name} (no start/stop).");
+                                    }
 
-                                    // send application status back to the TCP caller
-                                    SendAppStatusResponse(stream, applicationDetails);
+                                    // Always respond with STATUS so callers can update UI
+                                    _statusManager?.SendAppStatusResponse(stream, applicationDetails);
                                     break;
 
                                 case RemoteActionType.PcRestart:
@@ -338,14 +365,31 @@ namespace AppRestarter
                                 case RemoteActionType.PcShutdown:
                                     HandleRemotePcShutdown(applicationDetails);
                                     break;
+
+                                case RemoteActionType.AppStatusBatch:
+                                    // In case a client ever sends AppStatusBatch in an ApplicationDetails payload
+                                    // (older/alternate protocol), try to respond if StatusBatchApps is present.
+                                    if (applicationDetails.StatusBatchApps != null && applicationDetails.StatusBatchApps.Count > 0)
+                                    {
+                                        var br = new AppStatusBatchRequest
+                                        {
+                                            ActionType = RemoteActionType.AppStatusBatch,
+                                            Apps = applicationDetails.StatusBatchApps
+                                        };
+                                        _statusManager?.HandleAppStatusBatchReceived(stream, br);
+                                    }
+                                    break;
                             }
                         }
+                        catch (Exception ex)
+                        {
+                            AddToLog("Unexpected server processing error: " + ex.Message);
+                        }
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        AddToLog("Unexpected server processing error: " + ex.Message);
+                        System.Threading.Thread.Sleep(100);
                     }
-                    
                 }
                 catch (SocketException sockEx)
                 {
@@ -357,93 +401,6 @@ namespace AppRestarter
                     AddToLog("Server error: " + ex.Message);
                 }
             }
-        }
-
-        /// <summary>
-        /// Handles receiving a batched remote status request: computes status for all requested apps locally on this PC,
-        /// and sends back a STATUSBATCH response with one line per app.
-        /// </summary>
-        private void HandleAppStatusBatchReceived(NetworkStream stream, AppStatusBatchRequest batchRequest)
-        {
-            if (stream == null || batchRequest?.Apps == null)
-                return;
-
-            try
-            {
-                var lines = new List<string>();
-                foreach (var app in batchRequest.Apps)
-                {
-                    string appStatus = BuildStatusLine(app, includeHeader: false, batchFormat: true);
-                    AddToLog($"Local status for remote request: {appStatus}");
-
-                    lines.Add(appStatus);
-                }
-
-                string payload = "STATUSBATCH\n" + string.Join("\n", lines);
-                byte[] bytes = Encoding.UTF8.GetBytes(payload);
-                stream.Write(bytes, 0, bytes.Length);
-                stream.Flush();
-
-                AddToLog($"Sent batch status for {batchRequest.Apps.Count} app(s).");
-            }
-            catch (Exception ex)
-            {
-                AddToLog("Error sending batch app status over TCP: " + ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Sends a simple status payload for an application back to a TCP client.
-        /// Format:
-        ///   STATUS|Name|ProcessName|Running|Color
-        /// where Running is "Running" or "Stopped" and Color is "green", "red", or "orange".
-        /// </summary>
-        private void SendAppStatusResponse(NetworkStream stream, ApplicationDetails app)
-        {
-            if (stream == null || app == null)
-                return;
-
-            try
-            {
-                string payload = BuildStatusLine(app, includeHeader: true, batchFormat: false);
-                byte[] bytes = Encoding.UTF8.GetBytes(payload);
-
-                stream.Write(bytes, 0, bytes.Length);
-                stream.Flush();
-
-                AddToLog($"Sent status for {app.Name ?? ""}: {payload}");
-            }
-            catch (Exception ex)
-            {
-                AddToLog("Error sending app status over TCP: " + ex.Message);
-            }
-        }
-
-        private string BuildStatusLine(ApplicationDetails app, bool includeHeader, bool batchFormat)
-        {
-            bool isRunning = ProcessTerminator.IsRunning(app);
-
-            string color = "gray";
-            if (!isRunning && app.AutoStart && app.AutoStartDelayInSeconds > 0)
-                color = "orange";
-            else if (isRunning)
-                color = "green";
-
-            string runningText = isRunning ? "Running" : "Stopped";
-            string name = app.Name ?? string.Empty;
-            string proc = app.ProcessName ?? string.Empty;
-            string path = app.RestartPath ?? string.Empty;
-
-            if (batchFormat)
-            {
-                // Name|ProcessName|Running|Color
-                return $"{name}|{proc}|{path}|{runningText}|{color}";
-            }
-
-            // STATUS|Name|ProcessName|Running|Color
-            return includeHeader
-                ? $"STATUS|{name}|{proc}|{runningText}|{color}"
-                : $"{name}|{proc}|{runningText}|{color}";
         }
 
         // ------------------ SETTINGS / XML ------------------
@@ -475,7 +432,7 @@ namespace AppRestarter
                     _settings.StartMinimized = bool.TryParse(settingsElement.Element("StartMinimized")?.Value, out var sm) && sm;
                     _settings.Schema = settingsElement.Element("Schema")?.Value;
 
-                    // NEW: restore main form size if present
+                    // restore main form size if present
                     if (int.TryParse(settingsElement.Element("MainFormWidth")?.Value, out var w) && w > 0 &&
                         int.TryParse(settingsElement.Element("MainFormHeight")?.Value, out var h) && h > 0)
                     {
@@ -511,7 +468,6 @@ namespace AppRestarter
                         new XElement("AutoStartWithWindows", _settings.AutoStartWithWindows),
                         new XElement("StartMinimized", _settings.StartMinimized),
                         new XElement("Schema", _settings.Schema),
-                        // persist main form size
                         new XElement("MainFormWidth", this.ClientSize.Width),
                         new XElement("MainFormHeight", this.ClientSize.Height)
                     ),
@@ -660,9 +616,7 @@ namespace AppRestarter
 
             bool cliMin = Environment.GetCommandLineArgs()
                 .Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));
-
         }
-
 
         // ------------------ LIFECYCLE ------------------
 
@@ -671,7 +625,10 @@ namespace AppRestarter
             try
             {
                 SaveApplicationsToXml();
-                _appStatusTimer.Stop();
+
+                // NEW: stop centralized status polling timer
+                _statusManager?.Dispose();
+
                 _serverRunning = false;
                 server?.Stop();
                 _webServer?.Stop();
@@ -679,26 +636,6 @@ namespace AppRestarter
             catch
             {
             }
-        }
-    }
-}
-
-sealed class AppKeyComparer : IEqualityComparer<(string name, string proc)>
-{
-    public bool Equals((string name, string proc) x, (string name, string proc) y)
-    {
-        return string.Equals(x.name, y.name, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(x.proc, y.proc, StringComparison.OrdinalIgnoreCase);
-    }
-
-    public int GetHashCode((string name, string proc) obj)
-    {
-        unchecked
-        {
-            int hash = 17;
-            hash = hash * 23 + StringComparer.OrdinalIgnoreCase.GetHashCode(obj.name ?? string.Empty);
-            hash = hash * 23 + StringComparer.OrdinalIgnoreCase.GetHashCode(obj.proc ?? string.Empty);
-            return hash;
         }
     }
 }
