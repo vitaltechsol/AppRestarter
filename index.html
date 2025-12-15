@@ -130,11 +130,6 @@
 
         .main {
             flex: 1;
-            background: radial-gradient(circle at top left, rgba(55, 65, 81, 0.4), rgba(3, 7, 18, 0.95));
-            border-radius: 26px;
-            padding: 18px 22px 22px;
-            box-shadow: var(--shadow-soft);
-            border: 1px solid rgba(148, 163, 184, 0.18);
             display: flex;
             flex-direction: column;
             gap: 16px;
@@ -183,6 +178,35 @@
             background: #22c55e;
             box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.35);
         }
+
+        /* App status circle (from server) */
+        .status-circle {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #374151; /* gray default */
+            box-shadow: 0 0 0 4px rgba(55, 65, 81, 0.25);
+        }
+
+            .status-circle.green {
+                background: #22c55e;
+                box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+            }
+
+            .status-circle.red {
+                background: #e4080a;
+                box-shadow: 0 0 0 4px rgba(228, 8, 10, 0.20);
+            }
+
+            .status-circle.orange {
+                background: #ffcb5b;
+                box-shadow: 0 0 0 4px rgba(255, 203, 91, 0.20);
+            }
+
+            .status-circle.gray {
+                background: #374151;
+                box-shadow: 0 0 0 4px rgba(55, 65, 81, 0.25);
+            }
 
         /* TAB BAR (for view title) */
 
@@ -319,7 +343,8 @@
         .btn-small {
             padding: 4px 9px;
             font-size: 12px;
-            width:
+            min-width: 16px;
+            justify-content: center;
         }
 
         .btn-danger {
@@ -351,9 +376,10 @@
             font-size: 14px;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             width: 312px;
             justify-content: space-between;
+            position: relative;
         }
 
         .app-name {
@@ -369,8 +395,10 @@
 
         .app-actions {
             display: inline-flex;
-            gap: 6px;
+            gap: 8px;
             margin-left: 8px;
+            position: relative;
+            align-items: center;
         }
 
         /* PCS VIEW */
@@ -539,6 +567,8 @@
         const toastText = document.getElementById('toastText');
         const toastIcon = document.getElementById('toastIcon');
 
+        const ungroupedAppsName = 'Ungrouped';
+
         let toastTimeout = null;
         let pcsCache = []; // ✅ store PCs so Apps view can map IP -> PC name
 
@@ -589,6 +619,92 @@
             return text;
         }
 
+
+        // --- STATUS (web) ---
+        // Key format MUST match AppStatusManager.GetAppKey(): "<ip>|PATH|<path>" or "<ip>|PROC|<proc>" or "<ip>|NAME|<name>"
+        function getAppKey(app) {
+            const ip = (app.ClientIP || '').trim();
+            const path = (app.RestartPath || '').trim();
+            if (path) return `${ip}|PATH|${path}`;
+
+            const proc = (app.ProcessName || '').trim();
+            if (proc) return `${ip}|PROC|${proc}`;
+
+            const name = (app.Name || '').trim();
+            return `${ip}|NAME|${name}`;
+        }
+
+        function applyStatuses(statuses) {
+            const byKey = new Map();
+            for (const s of (statuses || [])) {
+                if (s && s.Key) byKey.set(s.Key, (s.Color || 'gray').toLowerCase());
+            }
+
+            document.querySelectorAll('.status-circle[data-app-key]').forEach(el => {
+                const key = el.dataset.appKey;
+                const color = byKey.get(key) || 'gray';
+                el.classList.remove('green', 'red', 'orange', 'gray');
+                el.classList.add(color);
+            });
+        }
+
+        async function fetchAndApplyStatusOnce() {
+            try {
+                const statuses = await apiGet('/app-status');
+                applyStatuses(statuses);
+            } catch (e) {
+                // ignore: websocket or polling will retry
+            }
+        }
+
+        let _statusPollTimer = null;
+        let _ws = null;
+
+        function startStatusPollingFallback() {
+            if (_statusPollTimer) return;
+            fetchAndApplyStatusOnce();
+            _statusPollTimer = setInterval(fetchAndApplyStatusOnce, 4000);
+        }
+
+        function stopStatusPollingFallback() {
+            if (!_statusPollTimer) return;
+            clearInterval(_statusPollTimer);
+            _statusPollTimer = null;
+        }
+
+        function tryWebSocketFirstForStatus() {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            const url = `${proto}://${location.host}/ws`;
+
+            try {
+                _ws = new WebSocket(url);
+
+                const failTimer = setTimeout(() => {
+                    if (!_ws || _ws.readyState !== WebSocket.OPEN) {
+                        try { _ws.close(); } catch { }
+                        startStatusPollingFallback();
+                    }
+                }, 1200);
+
+                _ws.onopen = () => {
+                    clearTimeout(failTimer);
+                    stopStatusPollingFallback();
+                };
+
+                _ws.onmessage = (ev) => {
+                    try {
+                        const statuses = JSON.parse(ev.data);
+                        applyStatuses(statuses);
+                    } catch { }
+                };
+
+                _ws.onclose = () => startStatusPollingFallback();
+                _ws.onerror = () => startStatusPollingFallback();
+            } catch {
+                startStatusPollingFallback();
+            }
+        }
+
         // --- APPS VIEW ---
 
         function renderApps(apps) {
@@ -599,11 +715,11 @@
                 return;
             }
 
-            // Group by GroupName (empty => "(Ungrouped)")
+            // Group by GroupName (empty => "Ungrouped Apps")
             const groupMap = new Map();
             for (const app of apps) {
                 const rawGroup = app.GroupName || '';
-                const key = rawGroup.trim().length > 0 ? rawGroup.trim() : '(Ungrouped)';
+                const key = rawGroup.trim().length > 0 ? rawGroup.trim() : ungroupedAppsName;
                 if (!groupMap.has(key)) groupMap.set(key, []);
                 groupMap.get(key).push(app);
             }
@@ -613,9 +729,9 @@
             groups.sort((a, b) => {
                 const nameA = a[0];
                 const nameB = b[0];
-                if (nameA === '(Ungrouped)' && nameB !== '(Ungrouped)') return -1;
-                if (nameB === '(Ungrouped)' && nameA !== '(Ungrouped)') return 1;
-                if (nameA === '(Ungrouped)' && nameB === '(Ungrouped)') return 0;
+                if (nameA === ungroupedAppsName && nameB !== ungroupedAppsName) return -1;
+                if (nameB === ungroupedAppsName && nameA !== ungroupedAppsName) return 1;
+                if (nameA === ungroupedAppsName && nameB === ungroupedAppsName) return 0;
                 return nameA.localeCompare(nameB);
             });
 
@@ -629,7 +745,7 @@
                 const left = document.createElement('div');
                 const groupTitle = document.createElement('div');
                 groupTitle.className = 'group-name';
-                groupTitle.textContent = groupName;
+                groupTitle.textContent = groupName + ' Apps';
                 left.appendChild(groupTitle);
 
                 const right = document.createElement('div');
@@ -637,7 +753,7 @@
                 restartGroupBtn.className = 'btn btn-accent btn-small';
                 restartGroupBtn.textContent = 'Restart group';
                 restartGroupBtn.addEventListener('click', async () => {
-                    if (groupName === '(Ungrouped)') {
+                    if (groupName === ungroupedAppsName) {
                         const confirmMsg = `Restart all ${items.length} ungrouped app(s)?`;
                         if (!confirm(confirmMsg)) return;
                         try {
@@ -695,13 +811,18 @@
                     textWrap.appendChild(nameEl);
                     textWrap.appendChild(metaEl);
 
+                    // Status circle (color comes from server)
+                    const statusDot = document.createElement('div');
+                    statusDot.className = 'status-circle gray';
+                    statusDot.dataset.appKey = getAppKey(app);
+
                     const actions = document.createElement('div');
                     actions.className = 'app-actions';
 
                     // Restart button
                     const restartBtn = document.createElement('button');
                     restartBtn.className = 'btn btn-ghost btn-small';
-                    restartBtn.textContent = 'Restart';
+                    restartBtn.textContent = '↻';
                     restartBtn.addEventListener('click', async () => {
                         // Skip confirm if NoWarn is true
                         if (!app.NoWarn) {
@@ -720,7 +841,7 @@
                     // Stop button
                     const stopBtn = document.createElement('button');
                     stopBtn.className = 'btn btn-ghost btn-small';
-                    stopBtn.textContent = 'Stop';
+                    stopBtn.textContent = '■';
                     stopBtn.addEventListener('click', async () => {
                         if (!app.NoWarn) {
                             const confirmMsg = `Stop "${app.Name}"?`;
@@ -737,10 +858,12 @@
                     });
 
                     actions.appendChild(restartBtn);
-                    actions.appendChild(stopBtn);;
+                    actions.appendChild(stopBtn);
+                    actions.appendChild(statusDot);
 
                     pill.appendChild(textWrap);
                     pill.appendChild(actions);
+                  
                     appListEl.appendChild(pill);
                 }
 
@@ -913,6 +1036,9 @@ Proceed with shutdown?`;
         (async function init() {
             setView('apps');
             await Promise.allSettled([loadPcs(), loadApps()]);
+            // Status circles: websocket first (realtime), poll fallback every 4s
+            tryWebSocketFirstForStatus();
+            await fetchAndApplyStatusOnce();
         })();
     </script>
 

@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -25,6 +25,7 @@ namespace AppRestarter
         public static readonly Color StatusGreen = Color.FromArgb(34, 197, 94);
         public static readonly Color StatusRed = Color.FromArgb(228, 8, 10);
         public static readonly Color StatusOrange = Color.FromArgb(255, 203, 91);
+        public bool VerboseLogging { get; set; } = false;
 
         private readonly Control _uiInvoker;
         private readonly Action<string> _log;
@@ -39,7 +40,7 @@ namespace AppRestarter
         // Don't hammer offline PCs every tick
         private readonly Dictionary<string, DateTime> _nextRemoteRetryUtc = new(StringComparer.OrdinalIgnoreCase);
 
-        // Limit simultaneous remote connects so you don’t create a connection storm
+        // Limit simultaneous remote connects so you don't create a connection storm
         private readonly System.Threading.SemaphoreSlim _remoteConcurrency = new(initialCount: 4, maxCount: 4);
 
         // NEW: "green at any time" tracking
@@ -164,9 +165,11 @@ namespace AppRestarter
 
         // ----------------- REFRESH -----------------
 
-        public void Refresh()
+        public void Refresh() => Refresh(force: false);
+
+        public void Refresh(bool force)
         {
-            if (!_isAppsViewActive()) return;
+            if (!force && !_isAppsViewActive()) return;
             if (_statusRefreshInProgress) return;
 
             _statusRefreshInProgress = true;
@@ -219,8 +222,9 @@ namespace AppRestarter
                                 {
                                     // timed out: mark offline briefly and don't block others
                                     _nextRemoteRetryUtc[ip] = DateTime.UtcNow.AddSeconds(15);
-                                    _log($"Batch status <- {ip}: TIMEOUT (cooldown 15s)");
-
+                                    if (VerboseLogging)
+                                        _log($"Batch status <- {ip}: TIMEOUT (cooldown 15s)");
+                                    
                                     // You can either:
                                     // A) do nothing (keep last indicator state), OR
                                     // B) set gray/unknown here.
@@ -238,12 +242,14 @@ namespace AppRestarter
                             catch (SocketException)
                             {
                                 _nextRemoteRetryUtc[ip] = DateTime.UtcNow.AddSeconds(15);
-                                _log($"Batch status <- {ip}: offline (cooldown 15s)");
+                                if(VerboseLogging)
+                                    _log($"Batch status <- {ip}: offline (cooldown 15s)");
                             }
                             catch (Exception ex)
                             {
                                 _nextRemoteRetryUtc[ip] = DateTime.UtcNow.AddSeconds(15);
-                                _log($"Batch status <- {ip}: {ex.Message} (cooldown 15s)");
+                                if (VerboseLogging)
+                                    _log($"Batch status <- {ip}: {ex.Message} (cooldown 15s)");
                             }
                             finally
                             {
@@ -252,7 +258,8 @@ namespace AppRestarter
                         }));
                     }
 
-                    // Don’t block the whole UI on remotes, but do allow the refresh flag to reset
+
+                    // Don't block the whole UI on remotes, but do allow the refresh flag to reset
                     // after remote tasks finish (or you can set it earlier if you prefer).
                     await Task.WhenAll(tasks).ConfigureAwait(false);
                 }
@@ -362,7 +369,8 @@ namespace AppRestarter
 
             try
             {
-                _log($"Batch status -> {clientIp}: {appsOnThisPc.Count} app(s)");
+                if (VerboseLogging)
+                    _log($"Batch status -> {clientIp}: {appsOnThisPc.Count} app(s)");
 
                 var batchRequest = new AppStatusBatchRequest
                 {
@@ -407,7 +415,8 @@ namespace AppRestarter
                 string reply = Encoding.UTF8.GetString(ms.ToArray());
                 if (string.IsNullOrWhiteSpace(reply))
                 {
-                    _log($"Batch status <- {clientIp}: EMPTY reply");
+                    if (VerboseLogging)
+                        _log($"Batch status <- {clientIp}: EMPTY reply");
                     foreach (var app in appsOnThisPc)
                         results.Add((app, ComputeVisualState(app, isRunning: false)));
                     return results;
@@ -417,12 +426,13 @@ namespace AppRestarter
                     .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(l => l.Trim())
                     .ToArray();
-
-                _log($"Batch status <- {clientIp}: bytes={ms.Length}, lines={lines.Length}, head='{(lines.Length > 0 ? lines[0] : "")}'");
+                if (VerboseLogging)
+                    _log($"Batch status <- {clientIp}: bytes={ms.Length}, lines={lines.Length}, head='{(lines.Length > 0 ? lines[0] : "")}'");
 
                 if (lines.Length == 0 || !lines[0].Equals("STATUSBATCH", StringComparison.OrdinalIgnoreCase))
                 {
-                    _log($"Batch status <- {clientIp}: INVALID header");
+                    if (VerboseLogging)
+                        _log($"Batch status <- {clientIp}: INVALID header");
                     foreach (var app in appsOnThisPc)
                         results.Add((app, ComputeVisualState(app, isRunning: false)));
                     return results;
@@ -577,5 +587,77 @@ namespace AppRestarter
                 ? $"STATUS|{name}|{proc}|{runningText}|{color}"
                 : $"{name}|{proc}|{runningText}|{color}";
         }
+
+        // ---------------------------
+        // Web status snapshot helpers
+        // ---------------------------
+        public sealed class AppWebStatus
+        {
+            public string Key { get; set; }
+            public string Name { get; set; }
+            public string ProcessName { get; set; }
+            public string RestartPath { get; set; }
+            public string ClientIP { get; set; }
+            public string RunningText { get; set; } // "Running" / "Stopped"
+            public string Color { get; set; }       // "green" / "red" / "orange" / "gray"
+        }
+
+        /// <summary>
+        /// Builds a JSON-friendly status snapshot for the web app using the SAME color logic as WinForms.
+        /// </summary>
+        public List<AppWebStatus> BuildWebStatusSnapshot(IEnumerable<ApplicationDetails> apps)
+        {
+            var list = new List<AppWebStatus>();
+            if (apps == null) return list;
+
+            // Ensure remote statuses get refreshed even when the Apps view isn't active.
+            try
+            {
+                if (apps.Any(a => !string.IsNullOrWhiteSpace(a?.ClientIP)))
+                    Refresh(force: true);
+            }
+            catch { }
+
+            foreach (var app in apps)
+            {
+                bool isRunning = ProcessTerminator.IsRunning(app);
+                // Prefer last-known state (includes remote batch results) when available.
+                if (!TryGetLastState(app, out var state))
+                {
+                    var isRemote = !string.IsNullOrWhiteSpace(app?.ClientIP);
+                    if (!isRemote)
+                    {
+                        state = ComputeVisualState(app, isRunning);
+                    }
+                    else
+                    {
+                        // Remote state not known yet: default to computed stopped/gray.
+                        state = ComputeVisualState(app, isRunning: false);
+                    }
+                }
+
+                string color = state switch
+                {
+                    AppRunVisualState.Running => "green",
+                    AppRunVisualState.UnexpectedlyStopped => "red",
+                    AppRunVisualState.AutoStartPending => "orange",
+                    _ => "gray"
+                };
+
+                list.Add(new AppWebStatus
+                {
+                    Key = GetAppKey(app),
+                    Name = app?.Name ?? string.Empty,
+                    ProcessName = app?.ProcessName ?? string.Empty,
+                    RestartPath = app?.RestartPath ?? string.Empty,
+                    ClientIP = app?.ClientIP ?? string.Empty,
+                    RunningText = isRunning ? "Running" : "Stopped",
+                    Color = color
+                });
+            }
+
+            return list;
+        }
+
     }
 }

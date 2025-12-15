@@ -236,9 +236,6 @@ namespace AppRestarter
             _statusManager.Refresh();
         }
 
-
-
-
         private void RenderGroupsAndApps()
         {
             _statusManager.ClearIndicators();
@@ -254,7 +251,7 @@ namespace AppRestarter
 
             var orderedGroupNames = new List<string>();
             if (ungroupedApps.Any())
-                orderedGroupNames.Add("(Ungrouped)");
+                orderedGroupNames.Add("Ungrouped Apps");
             orderedGroupNames.AddRange(namedGroups);
 
             foreach (var groupName in orderedGroupNames)
@@ -262,7 +259,7 @@ namespace AppRestarter
                 List<ApplicationDetails> appsInGroup;
                 string headerTitle;
 
-                if (groupName == "(Ungrouped)")
+                if (groupName == "Ungrouped Apps")
                 {
                     appsInGroup = ungroupedApps;
                     headerTitle = "Ungrouped";
@@ -317,7 +314,7 @@ namespace AppRestarter
 
                 btnRestartGroup.Click += async (s, e) =>
                 {
-                    var confirmMsg = groupName == "(Ungrouped)"
+                    var confirmMsg = groupName == "Ungrouped Apps"
                         ? $"Restart all {appsInGroup.Count} ungrouped app(s)?"
                         : $"Restart all {appsInGroup.Count} app(s) in group \"{groupName}\"?";
                     var dr = MessageBox.Show(confirmMsg, "Restart group",
@@ -338,7 +335,7 @@ namespace AppRestarter
                     var menu = new ContextMenuStrip();
                     menu.Items.Add("Stop group").Click += async (ms, me) =>
                     {
-                        var confirmMsg = groupName == "(Ungrouped)"
+                        var confirmMsg = groupName == "Ungrouped Apps"
                             ? $"Stop all {appsInGroup.Count} ungrouped app(s)?"
                             : $"Stop all {appsInGroup.Count} app(s) in group \"{groupName}\"?";
                         var dr = MessageBox.Show(confirmMsg, "Stop group",
@@ -379,7 +376,7 @@ namespace AppRestarter
                     int index = _apps.IndexOf(app);
                     if (index < 0) continue;
 
-                    if (groupName == "(Ungrouped)")
+                    if (groupName == "Ungrouped Apps")
                     {
                         if (!string.IsNullOrWhiteSpace(app.GroupName))
                             continue;
