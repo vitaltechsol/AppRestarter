@@ -371,7 +371,8 @@ namespace AppRestarter
                 innerFlow.Size = new Size(innerWidth, 0);
                 innerFlow.Location = new Point(padLeft, headerPanel.Bottom + 4);
 
-                foreach (var app in appsInGroup.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+                // foreach (var app in appsInGroup.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+                foreach (var app in appsInGroup)
                 {
                     int index = _apps.IndexOf(app);
                     if (index < 0) continue;
@@ -685,7 +686,7 @@ namespace AppRestarter
 
                 if (stop && !start)
                 {
-                    AddToLog($"Stop requested for {app.Name}; killed {stopped} instances.");
+                    AddToLog($"Stopped {stopped} instance(s).");
                     return;
                 }
 

@@ -415,6 +415,47 @@ namespace AppRestarter
                     return;
                 }
 
+                // ---- APPS: stop group ----
+                if (request.HttpMethod == "POST" && path == "/stop-group")
+                {
+                    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+                    var body = await reader.ReadToEndAsync().ConfigureAwait(false);
+                    var groupRequest = JsonSerializer.Deserialize<RestartGroupRequest>(body);
+
+                    var groupName = groupRequest?.GroupName;
+                    if (string.IsNullOrWhiteSpace(groupName))
+                    {
+                        response.StatusCode = 400;
+                        var respBuf = Encoding.UTF8.GetBytes("Missing GroupName");
+                        response.ContentLength64 = respBuf.Length;
+                        await response.OutputStream.WriteAsync(respBuf, 0, respBuf.Length).ConfigureAwait(false);
+                        return;
+                    }
+
+                    var appsInGroup = _apps
+                        .Where(a => string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    if (!appsInGroup.Any())
+                    {
+                        response.StatusCode = 404;
+                        var respBuf = Encoding.UTF8.GetBytes("No apps found in group");
+                        response.ContentLength64 = respBuf.Length;
+                        await response.OutputStream.WriteAsync(respBuf, 0, respBuf.Length).ConfigureAwait(false);
+                        return;
+                    }
+
+                    foreach (var app in appsInGroup)
+                        StopRequested?.Invoke(this, app);
+
+                    response.StatusCode = 200;
+                    var successMsg = $"Stop triggered for {appsInGroup.Count} app(s) in group '{groupName}'.";
+                    var successBuf = Encoding.UTF8.GetBytes(successMsg);
+                    response.ContentLength64 = successBuf.Length;
+                    await response.OutputStream.WriteAsync(successBuf, 0, successBuf.Length).ConfigureAwait(false);
+                    return;
+                }
+
                 // ---- PCS: list ----
                 if (request.HttpMethod == "GET" && path == "/pcs")
                 {

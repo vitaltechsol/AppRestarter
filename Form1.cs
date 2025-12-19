@@ -36,6 +36,7 @@ namespace AppRestarter
         private AppSettings _settings = new();
         private readonly string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
         private int _timeout = 8000;
+        private bool VerboseLogging { get; set; } = false;
 
         // NEW: all app status logic moved out of Form1/AppView into this manager
         private AppStatusManager _statusManager;
@@ -223,7 +224,6 @@ namespace AppRestarter
                 };
 
                 _webServer.Start(_settings.WebPort);
-                AddToLog($"Web server started on port: {_settings.WebPort}");
             }
             catch (Exception ex)
             {
@@ -329,18 +329,21 @@ namespace AppRestarter
                             // Handle batch status request
                             if (batchRequest != null)
                             {
-                                AddToLog($"Received TCP Batch Status Request for {batchRequest.Apps?.Count ?? 0} app(s).");
+                                if (VerboseLogging)
+                                    AddToLog($"Received TCP Batch Status Request for {batchRequest.Apps?.Count ?? 0} app(s).");
                                 _statusManager?.HandleAppStatusBatchReceived(stream, batchRequest);
                                 continue;
                             }
 
                             if (applicationDetails == null)
                                 continue;
-
-                            AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
+                            if (VerboseLogging)
+                            {
+                                AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
                                      $"\nRestartPath: {applicationDetails.RestartPath}\nClientIP: {applicationDetails.ClientIP}");
 
-                            AddToLog($"Received TCP Message: Action={applicationDetails.ActionType}, Name={applicationDetails.Name}");
+                                AddToLog($"Received TCP Message: Action={applicationDetails.ActionType}, Name={applicationDetails.Name}");
+                            }
 
                             switch (applicationDetails.ActionType)
                             {
@@ -356,7 +359,8 @@ namespace AppRestarter
                                     }
                                     else
                                     {
-                                        AddToLog($"Status probe received for {applicationDetails.Name} (no start/stop).");
+                                        if (VerboseLogging)
+                                            AddToLog($"Status probe received for {applicationDetails.Name} (no start/stop).");
                                     }
                                     break;
 

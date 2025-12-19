@@ -778,6 +778,38 @@
                     }
                 });
 
+                // Stop group button (same behavior pattern as Restart group)
+                const stopGroupBtn = document.createElement('button');
+                stopGroupBtn.className = 'btn btn-danger btn-small';
+                stopGroupBtn.textContent = 'Stop group';
+                stopGroupBtn.style.marginRight = '8px';
+                stopGroupBtn.addEventListener('click', async () => {
+                    if (groupName === ungroupedAppsName) {
+                        const confirmMsg = `Stop all ${items.length} ungrouped app(s)?`;
+                        if (!confirm(confirmMsg)) return;
+                        try {
+                            for (const app of items) {
+                                await apiPost('/stop', { Name: app.Name });
+                            }
+                            showToast(`Stopping ${items.length} app(s).`);
+                        } catch (err) {
+                            console.error(err);
+                            showToast('Failed to stop apps.', true);
+                        }
+                    } else {
+                        const confirmMsg = `Stop all ${items.length} app(s) in group "${groupName}"?`;
+                        if (!confirm(confirmMsg)) return;
+                        try {
+                            const msg = await apiPost('/stop-group', { GroupName: groupName });
+                            showToast(msg);
+                        } catch (err) {
+                            console.error(err);
+                            showToast('Failed to stop group.', true);
+                        }
+                    }
+                });
+
+                right.appendChild(stopGroupBtn);
                 right.appendChild(restartGroupBtn);
                 header.appendChild(left);
                 header.appendChild(right);
