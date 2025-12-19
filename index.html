@@ -49,7 +49,7 @@
             max-width: 1280px;
             width: 100%;
             padding: 20px;
-            gap: 20px;
+            gap: 10px;
         }
 
         /* LEFT NAV */
@@ -363,9 +363,23 @@
             }
 
         .app-list {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr)); /* default: 2-up */
             gap: 8px;
+        }
+
+        /* 3-up on iPad landscape (1024px) and larger */
+        @media (min-width: 1024px) {
+            .app-list {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        /* 1-up on smaller mobile sizes */
+        @media (max-width: 600px) {
+            .app-list {
+                grid-template-columns: minmax(0, 1fr);
+            }
         }
 
         .app-pill {
@@ -377,7 +391,8 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            width: 312px;
+            width: 100%;
+            min-width: 0; /* prevent overflow in grid */
             justify-content: space-between;
             position: relative;
         }
@@ -486,7 +501,8 @@
 
         @media (max-width: 768px) {
             .shell {
-                padding: 10px;
+                padding: 2px;
+                gap: 2px;
             }
 
             .nav {
@@ -494,7 +510,7 @@
             }
 
             .main {
-                padding: 14px 14px 16px;
+                padding: 12px 0px;
             }
 
             .title-block h1 {
@@ -895,7 +911,7 @@
 
                     pill.appendChild(textWrap);
                     pill.appendChild(actions);
-                  
+
                     appListEl.appendChild(pill);
                 }
 
