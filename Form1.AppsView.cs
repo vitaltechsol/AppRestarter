@@ -466,8 +466,13 @@ namespace AppRestarter
                     // Context menu for stop/edit
                     var ctxMenu = new ContextMenuStrip();
                     ctxMenu.Items.Add("Stop").Click += (ms, me) => StopApp(index);
+
                     ctxMenu.Items.Add(new ToolStripSeparator());
                     ctxMenu.Items.Add("Edit").Click += (ms, me) => EditApp(index);
+                    // Move up to sort
+                    ctxMenu.Items.Add("Move up").Click += (ms, me) => MoveAppUp(index);
+                    ctxMenu.Items.Add("Move down").Click += (ms, me) => MoveAppDown(index);
+
 
                     appCard.ContextMenuStrip = ctxMenu;
                     lblName.ContextMenuStrip = ctxMenu;
@@ -524,6 +529,52 @@ namespace AppRestarter
 
             _statusManager.Refresh();
         }
+
+        // MOVE UP 
+        private void MoveAppUp(int index)
+        {
+            try
+            {
+                if (index <= 0 || index >= _apps.Count)
+                    return;
+
+                // swap in-memory list (SaveApplicationsToXml will persist this order to XML)
+                var tmp = _apps[index - 1];
+                _apps[index - 1] = _apps[index];
+                _apps[index] = tmp;
+
+                SaveApplicationsToXml();
+                UpdateAppList();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error moving app up: " + ex.Message);
+            }
+        }
+
+
+        // MOVE UDownP 
+        private void MoveAppDown(int index)
+        {
+            try
+            {
+                if (index <= 0 || index >= _apps.Count)
+                    return;
+
+                // swap in-memory list (SaveApplicationsToXml will persist this order to XML)
+                var tmp = _apps[index + 1];
+                _apps[index + 1] = _apps[index];
+                _apps[index] = tmp;
+
+                SaveApplicationsToXml();
+                UpdateAppList();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error moving app up: " + ex.Message);
+            }
+        }
+
 
         // ---------- APPS: EDIT / STOP / AUTO-START / GROUPS ----------
 
@@ -635,13 +686,13 @@ namespace AppRestarter
                 actionName = "stop";
                 _statusManager.MarkStopInitiatedByUs(app);
             }
-                
+
             else if (!stop && start)
             {
                 actionName = "start";
                 _statusManager.MarkStartInitiatedByUs(app);
             }
-            
+
             if (!skipConfirm && !app.NoWarn)
             {
                 if (InvokeRequired)
