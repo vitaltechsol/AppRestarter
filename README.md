@@ -202,9 +202,9 @@ AppRestarter supports application grouping for batch operations.
 
 AppRestarter shows the status of each application:
 - **Green** – aplication is running.
-- **Red** – application was started but now is not running.
+- **Red** – application was started, but now it is not running.
 - **Yellow** – application is starting with a delay.
-- **Gray** – applications has not been started or remote PC is offline.
+- **Gray** – application has not been started, or remote PC is offline.
 
 Status updates every 3 seconds
 
