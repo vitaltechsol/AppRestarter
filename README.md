@@ -1,6 +1,6 @@
 ﻿# AppRestarter
 
-AppRestarter is a Windows Forms application designed to allow you to remotely restart applications on other PCs via a client/server model. 
+AppRestarter is a Windows Forms application designed to allow you to remotely restart and monitor applications on other PCs via a client/server model. 
 It also allows you to shut down or restart remote PCs.
 
 AppRestarter gracefully stops the target application before restarting it, ensuring a clean restart process.  
@@ -13,9 +13,11 @@ The application includes **Apps** and **PCs** navigation tabs, allowing you to m
 ## Features
 
 * Start or stop applications remotely or locally.
-* Restart applications using a web browser (Web UI).
+* Monitor the status of running applications (on local and remote PCs).
+* Delayed auto-start of applications on initial launch.
 * Create groups to start/stop groups of applications.
 * Add remote PCs and perform **Shutdown** and **Restart** commands.
+* Web browser (Web UI) enabled.
 * Keep logs of actions performed.
 * Lightweight and easy to deploy.
 * Supports optional auto-start with Windows.
@@ -182,6 +184,29 @@ AppRestarter supports application grouping for batch operations.
 - Clicking a group button restarts **all apps in that group**  
 - Right-click → **Stop** stops them all  
 - Groups also appear in the **web interface**
+
+---
+
+## Restart/Stop Applications
+
+- To restart an application, simply click its button.
+- To stop an application, right-click and select **Stop**.
+- To restart a group, click the group button.
+- To stop a group, right-click the group button and select **Stop**.
+- To add or edit applications, right-click and select **edit**
+- To change the order of the applications,  right-click and select **Move up/down**
+
+---
+
+## Application Status
+
+AppRestarter shows the status of each application:
+- **Green** – aplication is running.
+- **Red** – application was started but now is not running.
+- **Yellow** – application is starting with a delay.
+- **Gray** – applications has not been started or remote PC is offline.
+
+Status updates every 3 seconds
 
 ---
 
