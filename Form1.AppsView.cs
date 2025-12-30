@@ -553,12 +553,12 @@ namespace AppRestarter
         }
 
 
-        // MOVE UDownP 
+        // MOVE Down 
         private void MoveAppDown(int index)
         {
             try
             {
-                if (index <= 0 || index >= _apps.Count)
+                if (index < 0 || index == _apps.Count -1)
                     return;
 
                 // swap in-memory list (SaveApplicationsToXml will persist this order to XML)
