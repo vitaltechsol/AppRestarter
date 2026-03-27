@@ -59,7 +59,7 @@ Allow inbound TCP on AppRestarter's port (default **2024**):
 1. Open *Windows Defender Firewall with Advanced Security*
 2. Select **Inbound Rules → New Rule**
 3. Choose **Port**, then *Next*
-4. Select **TCP**, enter **2024**
+4. Select **TCP**, enter **2024, 8090**
 5. Allow the connection
 6. Name it **AppRestarter**
 
