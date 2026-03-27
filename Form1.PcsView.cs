@@ -186,10 +186,22 @@ namespace AppRestarter
                 ctxMenuPc.Items.Add(new ToolStripSeparator());
                 ctxMenuPc.Items.Add("Edit").Click += (ms, me) =>
                 {
+                    string oldIp = pc.IP;
                     using var dlg = new AddPcForm(pc);
                     if (dlg.ShowDialog(this) == DialogResult.OK)
                     {
                         _pcs[index] = dlg.PcData;
+                        // Update all apps with matching ClientIP
+                        if (!string.IsNullOrWhiteSpace(oldIp) && oldIp != dlg.PcData.IP)
+                        {
+                            foreach (var app in _apps)
+                            {
+                                if (string.Equals(app.ClientIP, oldIp, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    app.ClientIP = dlg.PcData.IP;
+                                }
+                            }
+                        }
                         SaveApplicationsToXml();
                         RenderPcButtons();
                     }
