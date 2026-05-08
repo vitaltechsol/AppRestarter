@@ -760,7 +760,7 @@ namespace AppRestarter
                     {
                         FileName = app.RestartPath,
                         WorkingDirectory = System.IO.Path.GetDirectoryName(app.RestartPath),
-                        UseShellExecute = false,
+                        UseShellExecute = true,
                     };
 
                     if (app.StartMinimized)

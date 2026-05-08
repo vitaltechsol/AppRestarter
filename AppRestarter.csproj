@@ -5,6 +5,7 @@
     <TargetFramework>net8.0-windows8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>DpiUnawareGdiScaled</ApplicationHighDpiMode>
     <ImplicitUsings>enable</ImplicitUsings>
     <BaseOutputPath></BaseOutputPath>
     <ApplicationIcon>apprestarter.ico</ApplicationIcon>
