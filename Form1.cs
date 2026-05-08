@@ -567,7 +567,8 @@ namespace AppRestarter
                     index: -1,
                     getGroups: () => new List<string>(_groups),
                     manageGroups: ManageGroups,
-                    pcs: new List<PcInfo>(_pcs)
+                    pcs: new List<PcInfo>(_pcs),
+                    webPort: _settings.WebPort
                 );
                 if (addForm.ShowDialog() == DialogResult.OK)
                 {

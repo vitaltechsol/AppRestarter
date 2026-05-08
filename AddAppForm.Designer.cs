@@ -40,22 +40,22 @@
             // 
             // lblName
             // 
-            lblName.Location = new Point(15, 15);
+            lblName.Location = new Point(12, 48);
             lblName.Name = "lblName";
-            lblName.Size = new Size(120, 20);
+            lblName.Size = new Size(120, 22);
             lblName.TabIndex = 2;
             lblName.Text = "Application Name:";
             // 
             // txtName
             // 
-            txtName.Location = new Point(148, 12);
+            txtName.Location = new Point(145, 46);
             txtName.Name = "txtName";
             txtName.Size = new Size(250, 23);
             txtName.TabIndex = 3;
             // 
             // lblProcess
             // 
-            lblProcess.Location = new Point(15, 84);
+            lblProcess.Location = new Point(15, 124);
             lblProcess.Name = "lblProcess";
             lblProcess.Size = new Size(120, 20);
             lblProcess.TabIndex = 4;
@@ -63,47 +63,47 @@
             // 
             // txtProcess
             // 
-            txtProcess.Location = new Point(148, 81);
+            txtProcess.Location = new Point(145, 120);
             txtProcess.Name = "txtProcess";
             txtProcess.Size = new Size(250, 23);
             txtProcess.TabIndex = 5;
             // 
             // lblPath
             // 
-            lblPath.Location = new Point(15, 47);
+            lblPath.Location = new Point(12, 86);
             lblPath.Name = "lblPath";
-            lblPath.Size = new Size(120, 18);
+            lblPath.Size = new Size(120, 20);
             lblPath.TabIndex = 6;
-            lblPath.Text = "Restart Path:";
+            lblPath.Text = "Application Path";
             // 
             // txtPath
             // 
-            txtPath.Location = new Point(148, 44);
+            txtPath.Location = new Point(145, 83);
             txtPath.Name = "txtPath";
             txtPath.Size = new Size(210, 23);
             txtPath.TabIndex = 7;
             // 
             // btnBrowse
             // 
-            btnBrowse.Location = new Point(368, 43);
+            btnBrowse.Location = new Point(366, 82);
             btnBrowse.Name = "btnBrowse";
             btnBrowse.Size = new Size(70, 23);
             btnBrowse.TabIndex = 8;
-            btnBrowse.Text = "Browse...";
+            btnBrowse.Text = "Select App";
             btnBrowse.Click += btnBrowse_Click;
             // 
             // lblClientIP
             // 
-            lblClientIP.Location = new Point(15, 120);
+            lblClientIP.Location = new Point(12, 12);
             lblClientIP.Name = "lblClientIP";
             lblClientIP.Size = new Size(120, 20);
             lblClientIP.TabIndex = 9;
-            lblClientIP.Text = "Client IP (optional):";
+            lblClientIP.Text = "Select PC:";
             // 
             // cboClientPc
             // 
             cboClientPc.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboClientPc.Location = new Point(148, 117);
+            cboClientPc.Location = new Point(145, 9);
             cboClientPc.Name = "cboClientPc";
             cboClientPc.Size = new Size(250, 23);
             cboClientPc.TabIndex = 10;
@@ -188,7 +188,7 @@
             // cmbGroup
             // 
             cmbGroup.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbGroup.Location = new Point(148, 237);
+            cmbGroup.Location = new Point(145, 237);
             cmbGroup.Name = "cmbGroup";
             cmbGroup.Size = new Size(195, 23);
             cmbGroup.TabIndex = 1;

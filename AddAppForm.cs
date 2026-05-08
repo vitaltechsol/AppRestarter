@@ -13,6 +13,7 @@ namespace AppRestarter
         private readonly Func<List<string>> _getGroups;
         private readonly Action _manageGroups;
         private readonly List<PcInfo> _pcs;
+        private readonly int _webPort;
 
         // Internal item wrapper for the PC dropdown
         private class PcComboItem
@@ -28,7 +29,8 @@ namespace AppRestarter
             int index = -1,
             Func<List<string>> getGroups = null,
             Action manageGroups = null,
-            List<PcInfo> pcs = null
+            List<PcInfo> pcs = null,
+            int webPort = 8090
         )
         {
             InitializeComponent();
@@ -36,6 +38,7 @@ namespace AppRestarter
             _getGroups = getGroups ?? (() => new List<string>());
             _manageGroups = manageGroups ?? (() => { });
             _pcs = pcs ?? new List<PcInfo>();
+            _webPort = webPort;
 
             // Populate groups combo
             LoadGroupsIntoCombo();
@@ -71,6 +74,9 @@ namespace AppRestarter
                 // default PC: This PC (empty IP)
                 InitializePcDropdown(null);
             }
+
+            // UI tweak: change browse button text to "Select App"
+            try { btnBrowse.Text = "Select App"; } catch { }
         }
 
         private void LoadGroupsIntoCombo()
@@ -193,11 +199,104 @@ namespace AppRestarter
 
         private void btnBrowse_Click(object sender, EventArgs e)
         {
+            // If a remote PC is selected, request its apps via HTTP and let user pick.
+            var pcItem = cboClientPc.SelectedItem as PcComboItem;
+            var targetIp = pcItem?.IP ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(targetIp))
+            {
+                // Remote: try to GET /apps from the remote's web server
+                try
+                {
+                    using var client = new System.Net.Http.HttpClient();
+                    client.Timeout = TimeSpan.FromSeconds(3);
+                    var url = $"http://{targetIp}:{_webPort}/apps";
+                    var resp = client.GetAsync(url).GetAwaiter().GetResult();
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        MessageBox.Show($"Failed to retrieve apps from {targetIp}:{_webPort} (HTTP {resp.StatusCode}).", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    var json = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    var list = System.Text.Json.JsonSerializer.Deserialize<List<RemoteAppDto>>(json);
+                    if (list == null || list.Count == 0)
+                    {
+                        MessageBox.Show($"No apps returned from {targetIp}.", "No Apps", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    using var sel = new SelectAppDialog(list);
+                    if (sel.ShowDialog(this) == DialogResult.OK)
+                    {
+                        txtName.Text = sel.SelectedApp?.Name ?? txtName.Text;
+                        txtPath.Text = sel.SelectedApp?.RestartPath ?? txtPath.Text;
+                        txtProcess.Text = sel.SelectedApp?.ProcessName ?? txtProcess.Text;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error fetching apps from {targetIp}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                return;
+            }
+
+            // Local: open file browser as before
             using var dlg = new OpenFileDialog();
             dlg.Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*";
             if (dlg.ShowDialog() == DialogResult.OK)
             {
                 txtPath.Text = dlg.FileName;
+            }
+        }
+
+        // Minimal DTO matching WebServer /apps response
+        private class RemoteAppDto
+        {
+            public string Name { get; set; }
+            public string ProcessName { get; set; }
+            public string RestartPath { get; set; }
+        }
+
+        // Simple selection dialog used to pick one app from remote list
+        private class SelectAppDialog : Form
+        {
+            private readonly ComboBox _combo;
+            private readonly Button _ok;
+            private readonly Button _cancel;
+            public RemoteAppDto SelectedApp { get; private set; }
+
+            public SelectAppDialog(List<RemoteAppDto> apps)
+            {
+                Text = "Select App";
+                Width = 420;
+                Height = 140;
+                StartPosition = FormStartPosition.CenterParent;
+                _combo = new ComboBox { Left = 12, Top = 12, Width = 380, DropDownStyle = ComboBoxStyle.DropDownList };
+                var ordered = (apps ?? new List<RemoteAppDto>())
+                    .OrderBy(a => a?.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                foreach (var a in ordered) _combo.Items.Add(a);
+                _combo.DisplayMember = "Name";
+                if (_combo.Items.Count > 0) _combo.SelectedIndex = 0;
+
+                _ok = new Button { Text = "OK", Left = 220, Top = 48, Width = 80, DialogResult = DialogResult.OK };
+                _cancel = new Button { Text = "Cancel", Left = 312, Top = 48, Width = 80, DialogResult = DialogResult.Cancel };
+
+                Controls.Add(_combo);
+                Controls.Add(_ok);
+                Controls.Add(_cancel);
+
+                AcceptButton = _ok;
+                CancelButton = _cancel;
+
+                _ok.Click += (s, e) =>
+                {
+                    SelectedApp = _combo.SelectedItem as RemoteAppDto;
+                    DialogResult = DialogResult.OK;
+                    Close();
+                };
             }
         }
 
