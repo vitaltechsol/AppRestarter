@@ -8,6 +8,12 @@ If the application is frozen or unresponsive, AppRestarter can forcefully termin
 
 The application includes **Apps** and **PCs** navigation tabs, allowing you to manage applications and remote PCs separately.
 
+<img width="782" height="497" alt="image" src="https://github.com/user-attachments/assets/7ced1e26-fa30-4c19-8fa7-452e321e6e0a" />
+<img width="776" height="478" alt="image" src="https://github.com/user-attachments/assets/900650ee-89ac-4f04-a606-97eead98f40f" />
+
+## Web Client
+<img width="979" height="653" alt="image" src="https://github.com/user-attachments/assets/98089558-67f3-4624-b4ba-c7462cf734b3" />
+
 ---
 
 ## Features
@@ -133,14 +139,17 @@ In the **Apps** tab:
 
 Click **Add New App**.
 
+<img width="474" height="358" alt="image" src="https://github.com/user-attachments/assets/0228583c-eda1-4bed-975b-13481e457235" />
+
+
 Fields:
 
 | Field | Description |
 |--------|-------------|
-| **Name** | Friendly name |
-| **Restart Path** | Full path to `.exe` (local or remote!) |
+| **Seelect PCP** | Select the remote PC (leave this pc selected if local) |
+| **Application Name** | Friendly name |
+| **Application Path** | Full path to `.exe` (local or remote!) |
 | **Process Name (Optional)** | Needed only if the app runs in background or path is unknown |
-| **Client IP** | Select the remote PC (leave this pc selected if local) |
 | **Auto-start app after X seconds** | Delay before auto-start on AppRestarter launch |
 | **Auto-start minimized** | Starts app minimized |
 | **Don't warn** | Skips confirmation modal |
