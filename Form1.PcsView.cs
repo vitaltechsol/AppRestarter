@@ -100,6 +100,7 @@ namespace AppRestarter
 
                     foreach (var pc in _pcs.ToList())
                     {
+                        if (!pc.Enabled) continue;
                         await PcPowerController.RestartAsync(pc, _settings.AppPort, AddToLog);
                     }
                 };
@@ -123,6 +124,7 @@ namespace AppRestarter
 
                         foreach (var pc in _pcs.ToList())
                         {
+                            if (!pc.Enabled) continue;
                             await PcPowerController.ShutdownAsync(pc, _settings.AppPort, AddToLog);
                         }
                     };
@@ -149,6 +151,7 @@ namespace AppRestarter
                     AutoSize = false,
                     Text = pc.Name,
                     Font = nameFont,
+                    ForeColor = pc.Enabled ? Color.FromArgb(243, 244, 246) : Color.FromArgb(100, 116, 139),
                     Location = new Point(6, 8),
                     Size = new Size(pcPanel.Width - 12, 18)
                 };
@@ -158,7 +161,7 @@ namespace AppRestarter
                     AutoSize = false,
                     Text = pc.IP,
                     Font = ipFont,
-                    ForeColor = Color.FromArgb(148, 163, 184),
+                    ForeColor = pc.Enabled ? Color.FromArgb(148, 163, 184) : Color.FromArgb(71, 85, 105),
                     Location = new Point(6, 32),
                     Size = new Size(pcPanel.Width - 12, 18)
                 };
@@ -167,12 +170,21 @@ namespace AppRestarter
                 pcPanel.Controls.Add(lblName);
 
                 // Full-card hover (panel + labels), same as app cards
-                AttachCardHover(pcPanel, lblName, lblIp);
+                if (pc.Enabled)
+                {
+                    AttachCardHover(pcPanel, lblName, lblIp);
+                }
+                else
+                {
+                    pcPanel.BackColor = Color.FromArgb(15, 23, 42); // Dimmed background
+                    pcPanel.Cursor = Cursors.Default;
+                }
 
                 // Right-click context menu
                 var ctxMenuPc = new ContextMenuStrip();
                 ctxMenuPc.Items.Add("Restart").Click += async (ms, me) =>
                 {
+                    if (!pc.Enabled) return;
                     var confirm = MessageBox.Show(
                         $"Restart {pc.Name} ({pc.IP})?",
                         "Confirm Restart",
@@ -220,6 +232,14 @@ namespace AppRestarter
                     SaveApplicationsToXml();
                     RenderPcButtons();
                 };
+                ctxMenuPc.Items.Add(new ToolStripSeparator());
+                string enableDisableText = pc.Enabled ? "Disable" : "Enable";
+                ctxMenuPc.Items.Add(enableDisableText).Click += (ms, me) =>
+                {
+                    pc.Enabled = !pc.Enabled;
+                    SaveApplicationsToXml();
+                    RenderPcButtons();
+                };
 
                 pcPanel.ContextMenuStrip = ctxMenuPc;
                 lblName.ContextMenuStrip = ctxMenuPc;
@@ -230,6 +250,8 @@ namespace AppRestarter
                 {
                     c.Click += async (s, e) =>
                     {
+                        if (!pc.Enabled) return;
+
                         var confirm = MessageBox.Show(
                             $"Shut down {pc.Name} ({pc.IP})?",
                             "Confirm Shutdown",

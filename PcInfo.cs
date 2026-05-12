@@ -10,5 +10,8 @@ namespace AppRestarter
 
         [DataMember]
         public string IP { get; set; } = "";
+
+        [DataMember]
+        public bool Enabled { get; set; } = true;
     }
 }

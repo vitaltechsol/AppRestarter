@@ -304,7 +304,7 @@ namespace AppRestarter
                 // ---- APPS: list ----
                 if (request.HttpMethod == "GET" && path == "/apps")
                 {
-                    var appsToSend = _apps.Select(app => new
+                    var appsToSend = _apps.Where(a => a.Enabled).Select(app => new
                     {
                         app.Name,
                         app.ProcessName,
@@ -459,7 +459,7 @@ namespace AppRestarter
                 // ---- PCS: list ----
                 if (request.HttpMethod == "GET" && path == "/pcs")
                 {
-                    var pcsToSend = _pcs.Select(pc => new
+                    var pcsToSend = _pcs.Where(p => p.Enabled).Select(pc => new
                     {
                         pc.Name,
                         pc.IP

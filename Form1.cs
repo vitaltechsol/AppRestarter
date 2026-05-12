@@ -492,7 +492,8 @@ namespace AppRestarter
                                 new XElement("AutoStart", app.AutoStart),
                                 new XElement("AutoStartDelayInSeconds", app.AutoStartDelayInSeconds),
                                 new XElement("NoWarn", app.NoWarn),
-                                new XElement("StartMinimized", app.StartMinimized)
+                                new XElement("StartMinimized", app.StartMinimized),
+                                new XElement("Enabled", app.Enabled)
                             );
                             if (!string.IsNullOrWhiteSpace(app.GroupName))
                                 x.Add(new XElement("GroupName", app.GroupName));
@@ -503,7 +504,8 @@ namespace AppRestarter
                         _pcs.Select(pc =>
                             new XElement("PC",
                                 new XElement("Name", pc.Name),
-                                new XElement("IP", pc.IP)
+                                new XElement("IP", pc.IP),
+                                new XElement("Enabled", pc.Enabled)
                             )
                         )
                     )
@@ -528,9 +530,10 @@ namespace AppRestarter
                 {
                     var name = pcEl.Element("Name")?.Value ?? "";
                     var ip = pcEl.Element("IP")?.Value ?? "";
+                    var enabled = bool.TryParse(pcEl.Element("Enabled")?.Value, out var en) ? en : true;
                     if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(ip))
                     {
-                        _pcs.Add(new PcInfo { Name = name, IP = ip });
+                        _pcs.Add(new PcInfo { Name = name, IP = ip, Enabled = enabled });
                     }
                 }
             }

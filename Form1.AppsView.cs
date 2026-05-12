@@ -62,7 +62,8 @@ namespace AppRestarter
                             AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
                             NoWarn = bool.TryParse(applicationElement.Element("NoWarn")?.Value, out var noWarn) && noWarn,
                             StartMinimized = bool.TryParse(applicationElement.Element("StartMinimized")?.Value, out var startMinimized) && startMinimized,
-                            GroupName = applicationElement.Element("GroupName")?.Value ?? ""
+                            GroupName = applicationElement.Element("GroupName")?.Value ?? "",
+                            Enabled = bool.TryParse(applicationElement.Element("Enabled")?.Value, out var enabled) ? enabled : true
                         };
 
                         _apps.Add(app);
@@ -323,6 +324,8 @@ namespace AppRestarter
 
                     foreach (var app in appsInGroup)
                     {
+                        if (!app.Enabled) continue;
+
                         if (!string.IsNullOrEmpty(app.ClientIP))
                             HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: true);
                         else
@@ -344,6 +347,8 @@ namespace AppRestarter
 
                         foreach (var app in appsInGroup)
                         {
+                            if (!app.Enabled) continue;
+
                             if (!string.IsNullOrEmpty(app.ClientIP))
                                 HandleRemoteClientAppClick(app, start: false, stop: true, skipConfirm: true);
                             else
@@ -406,7 +411,7 @@ namespace AppRestarter
                         AutoSize = true,
                         Text = string.IsNullOrWhiteSpace(app.Name) ? "(no name)" : app.Name,
                         Font = nameFont,
-                        ForeColor = Color.FromArgb(243, 244, 246),
+                        ForeColor = app.Enabled ? Color.FromArgb(243, 244, 246) : Color.FromArgb(100, 116, 139),
                         Location = new Point(4, 3),
                         Size = new Size(appCard.Width - 12, 18),
                         AutoEllipsis = true
@@ -418,7 +423,7 @@ namespace AppRestarter
                         AutoSize = false,
                         Text = metaText,
                         Font = metaFont,
-                        ForeColor = Color.FromArgb(148, 163, 184),
+                        ForeColor = app.Enabled ? Color.FromArgb(148, 163, 184) : Color.FromArgb(71, 85, 105),
                         Location = new Point(6, 22),
                         Size = new Size(appCard.Width - 12, 18)
                     };
@@ -454,17 +459,22 @@ namespace AppRestarter
                                 initialColor = AppStatusManager.StatusGray;
                                 break;
                         }
-                        statusLabel.ForeColor = initialColor;
+                        statusLabel.ForeColor = !app.Enabled ? AppStatusManager.StatusGray : initialColor;
                     }
 
                     appCard.Controls.Add(statusLabel);
                     appCard.Controls.Add(lblMeta2);
                     appCard.Controls.Add(lblName);
 
-                    _statusManager.RegisterIndicator(app, statusLabel);
+                    if (app.Enabled)
+                    {
+                        _statusManager.RegisterIndicator(app, statusLabel);
+                    }
 
                     // Context menu for stop/edit
                     var ctxMenu = new ContextMenuStrip();
+
+
                     ctxMenu.Items.Add("Stop").Click += (ms, me) => StopApp(index);
 
                     ctxMenu.Items.Add(new ToolStripSeparator());
@@ -472,7 +482,9 @@ namespace AppRestarter
                     // Move up to sort
                     ctxMenu.Items.Add("Move up").Click += (ms, me) => MoveAppUp(index);
                     ctxMenu.Items.Add("Move down").Click += (ms, me) => MoveAppDown(index);
-
+                    ctxMenu.Items.Add(new ToolStripSeparator());
+                    string enableDisableText = app.Enabled ? "Disable" : "Enable";
+                    ctxMenu.Items.Add(enableDisableText).Click += (ms, me) => ToggleAppEnabled(index);
 
                     appCard.ContextMenuStrip = ctxMenu;
                     lblName.ContextMenuStrip = ctxMenu;
@@ -480,13 +492,23 @@ namespace AppRestarter
                     statusLabel.ContextMenuStrip = ctxMenu;
 
                     // Hover on full card (panel + labels + status)
-                    AttachCardHover(appCard, lblName, lblMeta2, statusLabel);
+                    if (app.Enabled)
+                    {
+                        AttachCardHover(appCard, lblName, lblMeta2, statusLabel);
+                    }
+                    else
+                    {
+                        appCard.BackColor = Color.FromArgb(15, 23, 42); // Dimmed background
+                        appCard.Cursor = Cursors.Default;
+                    }
 
                     // Left-click anywhere on the card => restart
                     void AttachClick(Control c)
                     {
                         c.Click += (s, e) =>
                         {
+                            if (!app.Enabled) return;
+
                             if (!string.IsNullOrEmpty(app.ClientIP))
                                 HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: false);
                             else
@@ -578,6 +600,23 @@ namespace AppRestarter
 
         // ---------- APPS: EDIT / STOP / AUTO-START / GROUPS ----------
 
+        private void ToggleAppEnabled(int index)
+        {
+            try
+            {
+                if (index < 0 || index >= _apps.Count)
+                    return;
+
+                _apps[index].Enabled = !_apps[index].Enabled;
+                SaveApplicationsToXml();
+                UpdateAppList();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error toggling app state: " + ex.Message);
+            }
+        }
+
         private void EditApp(int index)
         {
             var existing = _apps[index];
@@ -611,7 +650,7 @@ namespace AppRestarter
 
         private void AutoStartApps()
         {
-            foreach (var app in _apps.Where(a => a.AutoStart))
+            foreach (var app in _apps.Where(a => a.AutoStart && a.Enabled))
             {
                 AddToLog($"Auto starting {app.Name} in {app.AutoStartDelayInSeconds} seconds");
 
@@ -868,3 +907,4 @@ namespace AppRestarter
         }
     }
 }
+
