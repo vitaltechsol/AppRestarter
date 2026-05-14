@@ -70,5 +70,6 @@ namespace AppRestarter
         public int AppPort { get; set; } = 2024;
         public bool AutoStartWithWindows { get; set; } = true;
         public bool StartMinimized { get; set; } = false;   
+        public bool CheckForUpdatesOnStart { get; set; } = true;
     }
 }

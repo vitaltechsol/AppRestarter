@@ -16,13 +16,16 @@ namespace AppRestarter
             numWebPort.Value = Math.Max(numWebPort.Minimum, Math.Min(numWebPort.Maximum, current.WebPort));
             chkAutoStart.Checked = current.AutoStartWithWindows;
             chkStartMin.Checked = current.StartMinimized;
+            chkCheckUpdates.Checked = current.CheckForUpdatesOnStart;
 
             Updated = new AppSettings
             {
                 AppPort = current.AppPort,
                 WebPort = current.WebPort,
                 AutoStartWithWindows = current.AutoStartWithWindows,
-                StartMinimized = current.StartMinimized
+                StartMinimized = current.StartMinimized,
+                CheckForUpdatesOnStart = current.CheckForUpdatesOnStart,
+                Schema = current.Schema
             };
         }
 
@@ -39,9 +42,23 @@ namespace AppRestarter
             Updated.WebPort = (int)numWebPort.Value;
             Updated.AutoStartWithWindows = chkAutoStart.Checked;
             Updated.StartMinimized = chkStartMin.Checked;
+            Updated.CheckForUpdatesOnStart = chkCheckUpdates.Checked;
 
             this.DialogResult = DialogResult.OK;
             Close();
+        }
+
+        private async void btnCheckUpdate_Click(object sender, EventArgs e)
+        {
+            btnCheckUpdate.Enabled = false;
+            try
+            {
+                await AutoUpdater.CheckForUpdatesAsync(Application.ProductVersion, manualCheck: true);
+            }
+            finally
+            {
+                btnCheckUpdate.Enabled = true;
+            }
         }
 
         private void btnCancel_Click(object sender, EventArgs e)

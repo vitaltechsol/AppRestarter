@@ -71,8 +71,16 @@ namespace AppRestarter
             Task.Run(AutoStartApps);
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private async void Form1_Load(object sender, EventArgs e)
         {
+            if (_settings.CheckForUpdatesOnStart)
+            {
+                try
+                {
+                    await AutoUpdater.CheckForUpdatesAsync(Application.ProductVersion, manualCheck: false);
+                }
+                catch { }
+            }
         }
 
         private void MakeNavButtonsCircular()
@@ -336,7 +344,7 @@ namespace AppRestarter
                             }
 
                             if (applicationDetails == null)
-                                continue;
+                                return;
                             if (VerboseLogging)
                             {
                                 AddToLog($"\nReceived Object:\nName: {applicationDetails.Name}\nProcessName: {applicationDetails.ProcessName}" +
@@ -435,9 +443,17 @@ namespace AppRestarter
                         ? webPort : 8090;
                     _settings.AutoStartWithWindows = bool.TryParse(settingsElement.Element("AutoStartWithWindows")?.Value, out var autoStartWithWindows) && autoStartWithWindows;
                     _settings.StartMinimized = bool.TryParse(settingsElement.Element("StartMinimized")?.Value, out var sm) && sm;
+                    if (bool.TryParse(settingsElement.Element("CheckForUpdatesOnStart")?.Value, out var checkUpdates))
+                    {
+                        _settings.CheckForUpdatesOnStart = checkUpdates;
+                    }
+                    else
+                    {
+                        _settings.CheckForUpdatesOnStart = true; // Default
+                    }
                     _settings.Schema = settingsElement.Element("Schema")?.Value;
 
-                    // restore main form size if present
+                    // Support restoring previous main form size
                     if (int.TryParse(settingsElement.Element("MainFormWidth")?.Value, out var w) && w > 0 &&
                         int.TryParse(settingsElement.Element("MainFormHeight")?.Value, out var h) && h > 0)
                     {
@@ -472,6 +488,7 @@ namespace AppRestarter
                         new XElement("WebPort", _settings.WebPort),
                         new XElement("AutoStartWithWindows", _settings.AutoStartWithWindows),
                         new XElement("StartMinimized", _settings.StartMinimized),
+                        new XElement("CheckForUpdatesOnStart", _settings.CheckForUpdatesOnStart),
                         new XElement("Schema", _settings.Schema),
                         new XElement("MainFormWidth", this.ClientSize.Width),
                         new XElement("MainFormHeight", this.ClientSize.Height)

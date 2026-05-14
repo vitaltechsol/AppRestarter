@@ -9,6 +9,8 @@
         private System.Windows.Forms.NumericUpDown numWebPort;
         private System.Windows.Forms.CheckBox chkAutoStart;
         private System.Windows.Forms.CheckBox chkStartMin;
+        private System.Windows.Forms.CheckBox chkCheckUpdates;
+        private System.Windows.Forms.Button btnCheckUpdate;
         private System.Windows.Forms.Button btnOK;
         private System.Windows.Forms.Button btnCancel;
 
@@ -26,6 +28,8 @@
             numWebPort = new NumericUpDown();
             chkAutoStart = new CheckBox();
             chkStartMin = new CheckBox();
+            chkCheckUpdates = new CheckBox();
+            btnCheckUpdate = new Button();
             btnOK = new Button();
             btnCancel = new Button();
             ((System.ComponentModel.ISupportInitialize)numAppPort).BeginInit();
@@ -83,27 +87,46 @@
             // 
             chkStartMin.Location = new Point(23, 124);
             chkStartMin.Name = "chkStartMin";
-            chkStartMin.Size = new Size(217, 39);
+            chkStartMin.Size = new Size(217, 24);
             chkStartMin.TabIndex = 5;
             chkStartMin.Text = "Start Minimized";
             chkStartMin.UseVisualStyleBackColor = true;
             // 
+            // chkCheckUpdates
+            // 
+            chkCheckUpdates.Location = new Point(23, 150);
+            chkCheckUpdates.Name = "chkCheckUpdates";
+            chkCheckUpdates.Size = new Size(217, 24);
+            chkCheckUpdates.TabIndex = 6;
+            chkCheckUpdates.Text = "Check for Updates on Start";
+            chkCheckUpdates.UseVisualStyleBackColor = true;
+            // 
+            // btnCheckUpdate
+            // 
+            btnCheckUpdate.Location = new Point(23, 180);
+            btnCheckUpdate.Name = "btnCheckUpdate";
+            btnCheckUpdate.Size = new Size(136, 27);
+            btnCheckUpdate.TabIndex = 7;
+            btnCheckUpdate.Text = "Check for Updates";
+            btnCheckUpdate.UseVisualStyleBackColor = true;
+            btnCheckUpdate.Click += btnCheckUpdate_Click;
+            // 
             // btnOK
             // 
-            btnOK.Location = new Point(84, 175);
+            btnOK.Location = new Point(84, 215);
             btnOK.Name = "btnOK";
             btnOK.Size = new Size(75, 27);
-            btnOK.TabIndex = 6;
+            btnOK.TabIndex = 8;
             btnOK.Text = "Save";
             btnOK.UseVisualStyleBackColor = true;
             btnOK.Click += btnOK_Click;
             // 
             // btnCancel
             // 
-            btnCancel.Location = new Point(165, 175);
+            btnCancel.Location = new Point(165, 215);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(75, 27);
-            btnCancel.TabIndex = 7;
+            btnCancel.TabIndex = 9;
             btnCancel.Text = "Cancel";
             btnCancel.UseVisualStyleBackColor = true;
             btnCancel.Click += btnCancel_Click;
@@ -112,9 +135,11 @@
             // 
             AcceptButton = btnOK;
             CancelButton = btnCancel;
-            ClientSize = new Size(270, 220);
+            ClientSize = new Size(270, 260);
             Controls.Add(btnCancel);
             Controls.Add(btnOK);
+            Controls.Add(btnCheckUpdate);
+            Controls.Add(chkCheckUpdates);
             Controls.Add(chkStartMin);
             Controls.Add(chkAutoStart);
             Controls.Add(numWebPort);
