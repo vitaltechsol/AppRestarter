@@ -1,7 +1,9 @@
 ﻿# AppRestarter
 
-AppRestarter is a Windows Forms application designed to allow you to remotely restart and monitor applications on other PCs via a client/server model. 
+AppRestarter is a Windows application designed to allow you to remotely start, stop, restart and monitor applications on other PCs via a client/server model. 
 It also allows you to shut down or restart remote PCs.
+
+Start applications in a specific order using time delays.
 
 AppRestarter gracefully stops the target application before restarting it, ensuring a clean restart process.  
 If the application is frozen or unresponsive, AppRestarter can forcefully terminate it.
@@ -19,6 +21,7 @@ The application includes **Apps** and **PCs** navigation tabs, allowing you to m
 ## Features
 
 * Start or stop applications remotely or locally.
+* Start application in a specific order.
 * Monitor the status of running applications (on local and remote PCs).
 * Delayed auto-start of applications on initial launch.
 * Create groups to start/stop groups of applications.
