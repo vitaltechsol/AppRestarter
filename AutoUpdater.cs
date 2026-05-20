@@ -54,12 +54,33 @@ namespace AppRestarter
                         {
                             var asset = assets[0];
                             var downloadUrl = asset.GetProperty("browser_download_url").GetString();
-                            
+
                             if (string.IsNullOrEmpty(downloadUrl)) return;
 
-                            if (MessageBox.Show($"A new version ({tagName}) is available. Would you like to update now?", "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                            var releaseUrl = root.GetProperty("html_url").GetString();
+                            var message = $"A new version ({tagName}) is available.\n\nWould you like to update now?\n\nClick 'No' to view release notes first.";
+                            var result = MessageBox.Show(message, "Update Available", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Information);
+
+                            if (result == DialogResult.Yes)
                             {
                                 await PerformUpdate(downloadUrl);
+                            }
+                            else if (result == DialogResult.No)
+                            {
+                                if (!string.IsNullOrEmpty(releaseUrl))
+                                {
+                                    Process.Start(new ProcessStartInfo
+                                    {
+                                        FileName = releaseUrl,
+                                        UseShellExecute = true
+                                    });
+                                }
+
+                                var updateResult = MessageBox.Show($"Would you like to update to version {tagName} now?", "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                                if (updateResult == DialogResult.Yes)
+                                {
+                                    await PerformUpdate(downloadUrl);
+                                }
                             }
                         }
                     }
