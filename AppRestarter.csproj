@@ -9,7 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <BaseOutputPath></BaseOutputPath>
     <ApplicationIcon>apprestarter.ico</ApplicationIcon>
-    <Version>1.8.0</Version>
+    <Version>1.7.0</Version>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <DefaultItemExcludes>$(DefaultItemExcludes);VitalTechSol.AutoUpdater\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

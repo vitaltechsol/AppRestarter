@@ -7,9 +7,17 @@ namespace AppRestarter
     {
         public AppSettings Updated { get; private set; }
 
+        private AutoUpdater _autoUpdater;
+
         public SettingsForm(AppSettings current)
         {
             InitializeComponent();
+
+            _autoUpdater = new AutoUpdater(
+                "https://api.github.com/repos/vitaltechsol/AppRestarter/releases/latest",
+                "AppRestarter",
+                "AppRestarter.exe",
+                Application.ProductVersion);
 
             // Prime UI from current settings
             numAppPort.Value = Math.Max(numAppPort.Minimum, Math.Min(numAppPort.Maximum, current.AppPort));
@@ -53,7 +61,7 @@ namespace AppRestarter
             btnCheckUpdate.Enabled = false;
             try
             {
-                await AutoUpdater.CheckForUpdatesAsync(Application.ProductVersion, manualCheck: true);
+                await _autoUpdater.CheckForUpdatesAsync(manualCheck: true);
             }
             finally
             {

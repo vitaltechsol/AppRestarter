@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Version>1.0.0</Version>
+    <Authors>VitalTechSol</Authors>
+    <Company>VitalTechSol</Company>
+    <Description>A reusable GitHub auto-updater for Windows Forms applications</Description>
+    <PackageProjectUrl>https://github.com/vitaltechsol</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/vitaltechsol</RepositoryUrl>
+    <PackageTags>autoupdate;github;updater;winforms</PackageTags>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+</Project>

@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace AppRestarter
+namespace VitalTechSol.AutoUpdater
 {
     public class AutoUpdater
     {
@@ -54,7 +54,7 @@ namespace AppRestarter
                         {
                             var asset = assets[0];
                             var downloadUrl = asset.GetProperty("browser_download_url").GetString();
-                            
+
                             if (string.IsNullOrEmpty(downloadUrl)) return;
 
                             if (MessageBox.Show($"A new version ({tagName}) is available. Would you like to update now?", "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)

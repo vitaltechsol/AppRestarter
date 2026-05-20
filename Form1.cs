@@ -41,6 +41,8 @@ namespace AppRestarter
         // NEW: all app status logic moved out of Form1/AppView into this manager
         private AppStatusManager _statusManager;
 
+        private AutoUpdater _autoUpdater;
+
         public Form1()
         {
             InitializeComponent();
@@ -51,6 +53,12 @@ namespace AppRestarter
             LoadApplicationsFromXml();
             LoadPcsFromXml();
             MakeNavButtonsCircular();
+
+            _autoUpdater = new AutoUpdater(
+                "https://api.github.com/repos/vitaltechsol/AppRestarter/releases/latest",
+                "AppRestarter",
+                "AppRestarter.exe",
+                Application.ProductVersion);
 
             // NEW: centralized app status logic (UI polling + TCP STATUS/STATUSBATCH responses)
             _statusManager = new AppStatusManager(
@@ -77,7 +85,7 @@ namespace AppRestarter
             {
                 try
                 {
-                    await AutoUpdater.CheckForUpdatesAsync(Application.ProductVersion, manualCheck: false);
+                    await _autoUpdater.CheckForUpdatesAsync(manualCheck: false);
                 }
                 catch { }
             }
