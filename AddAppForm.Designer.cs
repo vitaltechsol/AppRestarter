@@ -33,7 +33,7 @@
             chkStartMinimized = new CheckBox();
             chkNoWarn = new CheckBox();
             lblGroup = new Label();
-            cmbGroup = new ComboBox();
+            chkListGroups = new CheckedListBox();
             btnManageGroups = new Button();
             ((System.ComponentModel.ISupportInitialize)numDelay).BeginInit();
             SuspendLayout();
@@ -126,7 +126,7 @@
             // 
             // btnSave
             // 
-            btnSave.Location = new Point(150, 270);
+            btnSave.Location = new Point(150, 325);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(80, 30);
             btnSave.TabIndex = 12;
@@ -136,7 +136,7 @@
             // btnCancel
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new Point(240, 270);
+            btnCancel.Location = new Point(240, 325);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(80, 30);
             btnCancel.TabIndex = 13;
@@ -144,7 +144,7 @@
             // 
             // btnDelete
             // 
-            btnDelete.Location = new Point(330, 270);
+            btnDelete.Location = new Point(330, 325);
             btnDelete.Name = "btnDelete";
             btnDelete.Size = new Size(80, 30);
             btnDelete.TabIndex = 14;
@@ -183,15 +183,15 @@
             lblGroup.Name = "lblGroup";
             lblGroup.Size = new Size(120, 20);
             lblGroup.TabIndex = 0;
-            lblGroup.Text = "Group:";
+            lblGroup.Text = "Groups:";
             // 
-            // cmbGroup
+            // chkListGroups
             // 
-            cmbGroup.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbGroup.Location = new Point(145, 237);
-            cmbGroup.Name = "cmbGroup";
-            cmbGroup.Size = new Size(195, 23);
-            cmbGroup.TabIndex = 1;
+            chkListGroups.CheckOnClick = true;
+            chkListGroups.Location = new Point(145, 237);
+            chkListGroups.Name = "chkListGroups";
+            chkListGroups.Size = new Size(195, 76);
+            chkListGroups.TabIndex = 1;
             // 
             // btnManageGroups
             // 
@@ -207,10 +207,10 @@
             // 
             AcceptButton = btnSave;
             CancelButton = btnCancel;
-            ClientSize = new Size(470, 325);
+            ClientSize = new Size(470, 370);
             Controls.Add(btnManageGroups);
             Controls.Add(lblGroup);
-            Controls.Add(cmbGroup);
+            Controls.Add(chkListGroups);
             Controls.Add(chkNoWarn);
             Controls.Add(chkStartMinimized);
             Controls.Add(label1);
@@ -252,14 +252,14 @@
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnDelete;
         private System.Windows.Forms.NumericUpDown numDelay;
-        private System.Windows.Forms.Label lblGroup;
-        private System.Windows.Forms.ComboBox cmbGroup;
 
         #endregion
 
         private Label label1;
         private CheckBox chkStartMinimized;
         private CheckBox chkNoWarn;
+        private Label lblGroup;
+        private CheckedListBox chkListGroups;
         private Button btnManageGroups;
     }
 }

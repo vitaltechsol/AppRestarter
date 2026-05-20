@@ -311,7 +311,8 @@ namespace AppRestarter
                         app.RestartPath,
                         app.ClientIP,
                         app.NoWarn,
-                        app.GroupName
+                        app.GroupName,
+                        app.GroupNames
                     }).ToList();
 
                     var json = JsonSerializer.Serialize(appsToSend);

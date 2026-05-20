@@ -40,6 +40,8 @@ namespace AppRestarter
         public bool StartMinimized { get; set; } = false;
         [DataMember]
         public string? GroupName { get; set; }
+        [DataMember]
+        public List<string> GroupNames { get; set; } = new List<string>();
         [DataMember] 
         public string MachineName { get; set; }
         [DataMember]

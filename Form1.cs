@@ -525,8 +525,23 @@ namespace AppRestarter
                                 new XElement("StartMinimized", app.StartMinimized),
                                 new XElement("Enabled", app.Enabled)
                             );
-                            if (!string.IsNullOrWhiteSpace(app.GroupName))
+
+                            // Save groups using new format
+                            if (app.GroupNames != null && app.GroupNames.Any())
+                            {
+                                var groupsElement = new XElement("Groups");
+                                foreach (var groupName in app.GroupNames.Where(g => !string.IsNullOrWhiteSpace(g)))
+                                {
+                                    groupsElement.Add(new XElement("Group", groupName));
+                                }
+                                x.Add(groupsElement);
+                            }
+                            // Fallback to old single GroupName for backward compatibility
+                            else if (!string.IsNullOrWhiteSpace(app.GroupName))
+                            {
                                 x.Add(new XElement("GroupName", app.GroupName));
+                            }
+
                             return x;
                         })
                     ),

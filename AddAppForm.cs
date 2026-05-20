@@ -40,8 +40,8 @@ namespace AppRestarter
             _pcs = pcs ?? new List<PcInfo>();
             _webPort = webPort;
 
-            // Populate groups combo
-            LoadGroupsIntoCombo();
+            // Populate groups checklist
+            LoadGroupsIntoList();
 
             if (existing != null)
             {
@@ -55,8 +55,8 @@ namespace AppRestarter
                 chkNoWarn.Checked = existing.NoWarn;
                 chkStartMinimized.Checked = existing.StartMinimized;
 
-                // select existing group if present
-                SelectGroupInCombo(existing.GroupName);
+                // select existing groups if present
+                SelectGroupsInList(existing.GroupNames ?? (existing.GroupName != null ? new List<string> { existing.GroupName } : new List<string>()));
 
                 // select existing client IP in dropdown
                 InitializePcDropdown(existing.ClientIP);
@@ -68,8 +68,8 @@ namespace AppRestarter
                 AppData = new ApplicationDetails();
                 btnDelete.Visible = false;
 
-                // default None
-                SelectGroupInCombo(null);
+                // default no groups selected
+                SelectGroupsInList(new List<string>());
 
                 // default PC: This PC (empty IP)
                 InitializePcDropdown(null);
@@ -79,31 +79,41 @@ namespace AppRestarter
             try { btnBrowse.Text = "Select App"; } catch { }
         }
 
-        private void LoadGroupsIntoCombo()
+        private void LoadGroupsIntoList()
         {
             var groups = _getGroups()
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            cmbGroup.BeginUpdate();
-            cmbGroup.Items.Clear();
-            cmbGroup.Items.Add("None");
-            foreach (var g in groups) cmbGroup.Items.Add(g);
-            cmbGroup.EndUpdate();
+            chkListGroups.BeginUpdate();
+            chkListGroups.Items.Clear();
+            foreach (var g in groups) 
+            {
+                chkListGroups.Items.Add(g);
+            }
+            chkListGroups.EndUpdate();
         }
 
-        private void SelectGroupInCombo(string groupNameOrNull)
+        private void SelectGroupsInList(List<string> groupNames)
         {
-            if (string.IsNullOrWhiteSpace(groupNameOrNull))
+            if (groupNames == null || !groupNames.Any())
             {
-                // None
-                cmbGroup.SelectedIndex = 0;
+                // Clear all selections
+                for (int i = 0; i < chkListGroups.Items.Count; i++)
+                {
+                    chkListGroups.SetItemChecked(i, false);
+                }
             }
             else
             {
-                int idx = cmbGroup.FindStringExact(groupNameOrNull);
-                cmbGroup.SelectedIndex = (idx >= 0) ? idx : 0; // default to None if missing
+                for (int i = 0; i < chkListGroups.Items.Count; i++)
+                {
+                    var item = chkListGroups.Items[i].ToString();
+                    bool shouldCheck = groupNames.Any(g => 
+                        string.Equals(g, item, StringComparison.OrdinalIgnoreCase));
+                    chkListGroups.SetItemChecked(i, shouldCheck);
+                }
             }
         }
 
@@ -152,18 +162,22 @@ namespace AppRestarter
             cboClientPc.EndUpdate();
         }
 
-        // Manage Groups button → open manager via Form1 callback, then refresh combo
+        // Manage Groups button → open manager via Form1 callback, then refresh list
         private void btnManageGroups_Click(object sender, EventArgs e)
         {
-            // Remember current selection
-            var current = (cmbGroup.SelectedIndex <= 0) ? null : cmbGroup.SelectedItem?.ToString();
+            // Remember current selections
+            var currentSelections = new List<string>();
+            foreach (var item in chkListGroups.CheckedItems)
+            {
+                currentSelections.Add(item.ToString());
+            }
 
             // Open the manager in Form1 (centralized save/sync)
             _manageGroups?.Invoke();
 
             // Reload fresh groups & reselect previous if still present
-            LoadGroupsIntoCombo();
-            SelectGroupInCombo(current);
+            LoadGroupsIntoList();
+            SelectGroupsInList(currentSelections);
         }
 
         private void btnSave_Click(object sender, EventArgs e)
@@ -176,8 +190,17 @@ namespace AppRestarter
             AppData.StartMinimized = chkStartMinimized.Checked;
             AppData.NoWarn = chkNoWarn.Checked;
 
-            var sel = cmbGroup.SelectedItem?.ToString();
-            AppData.GroupName = (string.Equals(sel, "None", StringComparison.OrdinalIgnoreCase) ? null : sel);
+            // Collect selected groups
+            var selectedGroups = new List<string>();
+            foreach (var item in chkListGroups.CheckedItems)
+            {
+                selectedGroups.Add(item.ToString());
+            }
+
+            AppData.GroupNames = selectedGroups;
+
+            // Keep old GroupName for backward compatibility (use first group if any)
+            AppData.GroupName = selectedGroups.FirstOrDefault();
 
             // From PC dropdown: store only IP ("" for This PC)
             var pcItem = cboClientPc.SelectedItem as PcComboItem;

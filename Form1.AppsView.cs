@@ -52,6 +52,31 @@ namespace AppRestarter
                 {
                     foreach (XElement applicationElement in applicationsElement.Elements("Application"))
                     {
+                        // Load groups - support both old single GroupName and new multiple Groups
+                        var groupNames = new List<string>();
+
+                        // Check for old single GroupName element (backward compatibility)
+                        var oldGroupName = applicationElement.Element("GroupName")?.Value;
+                        if (!string.IsNullOrWhiteSpace(oldGroupName))
+                        {
+                            groupNames.Add(oldGroupName);
+                        }
+
+                        // Check for new Groups element with multiple Group children
+                        var groupsElement = applicationElement.Element("Groups");
+                        if (groupsElement != null)
+                        {
+                            foreach (var groupEl in groupsElement.Elements("Group"))
+                            {
+                                var groupName = groupEl.Value;
+                                if (!string.IsNullOrWhiteSpace(groupName) && 
+                                    !groupNames.Contains(groupName, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    groupNames.Add(groupName);
+                                }
+                            }
+                        }
+
                         ApplicationDetails app = new ApplicationDetails
                         {
                             Name = applicationElement.Element("Name")?.Value ?? "",
@@ -62,7 +87,8 @@ namespace AppRestarter
                             AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
                             NoWarn = bool.TryParse(applicationElement.Element("NoWarn")?.Value, out var noWarn) && noWarn,
                             StartMinimized = bool.TryParse(applicationElement.Element("StartMinimized")?.Value, out var startMinimized) && startMinimized,
-                            GroupName = applicationElement.Element("GroupName")?.Value ?? "",
+                            GroupName = oldGroupName ?? "", // Keep for backward compatibility
+                            GroupNames = groupNames,
                             Enabled = bool.TryParse(applicationElement.Element("Enabled")?.Value, out var enabled) ? enabled : true
                         };
 
@@ -221,7 +247,8 @@ namespace AppRestarter
             _statusManager.ClearIndicators();
 
             var ungroupedApps = _apps
-                .Where(a => string.IsNullOrWhiteSpace(a.GroupName))
+                .Where(a => (a.GroupNames == null || !a.GroupNames.Any()) && 
+                           string.IsNullOrWhiteSpace(a.GroupName))
                 .ToList();
 
             var namedGroups = _groups
@@ -249,7 +276,9 @@ namespace AppRestarter
                 else
                 {
                     appsInGroup = _apps
-                        .Where(a => string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
+                        .Where(a => (a.GroupNames != null && 
+                                   a.GroupNames.Contains(groupName, StringComparer.OrdinalIgnoreCase)) ||
+                                   string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
                         .ToList();
 
                     headerTitle = groupName;
@@ -400,12 +429,18 @@ namespace AppRestarter
 
                     if (groupName == "Ungrouped Apps")
                     {
-                        if (!string.IsNullOrWhiteSpace(app.GroupName))
+                        // Skip if app has any groups assigned
+                        if (!string.IsNullOrWhiteSpace(app.GroupName) || 
+                            (app.GroupNames != null && app.GroupNames.Any()))
                             continue;
                     }
                     else
                     {
-                        if (!string.Equals(app.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
+                        // Skip if app is not in this group
+                        bool inGroup = (app.GroupNames != null && 
+                                       app.GroupNames.Contains(groupName, StringComparer.OrdinalIgnoreCase)) ||
+                                       string.Equals(app.GroupName, groupName, StringComparison.OrdinalIgnoreCase);
+                        if (!inGroup)
                             continue;
                     }
 
@@ -707,10 +742,23 @@ namespace AppRestarter
                 string newName = added[0];
                 foreach (var app in _apps)
                 {
+                    // Update old single GroupName for backward compatibility
                     if (!string.IsNullOrEmpty(app.GroupName) &&
                         app.GroupName.Equals(oldName, StringComparison.OrdinalIgnoreCase))
                     {
                         app.GroupName = newName;
+                    }
+
+                    // Update in GroupNames list
+                    if (app.GroupNames != null)
+                    {
+                        for (int i = 0; i < app.GroupNames.Count; i++)
+                        {
+                            if (app.GroupNames[i].Equals(oldName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                app.GroupNames[i] = newName;
+                            }
+                        }
                     }
                 }
 
@@ -730,8 +778,15 @@ namespace AppRestarter
                 var valid = new HashSet<string>(newGroupNames, StringComparer.OrdinalIgnoreCase);
                 foreach (var app in _apps)
                 {
+                    // Clean up old single GroupName
                     if (!string.IsNullOrEmpty(app.GroupName) && !valid.Contains(app.GroupName))
                         app.GroupName = null;
+
+                    // Clean up GroupNames list
+                    if (app.GroupNames != null)
+                    {
+                        app.GroupNames.RemoveAll(g => !valid.Contains(g));
+                    }
                 }
 
                 // Update _groups to match new list, preserving existing DontWarn settings

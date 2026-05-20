@@ -35,7 +35,7 @@ namespace AppRestarter
         private readonly Func<int> _getTimeoutMs;
 
         // Stable-keyed state (works across clones/deserialization/batch requests)
-        private readonly Dictionary<string, Control> _appStatusIndicators = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<Control>> _appStatusIndicators = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AppRunVisualState> _lastAppRunStates = new(StringComparer.OrdinalIgnoreCase);
         // Don't hammer offline PCs every tick
         private readonly Dictionary<string, DateTime> _nextRemoteRetryUtc = new(StringComparer.OrdinalIgnoreCase);
@@ -141,7 +141,16 @@ namespace AppRestarter
             var key = GetAppKey(app);
             if (string.IsNullOrWhiteSpace(key)) return;
 
-            _appStatusIndicators[key] = indicatorControl;
+            if (!_appStatusIndicators.ContainsKey(key))
+            {
+                _appStatusIndicators[key] = new List<Control>();
+            }
+
+            // Add this indicator to the list if not already registered
+            if (!_appStatusIndicators[key].Contains(indicatorControl))
+            {
+                _appStatusIndicators[key].Add(indicatorControl);
+            }
         }
 
         public bool TryGetLastState(ApplicationDetails app, out AppRunVisualState state)
@@ -331,7 +340,7 @@ namespace AppRestarter
 
             _lastAppRunStates[key] = state;
 
-            if (!_appStatusIndicators.TryGetValue(key, out var ctrl) || ctrl == null)
+            if (!_appStatusIndicators.TryGetValue(key, out var controls) || controls == null || controls.Count == 0)
                 return;
 
             Color color = StatusGray;
@@ -343,8 +352,19 @@ namespace AppRestarter
                 default: color = StatusGray; break;
             }
 
-            if (ctrl is Label lbl) lbl.ForeColor = color;
-            else ctrl.BackColor = color;
+            // Update all registered indicators for this app
+            foreach (var ctrl in controls)
+            {
+                if (ctrl == null || ctrl.IsDisposed) continue;
+
+                if (ctrl is Label lbl) 
+                    lbl.ForeColor = color;
+                else 
+                    ctrl.BackColor = color;
+            }
+
+            // Clean up disposed controls
+            controls.RemoveAll(c => c == null || c.IsDisposed);
         }
 
         // ----------------- REMOTE BATCH -----------------

@@ -731,13 +731,32 @@
                 return;
             }
 
-            // Group by GroupName (empty => "Ungrouped Apps")
+            // Group by GroupNames (support multiple groups per app)
             const groupMap = new Map();
+
             for (const app of apps) {
-                const rawGroup = app.GroupName || '';
-                const key = rawGroup.trim().length > 0 ? rawGroup.trim() : ungroupedAppsName;
-                if (!groupMap.has(key)) groupMap.set(key, []);
-                groupMap.get(key).push(app);
+                // Check if app has GroupNames array (new format) or single GroupName (old format)
+                let groups = [];
+
+                if (app.GroupNames && Array.isArray(app.GroupNames) && app.GroupNames.length > 0) {
+                    // New format: multiple groups
+                    groups = app.GroupNames;
+                } else if (app.GroupName && app.GroupName.trim().length > 0) {
+                    // Old format: single group
+                    groups = [app.GroupName];
+                }
+
+                // If no groups, add to ungrouped
+                if (groups.length === 0) {
+                    groups = [ungroupedAppsName];
+                }
+
+                // Add app to all its groups
+                for (const groupName of groups) {
+                    const key = groupName.trim().length > 0 ? groupName.trim() : ungroupedAppsName;
+                    if (!groupMap.has(key)) groupMap.set(key, []);
+                    groupMap.get(key).push(app);
+                }
             }
 
             // ✅ Show ungrouped first, then others alphabetically

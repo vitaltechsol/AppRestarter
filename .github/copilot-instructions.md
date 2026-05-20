@@ -1,0 +1,4 @@
+# Copilot Instructions
+
+## Project Guidelines
+- In AppRestarter project: Applications support multiple groups via GroupNames property (List<string>). When rendering apps in groups, each app can appear in multiple group sections. The AppStatusManager uses Dictionary<string, List<Control>> to track all status indicator controls for each app, ensuring all instances update simultaneously when status changes. Web client checks both app.GroupNames array (new format) and app.GroupName string (old format) for backward compatibility. Always maintain both GroupName (single) and GroupNames (list) properties for compatibility. When an app belongs to multiple groups, register all its status indicators and update them all together.
