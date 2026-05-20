@@ -27,7 +27,7 @@ namespace AppRestarter
         private ViewMode _currentView = ViewMode.Apps;
 
         private readonly List<ApplicationDetails> _apps = new();
-        private List<string> _groups = new();
+        private List<GroupDetails> _groups = new();
         private readonly List<PcInfo> _pcs = new();
 
         private TcpListener server;
@@ -503,8 +503,13 @@ namespace AppRestarter
                     ),
                     new XElement("Groups",
                         _groups.Select(g =>
-                            new XElement("Group",
-                                new XAttribute("Name", g)))
+                        {
+                            var groupElem = new XElement("Group",
+                                new XAttribute("Name", g.Name));
+                            if (g.DontWarn)
+                                groupElem.Add(new XAttribute("DontWarn", "true"));
+                            return groupElem;
+                        })
                     ),
                     new XElement("Applications",
                         _apps.Select(app =>
@@ -593,7 +598,7 @@ namespace AppRestarter
                 using var addForm = new AddAppForm(
                     existing: null,
                     index: -1,
-                    getGroups: () => new List<string>(_groups),
+                    getGroups: () => _groups.Select(g => g.Name).ToList(),
                     manageGroups: ManageGroups,
                     pcs: new List<PcInfo>(_pcs),
                     webPort: _settings.WebPort

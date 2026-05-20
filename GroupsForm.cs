@@ -10,10 +10,14 @@ namespace AppRestarter
     {
         public List<string> Groups { get; private set; }
 
-        public GroupsForm(IEnumerable<string> existingGroups)
+        public GroupsForm(IEnumerable<GroupDetails> existingGroups)
         {
             InitializeComponent();
-            Groups = existingGroups?.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList() ?? new List<string>();
+            Groups = existingGroups?.Select(g => g.Name)
+                                   .Distinct(StringComparer.OrdinalIgnoreCase)
+                                   .OrderBy(x => x)
+                                   .ToList() 
+                     ?? new List<string>();
             RefreshList();
         }
 

@@ -70,7 +70,7 @@ namespace AppRestarter
                     }
                 }
 
-                _groups = LoadGroups(root);
+                _groups = GroupManager.LoadGroupDetails(root);
 
                 if (System.IO.File.Exists(settingsPath))
                 {
@@ -87,27 +87,6 @@ namespace AppRestarter
             {
                 MessageBox.Show("Error loading applications from XML: " + ex.Message);
             }
-        }
-
-        private static List<string> LoadGroups(XElement root)
-        {
-            var groups = new List<string>();
-            var groupsEl = root.Element("Groups");
-            if (groupsEl != null)
-            {
-                foreach (var g in groupsEl.Elements("Group"))
-                {
-                    var nameAttr = g.Attribute("Name");
-                    if (nameAttr != null && !string.IsNullOrWhiteSpace(nameAttr.Value))
-                    {
-                        groups.Add(nameAttr.Value.Trim());
-                    }
-                }
-            }
-            return groups
-               .Distinct(StringComparer.OrdinalIgnoreCase)
-               .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-               .ToList();
         }
 
         // ---------- CARD STYLE HELPERS (APPS) ----------
@@ -246,19 +225,19 @@ namespace AppRestarter
                 .ToList();
 
             var namedGroups = _groups
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             var orderedGroupNames = new List<string>();
             if (ungroupedApps.Any())
                 orderedGroupNames.Add("Ungrouped Apps");
-            orderedGroupNames.AddRange(namedGroups);
+            orderedGroupNames.AddRange(namedGroups.Select(g => g.Name));
 
             foreach (var groupName in orderedGroupNames)
             {
                 List<ApplicationDetails> appsInGroup;
                 string headerTitle;
+                GroupDetails groupDetails = null;
 
                 if (groupName == "Ungrouped Apps")
                 {
@@ -278,6 +257,8 @@ namespace AppRestarter
                         continue;
 
                     headerTitle = groupName;
+                    groupDetails = namedGroups.FirstOrDefault(g => 
+                        g.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
                 }
 
                 var groupPanel = new Panel();
@@ -315,12 +296,18 @@ namespace AppRestarter
 
                 btnRestartGroup.Click += async (s, e) =>
                 {
-                    var confirmMsg = groupName == "Ungrouped Apps"
-                        ? $"Restart all {appsInGroup.Count} ungrouped app(s)?"
-                        : $"Restart all {appsInGroup.Count} app(s) in group \"{groupName}\"?";
-                    var dr = MessageBox.Show(confirmMsg, "Restart group",
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                    if (dr != DialogResult.Yes) return;
+                    // Check DontWarn setting for the group
+                    bool shouldWarn = groupDetails?.DontWarn != true;
+
+                    if (shouldWarn)
+                    {
+                        var confirmMsg = groupName == "Ungrouped Apps"
+                            ? $"Restart all {appsInGroup.Count} ungrouped app(s)?"
+                            : $"Restart all {appsInGroup.Count} app(s) in group \"{groupName}\"?";
+                        var dr = MessageBox.Show(confirmMsg, "Restart group",
+                            MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                        if (dr != DialogResult.Yes) return;
+                    }
 
                     foreach (var app in appsInGroup)
                     {
@@ -336,14 +323,21 @@ namespace AppRestarter
                 {
                     if (e.Button != MouseButtons.Right) return;
                     var menu = new ContextMenuStrip();
+
                     menu.Items.Add("Stop group").Click += async (ms, me) =>
                     {
-                        var confirmMsg = groupName == "Ungrouped Apps"
-                            ? $"Stop all {appsInGroup.Count} ungrouped app(s)?"
-                            : $"Stop all {appsInGroup.Count} app(s) in group \"{groupName}\"?";
-                        var dr = MessageBox.Show(confirmMsg, "Stop group",
-                            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                        if (dr != DialogResult.Yes) return;
+                        // Check DontWarn setting for the group
+                        bool shouldWarn = groupDetails?.DontWarn != true;
+
+                        if (shouldWarn)
+                        {
+                            var confirmMsg = groupName == "Ungrouped Apps"
+                                ? $"Stop all {appsInGroup.Count} ungrouped app(s)?"
+                                : $"Stop all {appsInGroup.Count} app(s) in group \"{groupName}\"?";
+                            var dr = MessageBox.Show(confirmMsg, "Stop group",
+                                MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                            if (dr != DialogResult.Yes) return;
+                        }
 
                         foreach (var app in appsInGroup)
                         {
@@ -355,6 +349,28 @@ namespace AppRestarter
                                 await HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
                         }
                     };
+
+                    // Add Edit option for named groups (not for Ungrouped Apps)
+                    if (groupName != "Ungrouped Apps" && groupDetails != null)
+                    {
+                        menu.Items.Add("Edit group").Click += (ms, me) =>
+                        {
+                            var editForm = new EditGroupForm(groupDetails, _groups);
+                            if (editForm.ShowDialog() == DialogResult.OK)
+                            {
+                                var doc = XDocument.Load(getXMLConfigPath());
+                                var root = doc.Root;
+                                if (root != null)
+                                {
+                                    GroupManager.UpdateGroup(root, groupName, editForm.GroupDetails);
+                                    doc.Save(getXMLConfigPath());
+                                    LoadApplicationsFromXml();
+                                    UpdateAppList();
+                                }
+                            }
+                        };
+                    }
+
                     menu.Show(Cursor.Position);
                 };
                 groupPanel.Controls.Add(headerPanel);
@@ -623,7 +639,7 @@ namespace AppRestarter
             using var editForm = new AddAppForm(
                 existing,
                 index,
-                getGroups: () => new List<string>(_groups),
+                getGroups: () => _groups.Select(g => g.Name).ToList(),
                 manageGroups: ManageGroups,
                 pcs: new List<PcInfo>(_pcs)
             );
@@ -676,13 +692,14 @@ namespace AppRestarter
             if (dlg.ShowDialog(this) != DialogResult.OK)
                 return;
 
-            var newGroups = dlg.Groups
+            var newGroupNames = dlg.Groups
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var removed = _groups.Except(newGroups, StringComparer.OrdinalIgnoreCase).ToList();
-            var added = newGroups.Except(_groups, StringComparer.OrdinalIgnoreCase).ToList();
+            var oldGroupNames = _groups.Select(g => g.Name).ToList();
+            var removed = Enumerable.Except(oldGroupNames, newGroupNames, StringComparer.OrdinalIgnoreCase).ToList();
+            var added = Enumerable.Except(newGroupNames, oldGroupNames, StringComparer.OrdinalIgnoreCase).ToList();
 
             if (removed.Count == 1 && added.Count == 1)
             {
@@ -696,18 +713,41 @@ namespace AppRestarter
                         app.GroupName = newName;
                     }
                 }
+
+                // Update group details preserving DontWarn setting
+                var existingGroup = _groups.FirstOrDefault(g => 
+                    g.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase));
+                _groups.Remove(existingGroup);
+                _groups.Add(new GroupDetails 
+                { 
+                    Name = newName, 
+                    DontWarn = existingGroup?.DontWarn ?? false 
+                });
             }
             else
             {
-                var valid = new HashSet<string>(newGroups, StringComparer.OrdinalIgnoreCase);
+                // Handle additions and removals
+                var valid = new HashSet<string>(newGroupNames, StringComparer.OrdinalIgnoreCase);
                 foreach (var app in _apps)
                 {
                     if (!string.IsNullOrEmpty(app.GroupName) && !valid.Contains(app.GroupName))
                         app.GroupName = null;
                 }
-            }
 
-            _groups = newGroups;
+                // Update _groups to match new list, preserving existing DontWarn settings
+                var newGroups = new List<GroupDetails>();
+                foreach (var name in newGroupNames)
+                {
+                    var existing = _groups.FirstOrDefault(g => 
+                        g.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                    newGroups.Add(new GroupDetails 
+                    { 
+                        Name = name, 
+                        DontWarn = existing?.DontWarn ?? false 
+                    });
+                }
+                _groups = newGroups;
+            }
 
             SaveApplicationsToXml();
             if (_currentView == ViewMode.Apps)
