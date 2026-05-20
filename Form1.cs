@@ -217,7 +217,7 @@ namespace AppRestarter
             try
             {
                 var indexPath = Path.Combine(exeDir, "index.html");
-                _webServer = new WebServer(_apps, _pcs, AddToLog, indexPath, _settings,
+                _webServer = new WebServer(_apps, _pcs, _groups, AddToLog, indexPath, _settings,
                      statusProvider: () =>
                      {
                          _statusManager.Refresh(force: true);

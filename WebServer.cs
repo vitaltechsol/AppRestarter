@@ -17,6 +17,7 @@ namespace AppRestarter
     {
         private readonly List<ApplicationDetails> _apps;
         private readonly List<PcInfo> _pcs;
+        private readonly List<GroupDetails> _groups;
         private readonly AppSettings _settings;
         private readonly Action<string> _logAction;
         private HttpListener _httpListener;
@@ -38,6 +39,7 @@ namespace AppRestarter
         public WebServer(
             List<ApplicationDetails> apps,
             List<PcInfo> pcs,
+            List<GroupDetails> groups,
             Action<string> logAction,
             string htmlFilePath,
             AppSettings settings,
@@ -45,6 +47,7 @@ namespace AppRestarter
         {
             _apps = apps ?? throw new ArgumentNullException(nameof(apps));
             _pcs = pcs ?? throw new ArgumentNullException(nameof(pcs));
+            _groups = groups ?? new List<GroupDetails>();
             _logAction = logAction ?? throw new ArgumentNullException(nameof(logAction));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
@@ -323,6 +326,23 @@ namespace AppRestarter
                     return;
                 }
 
+                // ---- GROUPS: list ----
+                if (request.HttpMethod == "GET" && path == "/groups")
+                {
+                    var groupsToSend = _groups.Select(g => new
+                    {
+                        g.Name,
+                        g.DontWarn
+                    }).ToList();
+
+                    var json = JsonSerializer.Serialize(groupsToSend);
+                    var buffer = Encoding.UTF8.GetBytes(json);
+                    response.ContentType = "application/json";
+                    response.ContentLength64 = buffer.Length;
+                    await response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+                    return;
+                }
+
                 // ---- APPS: restart single ----
                 if (request.HttpMethod == "POST" && path == "/restart")
                 {
@@ -393,7 +413,8 @@ namespace AppRestarter
                     }
 
                     var appsInGroup = _apps
-                        .Where(a => string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
+                        .Where(a => (a.GroupNames != null && a.GroupNames.Any(g => string.Equals(g, groupName, StringComparison.OrdinalIgnoreCase))) ||
+                                    string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
                         .ToList();
 
                     if (!appsInGroup.Any())
@@ -434,7 +455,8 @@ namespace AppRestarter
                     }
 
                     var appsInGroup = _apps
-                        .Where(a => string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
+                        .Where(a => (a.GroupNames != null && a.GroupNames.Any(g => string.Equals(g, groupName, StringComparison.OrdinalIgnoreCase))) ||
+                                    string.Equals(a.GroupName, groupName, StringComparison.OrdinalIgnoreCase))
                         .ToList();
 
                     if (!appsInGroup.Any())
