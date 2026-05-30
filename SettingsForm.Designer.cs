@@ -5,8 +5,10 @@
         private System.ComponentModel.IContainer components = null;
         private System.Windows.Forms.Label lblAppPort;
         private System.Windows.Forms.Label lblWebPort;
+        private System.Windows.Forms.Label lblFontSize;
         private System.Windows.Forms.NumericUpDown numAppPort;
         private System.Windows.Forms.NumericUpDown numWebPort;
+        private System.Windows.Forms.ComboBox cmbFontSize;
         private System.Windows.Forms.CheckBox chkAutoStart;
         private System.Windows.Forms.CheckBox chkStartMin;
         private System.Windows.Forms.CheckBox chkCheckUpdates;
@@ -24,8 +26,10 @@
         {
             lblAppPort = new Label();
             lblWebPort = new Label();
+            lblFontSize = new Label();
             numAppPort = new NumericUpDown();
             numWebPort = new NumericUpDown();
+            cmbFontSize = new ComboBox();
             chkAutoStart = new CheckBox();
             chkStartMin = new CheckBox();
             chkCheckUpdates = new CheckBox();
@@ -39,24 +43,36 @@
             // lblAppPort
             // 
             lblAppPort.AutoSize = true;
-            lblAppPort.Location = new Point(20, 20);
+            lblAppPort.Location = new Point(65, 20);
             lblAppPort.Name = "lblAppPort";
             lblAppPort.Size = new Size(57, 15);
             lblAppPort.TabIndex = 0;
             lblAppPort.Text = "App Port:";
+            lblAppPort.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lblWebPort
             // 
             lblWebPort.AutoSize = true;
-            lblWebPort.Location = new Point(20, 60);
+            lblWebPort.Location = new Point(65, 62);
             lblWebPort.Name = "lblWebPort";
             lblWebPort.Size = new Size(59, 15);
             lblWebPort.TabIndex = 1;
             lblWebPort.Text = "Web Port:";
+            lblWebPort.TextAlign = ContentAlignment.TopRight;
+            // 
+            // lblFontSize
+            // 
+            lblFontSize.AutoSize = true;
+            lblFontSize.Location = new Point(65, 102);
+            lblFontSize.Name = "lblFontSize";
+            lblFontSize.Size = new Size(57, 15);
+            lblFontSize.TabIndex = 10;
+            lblFontSize.Text = "Font Size:";
+            lblFontSize.TextAlign = ContentAlignment.TopRight;
             // 
             // numAppPort
             // 
-            numAppPort.Location = new Point(120, 18);
+            numAppPort.Location = new Point(155, 20);
             numAppPort.Maximum = new decimal(new int[] { 65535, 0, 0, 0 });
             numAppPort.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             numAppPort.Name = "numAppPort";
@@ -66,7 +82,7 @@
             // 
             // numWebPort
             // 
-            numWebPort.Location = new Point(120, 58);
+            numWebPort.Location = new Point(155, 60);
             numWebPort.Maximum = new decimal(new int[] { 65535, 0, 0, 0 });
             numWebPort.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             numWebPort.Name = "numWebPort";
@@ -74,38 +90,52 @@
             numWebPort.TabIndex = 3;
             numWebPort.Value = new decimal(new int[] { 8090, 0, 0, 0 });
             // 
+            // cmbFontSize
+            // 
+            cmbFontSize.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbFontSize.FormattingEnabled = true;
+            cmbFontSize.Items.AddRange(new object[] { "9", "10", "12", "14" });
+            cmbFontSize.Location = new Point(155, 100);
+            cmbFontSize.Name = "cmbFontSize";
+            cmbFontSize.Size = new Size(120, 23);
+            cmbFontSize.TabIndex = 11;
+            // 
             // chkAutoStart
             // 
-            chkAutoStart.Location = new Point(23, 95);
+            chkAutoStart.AutoSize = true;
+            chkAutoStart.Location = new Point(23, 135);
             chkAutoStart.Name = "chkAutoStart";
-            chkAutoStart.Size = new Size(188, 33);
+            chkAutoStart.Size = new Size(158, 19);
             chkAutoStart.TabIndex = 4;
             chkAutoStart.Text = "Auto-start with Windows";
             chkAutoStart.UseVisualStyleBackColor = true;
             // 
             // chkStartMin
             // 
-            chkStartMin.Location = new Point(23, 124);
+            chkStartMin.AutoSize = true;
+            chkStartMin.Location = new Point(23, 164);
             chkStartMin.Name = "chkStartMin";
-            chkStartMin.Size = new Size(217, 24);
+            chkStartMin.Size = new Size(109, 19);
             chkStartMin.TabIndex = 5;
             chkStartMin.Text = "Start Minimized";
             chkStartMin.UseVisualStyleBackColor = true;
             // 
             // chkCheckUpdates
             // 
-            chkCheckUpdates.Location = new Point(23, 150);
+            chkCheckUpdates.AutoSize = true;
+            chkCheckUpdates.Location = new Point(23, 190);
             chkCheckUpdates.Name = "chkCheckUpdates";
-            chkCheckUpdates.Size = new Size(217, 24);
+            chkCheckUpdates.Size = new Size(167, 19);
             chkCheckUpdates.TabIndex = 6;
             chkCheckUpdates.Text = "Check for Updates on Start";
             chkCheckUpdates.UseVisualStyleBackColor = true;
             // 
             // btnCheckUpdate
             // 
-            btnCheckUpdate.Location = new Point(23, 180);
+            btnCheckUpdate.AutoSize = true;
+            btnCheckUpdate.Location = new Point(38, 231);
             btnCheckUpdate.Name = "btnCheckUpdate";
-            btnCheckUpdate.Size = new Size(136, 27);
+            btnCheckUpdate.Size = new Size(222, 30);
             btnCheckUpdate.TabIndex = 7;
             btnCheckUpdate.Text = "Check for Updates";
             btnCheckUpdate.UseVisualStyleBackColor = true;
@@ -113,9 +143,10 @@
             // 
             // btnOK
             // 
-            btnOK.Location = new Point(84, 215);
+            btnOK.AutoSize = true;
+            btnOK.Location = new Point(158, 267);
             btnOK.Name = "btnOK";
-            btnOK.Size = new Size(75, 27);
+            btnOK.Size = new Size(102, 30);
             btnOK.TabIndex = 8;
             btnOK.Text = "Save";
             btnOK.UseVisualStyleBackColor = true;
@@ -123,9 +154,10 @@
             // 
             // btnCancel
             // 
-            btnCancel.Location = new Point(165, 215);
+            btnCancel.AutoSize = true;
+            btnCancel.Location = new Point(38, 267);
             btnCancel.Name = "btnCancel";
-            btnCancel.Size = new Size(75, 27);
+            btnCancel.Size = new Size(105, 30);
             btnCancel.TabIndex = 9;
             btnCancel.Text = "Cancel";
             btnCancel.UseVisualStyleBackColor = true;
@@ -135,21 +167,24 @@
             // 
             AcceptButton = btnOK;
             CancelButton = btnCancel;
-            ClientSize = new Size(270, 260);
+            ClientSize = new Size(300, 310);
             Controls.Add(btnCancel);
             Controls.Add(btnOK);
             Controls.Add(btnCheckUpdate);
             Controls.Add(chkCheckUpdates);
             Controls.Add(chkStartMin);
             Controls.Add(chkAutoStart);
+            Controls.Add(cmbFontSize);
             Controls.Add(numWebPort);
             Controls.Add(numAppPort);
+            Controls.Add(lblFontSize);
             Controls.Add(lblWebPort);
             Controls.Add(lblAppPort);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "SettingsForm";
+            Padding = new Padding(10);
             StartPosition = FormStartPosition.CenterParent;
             Text = "Settings";
             ((System.ComponentModel.ISupportInitialize)numAppPort).EndInit();

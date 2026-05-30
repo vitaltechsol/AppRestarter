@@ -22,6 +22,18 @@ namespace AppRestarter
             // Prime UI from current settings
             numAppPort.Value = Math.Max(numAppPort.Minimum, Math.Min(numAppPort.Maximum, current.AppPort));
             numWebPort.Value = Math.Max(numWebPort.Minimum, Math.Min(numWebPort.Maximum, current.WebPort));
+
+            // Set combo box value or default to 10
+            string fontStr = ((int)current.BaseFontSize).ToString();
+            if (cmbFontSize.Items.Contains(fontStr))
+            {
+                cmbFontSize.SelectedItem = fontStr;
+            }
+            else
+            {
+                cmbFontSize.SelectedItem = "10";
+            }
+
             chkAutoStart.Checked = current.AutoStartWithWindows;
             chkStartMin.Checked = current.StartMinimized;
             chkCheckUpdates.Checked = current.CheckForUpdatesOnStart;
@@ -30,11 +42,16 @@ namespace AppRestarter
             {
                 AppPort = current.AppPort,
                 WebPort = current.WebPort,
+                BaseFontSize = current.BaseFontSize,
                 AutoStartWithWindows = current.AutoStartWithWindows,
                 StartMinimized = current.StartMinimized,
                 CheckForUpdatesOnStart = current.CheckForUpdatesOnStart,
                 Schema = current.Schema
             };
+
+            // Apply current font size to this form
+            FontManager.BaseFontSize = current.BaseFontSize;
+            FontManager.ConfigureFormForScaling(this);
         }
 
         private void btnOK_Click(object sender, EventArgs e)
@@ -48,6 +65,16 @@ namespace AppRestarter
 
             Updated.AppPort = (int)numAppPort.Value;
             Updated.WebPort = (int)numWebPort.Value;
+
+            if (float.TryParse(cmbFontSize.SelectedItem?.ToString(), out float parsedFont))
+            {
+                Updated.BaseFontSize = parsedFont;
+            }
+            else
+            {
+                Updated.BaseFontSize = 10.0f;
+            }
+
             Updated.AutoStartWithWindows = chkAutoStart.Checked;
             Updated.StartMinimized = chkStartMin.Checked;
             Updated.CheckForUpdatesOnStart = chkCheckUpdates.Checked;

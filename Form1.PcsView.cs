@@ -20,13 +20,18 @@ namespace AppRestarter
 
         private void StylePcCardPanel(Panel panel, bool isAll = false)
         {
+            // Scale card size based on font size. Match app cards!
+            float fontScale = FontManager.BaseFontSize / 9.0f; // 9.0 is base size
+            int scaledWidth = (int)(200 * Math.Max(1.0f, fontScale));
+            int scaledHeight = (int)(48 * Math.Max(1.0f, fontScale));
+
             // Use the same base card colors as app cards so UI matches
             panel.BackColor = CardNormalBack;
             panel.ForeColor = Color.FromArgb(229, 231, 235);
             panel.Padding = new Padding(6, 3, 6, 3);
-            panel.Margin = new Padding(8);
-            panel.Width = 206;
-            panel.Height = 64;
+            panel.Margin = new Padding(6);
+            panel.Width = scaledWidth;
+            panel.Height = scaledHeight;
             panel.Cursor = Cursors.Hand;
             panel.BorderStyle = BorderStyle.FixedSingle;
         }
@@ -52,9 +57,9 @@ namespace AppRestarter
                 return;
             }
 
-            float baseSize = this.Font.Size;
-            var nameFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize + 2), FontStyle.Regular);
-            var ipFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 1), FontStyle.Regular);
+            // PC name larger, IP address smaller
+            var nameFont = FontManager.GetFont(1.0f, FontStyle.Regular);  // Base size for PC name
+            var ipFont = FontManager.GetFont(0.8f, FontStyle.Regular);   // 25% smaller for IP address
 
             // ---------- "All PCs" card ----------
             {
@@ -66,19 +71,23 @@ namespace AppRestarter
                     AutoSize = false,
                     Text = "All PCs",
                     Font = nameFont,
-                    Location = new Point(6, 8),
-                    Size = new Size(allPanel.Width - 12, 18)
+                    Location = new Point(6, 4),
+                    Size = new Size(allPanel.Width - 16, nameFont.Height + 2),
+                    AutoEllipsis = true
                 };
 
                 var lblMeta = new Label
                 {
-                    AutoSize = false,
+                    AutoSize = true,
                     Text = "Shut down every configured PC.",
                     Font = ipFont,
                     ForeColor = Color.FromArgb(191, 219, 254),
-                    Location = new Point(6, 32),
-                    Size = new Size(allPanel.Width - 12, 18)
+                    MaximumSize = new Size(allPanel.Width - 16, 0),
+                    AutoEllipsis = true
                 };
+
+                // Position meta label at bottom explicitly
+                lblMeta.Location = new Point(8, allPanel.Height - lblMeta.PreferredHeight - 12);
 
                 allPanel.Controls.Add(lblMeta);
                 allPanel.Controls.Add(lblTitle);
@@ -146,25 +155,31 @@ namespace AppRestarter
                 var pcPanel = new Panel();
                 StylePcCardPanel(pcPanel, isAll: false);
 
+                // PC Name - larger and prominent
                 var lblName = new Label
                 {
                     AutoSize = false,
                     Text = pc.Name,
                     Font = nameFont,
                     ForeColor = pc.Enabled ? Color.FromArgb(243, 244, 246) : Color.FromArgb(100, 116, 139),
-                    Location = new Point(6, 8),
-                    Size = new Size(pcPanel.Width - 12, 18)
+                    Location = new Point(6, 4),
+                    Size = new Size(pcPanel.Width - 30, nameFont.Height + 2),
+                    AutoEllipsis = true
                 };
 
+                // IP Address - smaller and subdued (at bottom)
                 var lblIp = new Label
                 {
-                    AutoSize = false,
+                    AutoSize = true,
                     Text = pc.IP,
                     Font = ipFont,
                     ForeColor = pc.Enabled ? Color.FromArgb(148, 163, 184) : Color.FromArgb(71, 85, 105),
-                    Location = new Point(6, 32),
-                    Size = new Size(pcPanel.Width - 12, 18)
+                    MaximumSize = new Size(pcPanel.Width - 30, 0),
+                    AutoEllipsis = true
                 };
+
+                // Position IP label at bottom explicitly
+                lblIp.Location = new Point(6, pcPanel.Height - lblIp.PreferredHeight - 12);
 
                 pcPanel.Controls.Add(lblIp);
                 pcPanel.Controls.Add(lblName);

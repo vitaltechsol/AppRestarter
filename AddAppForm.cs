@@ -35,6 +35,9 @@ namespace AppRestarter
         {
             InitializeComponent();
 
+            // Apply current font settings
+            FontManager.ConfigureFormForScaling(this);
+
             _getGroups = getGroups ?? (() => new List<string>());
             _manageGroups = manageGroups ?? (() => { });
             _pcs = pcs ?? new List<PcInfo>();

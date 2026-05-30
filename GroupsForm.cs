@@ -13,6 +13,10 @@ namespace AppRestarter
         public GroupsForm(IEnumerable<GroupDetails> existingGroups)
         {
             InitializeComponent();
+
+            // Apply current font settings
+            FontManager.ConfigureFormForScaling(this);
+
             Groups = existingGroups?.Select(g => g.Name)
                                    .Distinct(StringComparer.OrdinalIgnoreCase)
                                    .OrderBy(x => x)

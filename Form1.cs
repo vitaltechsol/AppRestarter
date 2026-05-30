@@ -50,6 +50,10 @@ namespace AppRestarter
 
             ApplyDarkTheme();
             LoadSettingsFromXml();
+
+            // Initialize font system with loaded settings
+            FontManager.BaseFontSize = _settings.BaseFontSize;
+
             LoadApplicationsFromXml();
             LoadPcsFromXml();
             MakeNavButtonsCircular();
@@ -449,6 +453,8 @@ namespace AppRestarter
                         ? appPort : 2024;
                     _settings.WebPort = int.TryParse(settingsElement.Element("WebPort")?.Value, out var webPort)
                         ? webPort : 8090;
+                    _settings.BaseFontSize = float.TryParse(settingsElement.Element("BaseFontSize")?.Value, out var baseFontSize)
+                        ? baseFontSize : 9.0f;
                     _settings.AutoStartWithWindows = bool.TryParse(settingsElement.Element("AutoStartWithWindows")?.Value, out var autoStartWithWindows) && autoStartWithWindows;
                     _settings.StartMinimized = bool.TryParse(settingsElement.Element("StartMinimized")?.Value, out var sm) && sm;
                     if (bool.TryParse(settingsElement.Element("CheckForUpdatesOnStart")?.Value, out var checkUpdates))
@@ -494,6 +500,7 @@ namespace AppRestarter
                     new XElement("Settings",
                         new XElement("AppPort", _settings.AppPort),
                         new XElement("WebPort", _settings.WebPort),
+                        new XElement("BaseFontSize", _settings.BaseFontSize),
                         new XElement("AutoStartWithWindows", _settings.AutoStartWithWindows),
                         new XElement("StartMinimized", _settings.StartMinimized),
                         new XElement("CheckForUpdatesOnStart", _settings.CheckForUpdatesOnStart),
@@ -644,6 +651,7 @@ namespace AppRestarter
 
             var oldAppPort = _settings.AppPort;
             var oldWebPort = _settings.WebPort;
+            var oldFontSize = _settings.BaseFontSize;
 
             _settings = dlg.Updated;
 
@@ -666,6 +674,20 @@ namespace AppRestarter
                 try { _webServer?.Stop(); } catch { }
                 StartWebServer();
                 AddToLog($"Web server restarted on port: {_settings.WebPort}");
+            }
+
+            // Apply new font size if changed
+            if (Math.Abs(oldFontSize - _settings.BaseFontSize) > 0.01f)
+            {
+                FontManager.BaseFontSize = _settings.BaseFontSize;
+
+                // Refresh the current view to apply new fonts to dynamically created controls
+                if (_currentView == ViewMode.Apps)
+                    UpdateAppList();
+                else
+                    RenderPcButtons();
+
+                AddToLog($"Font size updated to: {_settings.BaseFontSize}");
             }
 
             bool cliMin = Environment.GetCommandLineArgs()

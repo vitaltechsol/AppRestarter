@@ -40,85 +40,91 @@
             // 
             // lblName
             // 
-            lblName.Location = new Point(12, 48);
+            lblName.Location = new Point(2, 39);
             lblName.Name = "lblName";
-            lblName.Size = new Size(120, 22);
+            lblName.Size = new Size(177, 43);
             lblName.TabIndex = 2;
             lblName.Text = "Application Name:";
+            lblName.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtName
             // 
-            txtName.Location = new Point(145, 46);
+            txtName.Location = new Point(185, 50);
             txtName.Name = "txtName";
             txtName.Size = new Size(250, 23);
             txtName.TabIndex = 3;
             // 
             // lblProcess
             // 
-            lblProcess.Location = new Point(15, 124);
+            lblProcess.Location = new Point(-12, 114);
             lblProcess.Name = "lblProcess";
-            lblProcess.Size = new Size(120, 20);
+            lblProcess.Size = new Size(191, 40);
             lblProcess.TabIndex = 4;
             lblProcess.Text = "or Process Name:";
+            lblProcess.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtProcess
             // 
-            txtProcess.Location = new Point(145, 120);
+            txtProcess.Location = new Point(185, 124);
             txtProcess.Name = "txtProcess";
             txtProcess.Size = new Size(250, 23);
             txtProcess.TabIndex = 5;
             // 
             // lblPath
             // 
-            lblPath.Location = new Point(12, 86);
+            lblPath.Location = new Point(-12, 79);
             lblPath.Name = "lblPath";
-            lblPath.Size = new Size(120, 20);
+            lblPath.Size = new Size(191, 39);
             lblPath.TabIndex = 6;
-            lblPath.Text = "Application Path";
+            lblPath.Text = "Application Path:";
+            lblPath.TextAlign = ContentAlignment.MiddleRight;
             // 
             // txtPath
             // 
-            txtPath.Location = new Point(145, 83);
+            txtPath.Location = new Point(185, 87);
             txtPath.Name = "txtPath";
             txtPath.Size = new Size(210, 23);
             txtPath.TabIndex = 7;
             // 
             // btnBrowse
             // 
-            btnBrowse.Location = new Point(366, 82);
+            btnBrowse.AutoSize = true;
+            btnBrowse.Location = new Point(416, 86);
             btnBrowse.Name = "btnBrowse";
-            btnBrowse.Size = new Size(70, 23);
+            btnBrowse.Size = new Size(73, 25);
             btnBrowse.TabIndex = 8;
             btnBrowse.Text = "Select App";
             btnBrowse.Click += btnBrowse_Click;
             // 
             // lblClientIP
             // 
-            lblClientIP.Location = new Point(12, 12);
+            lblClientIP.Location = new Point(2, 8);
             lblClientIP.Name = "lblClientIP";
-            lblClientIP.Size = new Size(120, 20);
+            lblClientIP.Size = new Size(177, 30);
             lblClientIP.TabIndex = 9;
             lblClientIP.Text = "Select PC:";
+            lblClientIP.TextAlign = ContentAlignment.MiddleRight;
             // 
             // cboClientPc
             // 
             cboClientPc.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboClientPc.Location = new Point(145, 9);
+            cboClientPc.Location = new Point(185, 13);
             cboClientPc.Name = "cboClientPc";
             cboClientPc.Size = new Size(250, 23);
             cboClientPc.TabIndex = 10;
             // 
             // chkAutoStart
             // 
-            chkAutoStart.Location = new Point(150, 150);
+            chkAutoStart.AutoSize = true;
+            chkAutoStart.Location = new Point(200, 154);
             chkAutoStart.Name = "chkAutoStart";
-            chkAutoStart.Size = new Size(181, 24);
+            chkAutoStart.Size = new Size(152, 19);
             chkAutoStart.TabIndex = 11;
             chkAutoStart.Text = "Auto-start this app after";
             // 
             // numDelay
             // 
-            numDelay.Location = new Point(330, 152);
+            numDelay.Location = new Point(385, 153);
             numDelay.Maximum = new decimal(new int[] { 300, 0, 0, 0 });
             numDelay.Name = "numDelay";
             numDelay.Size = new Size(50, 23);
@@ -126,7 +132,8 @@
             // 
             // btnSave
             // 
-            btnSave.Location = new Point(150, 325);
+            btnSave.AutoSize = true;
+            btnSave.Location = new Point(381, 329);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(80, 30);
             btnSave.TabIndex = 12;
@@ -135,8 +142,9 @@
             // 
             // btnCancel
             // 
+            btnCancel.AutoSize = true;
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new Point(240, 325);
+            btnCancel.Location = new Point(272, 329);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(80, 30);
             btnCancel.TabIndex = 13;
@@ -144,7 +152,8 @@
             // 
             // btnDelete
             // 
-            btnDelete.Location = new Point(330, 325);
+            btnDelete.AutoSize = true;
+            btnDelete.Location = new Point(165, 329);
             btnDelete.Name = "btnDelete";
             btnDelete.Size = new Size(80, 30);
             btnDelete.TabIndex = 14;
@@ -155,7 +164,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(388, 154);
+            label1.Location = new Point(453, 155);
             label1.Name = "label1";
             label1.Size = new Size(50, 15);
             label1.TabIndex = 15;
@@ -163,41 +172,46 @@
             // 
             // chkStartMinimized
             // 
-            chkStartMinimized.Location = new Point(150, 180);
+            chkStartMinimized.AutoSize = true;
+            chkStartMinimized.Location = new Point(200, 184);
             chkStartMinimized.Name = "chkStartMinimized";
-            chkStartMinimized.Size = new Size(290, 24);
+            chkStartMinimized.Size = new Size(139, 19);
             chkStartMinimized.TabIndex = 16;
             chkStartMinimized.Text = "Auto-start minimized";
             // 
             // chkNoWarn
             // 
-            chkNoWarn.Location = new Point(150, 210);
+            chkNoWarn.AutoSize = true;
+            chkNoWarn.Location = new Point(200, 214);
             chkNoWarn.Name = "chkNoWarn";
-            chkNoWarn.Size = new Size(290, 24);
+            chkNoWarn.Size = new Size(169, 19);
             chkNoWarn.TabIndex = 17;
             chkNoWarn.Text = "Don't warn when restarting";
             // 
             // lblGroup
             // 
-            lblGroup.Location = new Point(15, 240);
+            lblGroup.AutoSize = true;
+            lblGroup.Location = new Point(65, 244);
             lblGroup.Name = "lblGroup";
-            lblGroup.Size = new Size(120, 20);
+            lblGroup.Size = new Size(48, 15);
             lblGroup.TabIndex = 0;
             lblGroup.Text = "Groups:";
+            lblGroup.TextAlign = ContentAlignment.MiddleRight;
             // 
             // chkListGroups
             // 
             chkListGroups.CheckOnClick = true;
-            chkListGroups.Location = new Point(145, 237);
+            chkListGroups.Location = new Point(185, 241);
             chkListGroups.Name = "chkListGroups";
             chkListGroups.Size = new Size(195, 76);
             chkListGroups.TabIndex = 1;
             // 
             // btnManageGroups
             // 
-            btnManageGroups.Location = new Point(354, 237);
+            btnManageGroups.AutoSize = true;
+            btnManageGroups.Location = new Point(396, 239);
             btnManageGroups.Name = "btnManageGroups";
-            btnManageGroups.Size = new Size(75, 23);
+            btnManageGroups.Size = new Size(75, 25);
             btnManageGroups.TabIndex = 18;
             btnManageGroups.Text = "Manage";
             btnManageGroups.UseVisualStyleBackColor = true;
@@ -207,7 +221,7 @@
             // 
             AcceptButton = btnSave;
             CancelButton = btnCancel;
-            ClientSize = new Size(470, 370);
+            ClientSize = new Size(708, 370);
             Controls.Add(btnManageGroups);
             Controls.Add(lblGroup);
             Controls.Add(chkListGroups);
@@ -231,6 +245,7 @@
             FormBorderStyle = FormBorderStyle.FixedDialog;
             Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "AddAppForm";
+            Padding = new Padding(10, 0, 20, 0);
             StartPosition = FormStartPosition.CenterParent;
             Text = "Add New Application";
             ((System.ComponentModel.ISupportInitialize)numDelay).EndInit();

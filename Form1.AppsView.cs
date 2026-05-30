@@ -105,6 +105,7 @@ namespace AppRestarter
                     if (settingsRoot != null)
                     {
                         _settings.AppPort = int.TryParse(settingsRoot.Element("AppPort")?.Value, out var appPort) ? appPort : _settings.AppPort;
+                        _settings.BaseFontSize = float.TryParse(settingsRoot.Element("BaseFontSize")?.Value, out var baseFontSize) ? baseFontSize : _settings.BaseFontSize;
                         _timeout = int.TryParse(settingsRoot.Element("TimeoutMs")?.Value, out var timeoutMs) ? timeoutMs : _timeout;
                     }
                 }
@@ -138,13 +139,17 @@ namespace AppRestarter
 
         private void StyleAppCardPanel(Panel panel)
         {
-            // smaller cards to fit more
+            // Scale card size based on font size
+            float fontScale = FontManager.BaseFontSize / 9.0f; // 9.0 is base size
+            int scaledWidth = (int)(200 * Math.Max(1.0f, fontScale));
+            int scaledHeight = (int)(42 * Math.Max(1.0f, fontScale));
+
             panel.BackColor = CardNormalBack;
             panel.ForeColor = Color.FromArgb(229, 231, 235);
             panel.Padding = new Padding(6, 3, 6, 3);
             panel.Margin = new Padding(6);
-            panel.Width = 200;  // narrower
-            panel.Height = 42;  // slightly shorter
+            panel.Width = scaledWidth;
+            panel.Height = scaledHeight;
             panel.Cursor = Cursors.Hand;
             panel.BorderStyle = BorderStyle.FixedSingle;
         }
@@ -307,8 +312,8 @@ namespace AppRestarter
                     Size = new Size(innerWidth, 30),
                 };
                 headerPanel.Location = new Point(-5, 0);
-                var boldFont = new Font(this.Font, FontStyle.Bold);
-                var regularFont = new Font(this.Font, FontStyle.Regular);
+                var boldFont = FontManager.GetFont(1.0f, FontStyle.Bold);
+                var regularFont = FontManager.GetFont(1.0f, FontStyle.Regular);
 
                 var btnRestartGroup = new Button
                 {
@@ -318,7 +323,7 @@ namespace AppRestarter
                     BackColor = Color.FromArgb(15, 89, 117), // Restart button Color
                     ForeColor = Color.FromArgb(250, 250, 250),
                     FlatStyle = FlatStyle.Flat,
-                    Size = new Size(98, 23)
+                    MinimumSize = new Size(98, 23)
                 };
                 btnRestartGroup.FlatAppearance.BorderSize = 0;
                 headerPanel.Controls.Add(btnRestartGroup);
@@ -452,43 +457,48 @@ namespace AppRestarter
                         ? $"{app.ProcessName} · {clientLabel}"
                         : clientLabel;
 
-                    float baseSize = this.Font.SizeInPoints;
-                    var nameFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize + 2), FontStyle.Regular);
-                    var metaFont = new Font(this.Font.FontFamily, Math.Max(6, baseSize - 3), FontStyle.Regular);
+                    // Larger app name, smaller metadata
+                    var nameFont = FontManager.GetFont(1.0f, FontStyle.Regular);  // Base size for app name
+                    var metaFont = FontManager.GetFont(0.75f, FontStyle.Regular); // 25% smaller for PC/process info
 
-                    // App Name Style
+                    // App Name Style - larger and prominent
                     var lblName = new Label
                     {
-                        AutoSize = true,
+                        AutoSize = false,
                         Text = string.IsNullOrWhiteSpace(app.Name) ? "(no name)" : app.Name,
                         Font = nameFont,
                         ForeColor = app.Enabled ? Color.FromArgb(243, 244, 246) : Color.FromArgb(100, 116, 139),
-                        Location = new Point(4, 3),
-                        Size = new Size(appCard.Width - 12, 18),
+                        Location = new Point(6, 4),
+                        Size = new Size(appCard.Width - 30, nameFont.Height + 2),
                         AutoEllipsis = true
                     };
 
-                    // PC Name Style
+                    // PC/Process Name Style - smaller and subdued (at bottom)
                     var lblMeta2 = new Label
                     {
-                        AutoSize = false,
+                        AutoSize = true,
                         Text = metaText,
                         Font = metaFont,
                         ForeColor = app.Enabled ? Color.FromArgb(148, 163, 184) : Color.FromArgb(71, 85, 105),
-                        Location = new Point(6, 22),
-                        Size = new Size(appCard.Width - 12, 18)
+                        MaximumSize = new Size(appCard.Width - 30, 0),
+                        AutoEllipsis = true
                     };
 
-                    // Status indicator (small colored dot)
+                    // Position meta label at bottom explicitly
+                    lblMeta2.Location = new Point(8, appCard.Height - lblMeta2.PreferredHeight - 8);
+
+                    // Status indicator (small colored dot) - scales with font
+                    float dotScale = FontManager.BaseFontSize / 9.0f;
+                    int dotSize = (int)(18 * Math.Max(1.0f, dotScale));
                     var statusLabel = new Label
                     {
                         AutoSize = false,
                         Text = "●",
-                        Font = new Font(this.Font.FontFamily, Math.Max(6, baseSize + 2), FontStyle.Bold),
+                        Font = FontManager.GetFont(1.0f, FontStyle.Bold),
                         ForeColor = AppStatusManager.StatusGray,
-                        Size = new Size(18, 18),
+                        Size = new Size(dotSize, dotSize),
                         TextAlign = ContentAlignment.MiddleCenter,
-                        Location = new Point(appCard.Width - 20, (appCard.Height / 2) - 2)
+                        Location = new Point(appCard.Width - dotSize, (appCard.Height) - (dotSize) - 4)
                     };
 
                     // If we already know the last state of this app, keep that color when rebuilding the UI
