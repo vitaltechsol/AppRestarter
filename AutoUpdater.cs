@@ -17,13 +17,15 @@ namespace AppRestarter
         private readonly string _appName;
         private readonly string _executableName;
         private readonly string _currentVersionStr;
+        private readonly string[] _filesToKeep;
 
-        public AutoUpdater(string repoUrl, string appName, string executableName, string currentVersionStr)
+        public AutoUpdater(string repoUrl, string appName, string executableName, string currentVersionStr, string[] filesToKeep = null)
         {
             _repoUrl = repoUrl;
             _appName = appName;
             _executableName = executableName;
             _currentVersionStr = currentVersionStr;
+            _filesToKeep = filesToKeep ?? Array.Empty<string>();
         }
 
         public async Task CheckForUpdatesAsync(bool manualCheck = false)
@@ -132,12 +134,33 @@ namespace AppRestarter
                 var batPath = Path.Combine(tempPath, "update.bat");
                 var exePath = Path.Combine(exeDir, _executableName);
 
-                var batContent = $@"@echo off
-timeout /t 2 /nobreak > nul
-xcopy /Y /E /Q ""{extractedAppDir}\*"" ""{exeDir}\""
-start """" ""{exePath}""
-del ""%~f0""
-";
+                var batContentBuilder = new System.Text.StringBuilder();
+                batContentBuilder.AppendLine("@echo off");
+                batContentBuilder.AppendLine("timeout /t 2 /nobreak > nul");
+
+                // Backup files
+                foreach (var file in _filesToKeep)
+                {
+                    batContentBuilder.AppendLine($@"if exist ""{exeDir}\{file}"" (");
+                    batContentBuilder.AppendLine($@"    copy /Y ""{exeDir}\{file}"" ""{tempPath}\{file}""");
+                    batContentBuilder.AppendLine(")");
+                }
+
+                // Copy new files
+                batContentBuilder.AppendLine($@"xcopy /Y /E /Q ""{extractedAppDir}\*"" ""{exeDir}\""");
+
+                // Restore files
+                foreach (var file in _filesToKeep)
+                {
+                    batContentBuilder.AppendLine($@"if exist ""{tempPath}\{file}"" (");
+                    batContentBuilder.AppendLine($@"    copy /Y ""{tempPath}\{file}"" ""{exeDir}\{file}""");
+                    batContentBuilder.AppendLine(")");
+                }
+
+                batContentBuilder.AppendLine($@"start """" ""{exePath}""");
+                batContentBuilder.AppendLine(@"del ""%~f0""");
+
+                var batContent = batContentBuilder.ToString();
                 File.WriteAllText(batPath, batContent);
 
                 var processStartInfo = new ProcessStartInfo

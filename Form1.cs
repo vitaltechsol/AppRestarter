@@ -62,7 +62,8 @@ namespace AppRestarter
                 "https://api.github.com/repos/vitaltechsol/AppRestarter/releases/latest",
                 "AppRestarter",
                 "AppRestarter.exe",
-                Application.ProductVersion);
+                Application.ProductVersion,
+                new string[] { "applications.xml" });
 
             // NEW: centralized app status logic (UI polling + TCP STATUS/STATUSBATCH responses)
             _statusManager = new AppStatusManager(
