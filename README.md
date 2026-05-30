@@ -188,13 +188,16 @@ AppRestarter supports application grouping for batch operations.
 
 ### Assigning Applications to a Group
 
-- When adding/editing an app, select a group from the dropdown  
-- Choose **None** to leave unassigned  
+- When adding/editing an app, you can assign it to multiple groups using the checklist  
+- Check the boxes for all the groups the application should belong to  
+- Leave all boxes unchecked to leave the application unassigned  
 
 ### Using Groups
 
 - Clicking a group button restarts **all apps in that group**  
 - Right-click → **Stop** stops them all  
+- Right-click → **Rename** allows you to rename the group  
+- Right-click → **Disable Warning** disables the confirmation prompt when restarting the group  
 - Groups also appear in the **web interface**
 
 ---
@@ -246,11 +249,15 @@ For example `http://192.168.1.123:8090`.
   If set to `true`, AppRestarter will configure itself to run automatically when Windows starts.  
   This is done using a Windows Scheduled Task so that the program can also run with administrator rights if required.  
   Default: `true`
-	- 
+
 - **Start Minimized**  
   If set to `true`, AppRestarter will start minimized when launched.  
   This is useful when running at startup so the application doesn't pop up in front of the user.  
   Default: `false`
+
+- **Font Size**  
+  Allows you to change the global text size for the application interface (options: 9, 10, 12, 14).  
+  Default: `10`
 
 
 ## Notes
