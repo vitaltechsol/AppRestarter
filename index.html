@@ -497,6 +497,90 @@
             border-color: rgba(248, 113, 113, 0.7);
         }
 
+        /* ROUTINES */
+
+        .routine-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .routine-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-subtle);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: var(--shadow-soft);
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .routine-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .routine-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--title);
+        }
+
+        .routine-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            padding-left: 12px;
+        }
+
+        .routine-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+            .routine-step::before {
+                content: '▸';
+                color: var(--accent);
+                flex-shrink: 0;
+            }
+
+        .routine-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .routine-btn {
+            all: unset;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 500;
+            background: var(--accent);
+            color: #020617;
+            border: 1px solid transparent;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+            .routine-btn:hover {
+                background: #14b8c0;
+                transform: scale(1.03);
+            }
+
+            .routine-btn:active {
+                transform: scale(0.98);
+            }
+
         /* RESPONSIVE */
 
         @media (max-width: 768px) {
@@ -537,6 +621,10 @@
                     <div>🖥️</div>
                     <span class="label">PCs</span>
                 </button>
+                <button class="nav-btn" data-view="routines" id="navRoutines">
+                    <div>🔄</div>
+                    <span class="label">Routines</span>
+                </button>
             </div>
             <div class="nav-bottom">
                 <div style="opacity:0.4; cursor:default; font-size: 9px;">
@@ -558,6 +646,11 @@
                         <!-- PCs rendered here -->
                     </div>
                 </div>
+                <div class="content-inner" id="contentRoutines" style="display:none;">
+                    <div class="routine-list" id="routineList">
+                        <!-- Routines rendered here -->
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -570,14 +663,17 @@
     <script>
         const navApps = document.getElementById('navApps');
         const navPcs = document.getElementById('navPcs');
+        const navRoutines = document.getElementById('navRoutines');
         const viewTitle = document.getElementById('viewTitle');
         const viewSubtitle = document.getElementById('viewSubtitle');
         const tabLabel = document.getElementById('tabLabel');
 
         const contentApps = document.getElementById('contentApps');
         const contentPcs = document.getElementById('contentPcs');
+        const contentRoutines = document.getElementById('contentRoutines');
         const groupList = document.getElementById('groupList');
         const pcGrid = document.getElementById('pcGrid');
+        const routineList = document.getElementById('routineList');
 
         const toast = document.getElementById('toast');
         const toastText = document.getElementById('toastText');
@@ -601,21 +697,32 @@
         }
 
         function setView(view) {
+            // Remove active from all nav buttons
+            navApps.classList.remove('active');
+            navPcs.classList.remove('active');
+            navRoutines.classList.remove('active');
+
+            // Hide all content
+            contentApps.style.display = 'none';
+            contentPcs.style.display = 'none';
+            contentRoutines.style.display = 'none';
+
+            // Show selected view
             if (view === 'apps') {
                 navApps.classList.add('active');
-                navPcs.classList.remove('active');
                 contentApps.style.display = '';
-                contentPcs.style.display = 'none';
             } else if (view === 'pcs') {
                 navPcs.classList.add('active');
-                navApps.classList.remove('active');
                 contentPcs.style.display = '';
-                contentApps.style.display = 'none';
+            } else if (view === 'routines') {
+                navRoutines.classList.add('active');
+                contentRoutines.style.display = '';
             }
         }
 
         navApps.addEventListener('click', () => setView('apps'));
         navPcs.addEventListener('click', () => setView('pcs'));
+        navRoutines.addEventListener('click', () => setView('routines'));
 
         // --- API HELPERS ---
 
@@ -1120,10 +1227,105 @@ Proceed with shutdown?`;
             }
         }
 
+        // --- ROUTINES VIEW ---
+
+        function formatRoutineStep(step) {
+            if (!step || !step.Action) return 'Empty step';
+
+            const waitDesc = (step.WaitConditions && step.WaitConditions.length > 0)
+                ? `${step.WaitConditions.length} wait(s), then `
+                : '';
+
+            let actionDesc = 'Unknown action';
+            switch (step.Action.Type) {
+                case 0: actionDesc = `Start ${step.Action.TargetId}`; break;
+                case 1: actionDesc = `Restart ${step.Action.TargetId}`; break;
+                case 2: actionDesc = `Stop ${step.Action.TargetId}`; break;
+                case 3: actionDesc = `Send keys '${step.Action.Keys || ''}'`; break;
+                case 4: actionDesc = `Click (${step.Action.ClickX}, ${step.Action.ClickY})`; break;
+                case 5: actionDesc = `Minimize ${step.Action.TargetId}`; break;
+            }
+
+            return waitDesc + actionDesc;
+        }
+
+        function renderRoutines(routines) {
+            routineList.innerHTML = '';
+
+            if (!routines || routines.length === 0) {
+                routineList.innerHTML = '<div style="font-size:12px;color:#9ca3af;">No routines configured yet.</div>';
+                return;
+            }
+
+            for (const routine of routines) {
+                const card = document.createElement('div');
+                card.className = 'routine-card';
+
+                const header = document.createElement('div');
+                header.className = 'routine-header';
+
+                const title = document.createElement('div');
+                title.className = 'routine-title';
+                title.textContent = routine.Name || 'Unnamed Routine';
+
+                const actions = document.createElement('div');
+                actions.className = 'routine-actions';
+
+                const executeBtn = document.createElement('button');
+                executeBtn.className = 'routine-btn';
+                executeBtn.innerHTML = 'Execute';
+                executeBtn.addEventListener('click', async () => {
+                    try {
+                        const resp = await apiPost('/routines/execute', { Id: routine.Id });
+                        showToast(resp || `Routine "${routine.Name}" started.`);
+                    } catch (err) {
+                        console.error(err);
+                        showToast(`Failed to execute routine "${routine.Name}".`, true);
+                    }
+                });
+
+                actions.appendChild(executeBtn);
+                header.appendChild(title);
+                header.appendChild(actions);
+
+                const steps = document.createElement('div');
+                steps.className = 'routine-steps';
+
+                if (routine.Steps && routine.Steps.length > 0) {
+                    for (let i = 0; i < routine.Steps.length; i++) {
+                        const stepEl = document.createElement('div');
+                        stepEl.className = 'routine-step';
+                        stepEl.textContent = `Step ${i + 1}: ${formatRoutineStep(routine.Steps[i])}`;
+                        steps.appendChild(stepEl);
+                    }
+                } else {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.style.color = '#9ca3af';
+                    emptyMsg.style.fontSize = '12px';
+                    emptyMsg.textContent = 'No steps defined';
+                    steps.appendChild(emptyMsg);
+                }
+
+                card.appendChild(header);
+                card.appendChild(steps);
+                routineList.appendChild(card);
+            }
+        }
+
+        async function loadRoutines() {
+            try {
+                const routines = await apiGet('/routines');
+                renderRoutines(routines);
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to load routines list.', true);
+            }
+        }
+
         // Initial load
         (async function init() {
             setView('apps');
-            await Promise.allSettled([loadGroups(), loadPcs(), loadApps()]);
+            await Promise.allSettled([loadGroups(), loadPcs(), loadApps(), loadRoutines()]);
             // Status circles: websocket first (realtime), poll fallback every 4s
             tryWebSocketFirstForStatus();
             await fetchAndApplyStatusOnce();

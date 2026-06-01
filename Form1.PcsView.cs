@@ -396,13 +396,14 @@ namespace AppRestarter
                 {
                     AddToLog($"Executing routine action '{request.RoutineActionType}' for app '{request.AppName}'");
 
-                    // Create a temporary ApplicationDetails from the request
-                    var app = new ApplicationDetails
+                    // Find the actual app from the configured apps list
+                    var app = _apps.FirstOrDefault(a => a.Name == request.AppName);
+
+                    if (app == null)
                     {
-                        Name = request.AppName,
-                        ProcessName = request.ProcessName,
-                        RestartPath = request.RestartPath
-                    };
+                        AddToLog($"Error: App '{request.AppName}' not found in local configuration");
+                        return;
+                    }
 
                     // Create a routine executor with logging
                     var executor = new RoutineExecutor(_apps, AddToLog);
