@@ -189,7 +189,7 @@ namespace AppRestarter
 
             try
             {
-                var executor = new RoutineExecutor(_apps);
+                var executor = new RoutineExecutor(_apps, AddToLog);
                 var cts = new CancellationTokenSource();
 
                 // Execute routine in background

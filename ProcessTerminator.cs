@@ -140,7 +140,7 @@ namespace AppRestarter
 
         // ---- Target selection (matches your policy) ----
 
-        private static List<Process> SelectTargets(ApplicationDetails app, Action<string> log)
+        public static List<Process> SelectTargets(ApplicationDetails app, Action<string> log)
         {
             var result = new List<Process>();
 

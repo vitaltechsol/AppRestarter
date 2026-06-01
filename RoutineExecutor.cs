@@ -11,6 +11,7 @@ namespace AppRestarter
     public class RoutineExecutor
     {
         private readonly List<ApplicationDetails> _applications;
+        private readonly Action<string> _log;
 
         // Win32 API imports for keyboard and mouse input
         [DllImport("user32.dll")]
@@ -37,7 +38,29 @@ namespace AppRestarter
         [DllImport("user32.dll")]
         private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
 
+        [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetActiveWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
         private const int SW_RESTORE = 9;
+        private const int SW_SHOW = 5;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
@@ -48,9 +71,10 @@ namespace AppRestarter
             public int Y;
         }
 
-        public RoutineExecutor(List<ApplicationDetails> applications)
+        public RoutineExecutor(List<ApplicationDetails> applications, Action<string> log = null)
         {
             _applications = applications;
+            _log = log;
         }
 
         public async Task ExecuteRoutineAsync(Routine routine, CancellationToken cancellationToken = default)
@@ -161,40 +185,62 @@ namespace AppRestarter
                          case ActionType.KeyboardShortcut:
                              if (!string.IsNullOrWhiteSpace(action.Keys))
                              {
+                                 _log?.Invoke($"Executing keyboard shortcut '{action.Keys}' on app '{app.Name}'");
                                  var hwnd = FindAppWindow(app);
                                  if (hwnd != IntPtr.Zero)
                                  {
-                                     // Restore and bring window to foreground
-                                     ShowWindow(hwnd, SW_RESTORE);
-                                     SetForegroundWindow(hwnd);
-                                     await Task.Delay(200, cancellationToken); // Wait for window to be ready
+                                     _log?.Invoke($"Found window handle: {hwnd}");
+
+                                     // Activate the window with multiple approaches
+                                     if (!ActivateWindow(hwnd))
+                                     {
+                                         _log?.Invoke("Warning: Failed to fully activate window");
+                                     }
+
+                                     await Task.Delay(500, cancellationToken); // Wait longer for window to be ready
 
                                      // Send the keys using SendKeys
+                                     _log?.Invoke($"Sending keys: {action.Keys}");
                                      System.Windows.Forms.SendKeys.SendWait(action.Keys);
+                                     _log?.Invoke("Keys sent successfully");
+                                 }
+                                 else
+                                 {
+                                     _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
                                  }
                              }
                              break;
                          case ActionType.ClickArea:
                              if (action.ClickX >= 0 && action.ClickY >= 0)
                              {
+                                 _log?.Invoke($"Executing click at ({action.ClickX}, {action.ClickY}) on app '{app.Name}'");
                                  var hwnd = FindAppWindow(app);
                                  if (hwnd != IntPtr.Zero)
                                  {
-                                     // Restore and bring window to foreground
-                                     ShowWindow(hwnd, SW_RESTORE);
-                                     SetForegroundWindow(hwnd);
-                                     await Task.Delay(200, cancellationToken); // Wait for window to be ready
+                                     _log?.Invoke($"Found window handle: {hwnd}");
 
-                                     // Get window position and convert client coordinates to screen coordinates
-                                     var point = new POINT { X = action.ClickX, Y = action.ClickY };
-                                     ClientToScreen(hwnd, ref point);
+                                     // Activate the window
+                                     if (!ActivateWindow(hwnd))
+                                     {
+                                         _log?.Invoke("Warning: Failed to fully activate window");
+                                     }
 
-                                     // Move cursor and click
-                                     SetCursorPos(point.X, point.Y);
-                                     await Task.Delay(50, cancellationToken);
+                                     await Task.Delay(500, cancellationToken); // Wait longer for window to be ready
+
+                                     // Use the coordinates as screen coordinates directly (they were recorded as screen coords)
+                                     _log?.Invoke($"Moving cursor to screen position ({action.ClickX}, {action.ClickY})");
+                                     SetCursorPos(action.ClickX, action.ClickY);
+                                     await Task.Delay(100, cancellationToken);
+
+                                     _log?.Invoke("Performing mouse click");
                                      mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
                                      await Task.Delay(50, cancellationToken);
                                      mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                                     _log?.Invoke("Click completed");
+                                 }
+                                 else
+                                 {
+                                     _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
                                  }
                              }
                              break;
@@ -204,44 +250,159 @@ namespace AppRestarter
             // TODO: Implementation for PC and Group targets
         }
 
+        private bool ActivateWindow(IntPtr hwnd)
+        {
+            try
+            {
+                // Check if window is visible
+                if (!IsWindowVisible(hwnd))
+                {
+                    _log?.Invoke("Window is not visible, showing it");
+                    ShowWindow(hwnd, SW_SHOW);
+                }
+
+                // Restore if minimized
+                ShowWindow(hwnd, SW_RESTORE);
+                Thread.Sleep(100);
+
+                // Get current foreground window thread
+                IntPtr currentForeground = GetForegroundWindow();
+                uint currentThreadId = GetCurrentThreadId();
+                uint targetThreadId = GetWindowThreadProcessId(hwnd, out _);
+
+                // Attach to the target window's thread to allow SetForegroundWindow to work
+                if (currentThreadId != targetThreadId)
+                {
+                    AttachThreadInput(currentThreadId, targetThreadId, true);
+                    BringWindowToTop(hwnd);
+                    SetForegroundWindow(hwnd);
+                    AttachThreadInput(currentThreadId, targetThreadId, false);
+                }
+                else
+                {
+                    BringWindowToTop(hwnd);
+                    SetForegroundWindow(hwnd);
+                }
+
+                Thread.Sleep(100);
+
+                // Verify the window is now in foreground
+                IntPtr newForeground = GetForegroundWindow();
+                bool success = newForeground == hwnd;
+                _log?.Invoke($"Window activation result: {success} (Handle: {hwnd}, Foreground: {newForeground})");
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _log?.Invoke($"Error activating window: {ex.Message}");
+                return false;
+            }
+        }
+
         private IntPtr FindAppWindow(ApplicationDetails app)
         {
-            if (app == null || string.IsNullOrWhiteSpace(app.ProcessName))
+            if (app == null)
+            {
+                _log?.Invoke("FindAppWindow: app is null");
                 return IntPtr.Zero;
+            }
 
             try
             {
-                // Get all processes with the app's process name
-                var processes = System.Diagnostics.Process.GetProcessesByName(app.ProcessName);
-                if (processes.Length == 0)
-                    return IntPtr.Zero;
+                _log?.Invoke($"FindAppWindow: Looking for process for app '{app.Name}'");
 
-                // If a RestartPath is specified, match by full path
-                if (!string.IsNullOrWhiteSpace(app.RestartPath))
+                // Use the same process selection logic as start/stop operations
+                var targets = ProcessTerminator.SelectTargets(app, _log);
+
+                if (targets.Count == 0)
                 {
-                    foreach (var process in processes)
+                    _log?.Invoke($"FindAppWindow: No running processes found for '{app.Name}'");
+                    return IntPtr.Zero;
+                }
+
+                _log?.Invoke($"FindAppWindow: Found {targets.Count} matching process(es)");
+
+                // Try each target process to find a window
+                foreach (var process in targets)
+                {
+                    try
                     {
-                        try
+                        var hwnd = FindWindowForProcess(process);
+                        if (hwnd != IntPtr.Zero)
                         {
-                            if (process.MainModule != null &&
-                                string.Equals(process.MainModule.FileName, app.RestartPath, StringComparison.OrdinalIgnoreCase))
+                            _log?.Invoke($"FindAppWindow: Found window handle {hwnd} for process {process.Id}");
+
+                            // Clean up other processes
+                            foreach (var p in targets)
                             {
-                                if (process.MainWindowHandle != IntPtr.Zero)
-                                    return process.MainWindowHandle;
+                                if (p != process)
+                                {
+                                    try { p.Dispose(); } catch { }
+                                }
                             }
+
+                            return hwnd;
                         }
-                        catch { }
+                    }
+                    catch (Exception ex)
+                    {
+                        _log?.Invoke($"FindAppWindow: Error accessing process {process.Id}: {ex.Message}");
                     }
                 }
 
-                // Fallback: return the first process with a main window
-                foreach (var process in processes)
+                // Clean up all processes if no window found
+                foreach (var p in targets)
                 {
-                    if (process.MainWindowHandle != IntPtr.Zero)
-                        return process.MainWindowHandle;
+                    try { p.Dispose(); } catch { }
+                }
+
+                _log?.Invoke("FindAppWindow: No window handle found for any matching process");
+            }
+            catch (Exception ex)
+            {
+                _log?.Invoke($"FindAppWindow: Exception: {ex.Message}");
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private IntPtr FindWindowForProcess(System.Diagnostics.Process process)
+        {
+            try
+            {
+                // First try MainWindowHandle
+                if (process.MainWindowHandle != IntPtr.Zero)
+                {
+                    _log?.Invoke($"Process {process.Id} has MainWindowHandle: {process.MainWindowHandle}");
+                    return process.MainWindowHandle;
+                }
+
+                // If no MainWindowHandle, enumerate all windows for this process
+                _log?.Invoke($"Process {process.Id} has no MainWindowHandle, enumerating all windows...");
+                var windows = new List<IntPtr>();
+
+                EnumWindows((hwnd, lParam) =>
+                {
+                    GetWindowThreadProcessId(hwnd, out uint processId);
+                    if (processId == process.Id && IsWindowVisible(hwnd))
+                    {
+                        windows.Add(hwnd);
+                        _log?.Invoke($"Found visible window {hwnd} for process {process.Id}");
+                    }
+                    return true;
+                }, IntPtr.Zero);
+
+                if (windows.Count > 0)
+                {
+                    _log?.Invoke($"Found {windows.Count} visible window(s) for process {process.Id}, using first one");
+                    return windows[0];
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _log?.Invoke($"FindWindowForProcess: Error for process {process.Id}: {ex.Message}");
+            }
 
             return IntPtr.Zero;
         }
