@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using AppRestarter.Models;
 
@@ -12,6 +13,38 @@ namespace AppRestarter
         private readonly List<ApplicationDetails> _apps;
         private readonly List<PcInfo> _pcs;
         private readonly List<GroupDetails> _groups;
+
+        // Win32 API for global keyboard hook and mouse position
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100;
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        private IntPtr _hookID = IntPtr.Zero;
+        private LowLevelKeyboardProc _hookCallback;
+        private bool _isRecording = false;
 
         public AddRoutineStepForm(
             RoutineStep existing = null,
@@ -179,7 +212,7 @@ namespace AppRestarter
             var selectedIndex = cboActionType.SelectedIndex;
 
             // Show/hide based on action type
-            bool showTarget = selectedIndex >= 0 && selectedIndex <= 2; // Start/Restart/Stop
+            bool showTarget = selectedIndex >= 0 && selectedIndex <= 4; // All actions need a target
             bool showKeys = selectedIndex == 3; // Keyboard Shortcut
             bool showClick = selectedIndex == 4; // Click Area
 
@@ -190,11 +223,19 @@ namespace AppRestarter
 
             lblKeys.Visible = showKeys;
             txtKeys.Visible = showKeys;
+            btnPickShortcut.Visible = showKeys;
 
             lblClickX.Visible = showClick;
             numClickX.Visible = showClick;
             lblClickY.Visible = showClick;
             numClickY.Visible = showClick;
+            btnRecordMouse.Visible = showClick;
+
+            // Stop recording if switching away from click area
+            if (!showClick && _isRecording)
+            {
+                StopRecording();
+            }
         }
 
         private void btnAddWait_Click(object sender, EventArgs e)
@@ -214,6 +255,99 @@ namespace AppRestarter
                 StepData.WaitConditions.RemoveAt(lstWaitConditions.SelectedIndex);
                 LoadWaitConditions();
             }
+        }
+
+        private void btnPickShortcut_Click(object sender, EventArgs e)
+        {
+            using var dlg = new KeyboardShortcutPickerForm(txtKeys.Text);
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                txtKeys.Text = dlg.ShortcutKeys;
+            }
+        }
+
+        private void btnRecordMouse_Click(object sender, EventArgs e)
+        {
+            if (_isRecording)
+            {
+                StopRecording();
+            }
+            else
+            {
+                StartRecording();
+            }
+        }
+
+        private void StartRecording()
+        {
+            _isRecording = true;
+            btnRecordMouse.Text = "⏹️ Recording... (Press R)";
+            btnRecordMouse.BackColor = System.Drawing.Color.LightCoral;
+
+            // Set up the keyboard hook
+            _hookCallback = HookCallback;
+            using (var curProcess = System.Diagnostics.Process.GetCurrentProcess())
+            using (var curModule = curProcess.MainModule)
+            {
+                _hookID = SetWindowsHookEx(WH_KEYBOARD_LL, _hookCallback, GetModuleHandle(curModule.ModuleName), 0);
+            }
+        }
+
+        private void StopRecording()
+        {
+            _isRecording = false;
+            btnRecordMouse.Text = "🔴 Record Position (Press R)";
+            btnRecordMouse.BackColor = System.Drawing.SystemColors.Control;
+
+            // Unhook the keyboard
+            if (_hookID != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_hookID);
+                _hookID = IntPtr.Zero;
+            }
+        }
+
+        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
+            {
+                int vkCode = Marshal.ReadInt32(lParam);
+                // 'R' key is virtual key code 0x52
+                if (vkCode == 0x52 && _isRecording)
+                {
+                    // Capture mouse position
+                    if (GetCursorPos(out POINT point))
+                    {
+                        // Use Invoke to update UI from hook thread
+                        if (InvokeRequired)
+                        {
+                            Invoke(new Action(() =>
+                            {
+                                numClickX.Value = point.X;
+                                numClickY.Value = point.Y;
+                                StopRecording();
+                            }));
+                        }
+                        else
+                        {
+                            numClickX.Value = point.X;
+                            numClickY.Value = point.Y;
+                            StopRecording();
+                        }
+                    }
+                }
+            }
+            return CallNextHookEx(_hookID, nCode, wParam, lParam);
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            // Clean up hook on form close
+            if (_isRecording)
+            {
+                StopRecording();
+            }
+            base.OnFormClosing(e);
         }
 
         private void btnSave_Click(object sender, EventArgs e)

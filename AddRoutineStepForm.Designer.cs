@@ -29,6 +29,8 @@ namespace AppRestarter
             numClickX = new NumericUpDown();
             lblKeys = new Label();
             txtKeys = new TextBox();
+            btnPickShortcut = new Button();
+            btnRecordMouse = new Button();
             lblTarget = new Label();
             cboTarget = new ComboBox();
             lblTargetType = new Label();
@@ -88,10 +90,12 @@ namespace AppRestarter
             // 
             groupAction.Controls.Add(lblClickY);
             groupAction.Controls.Add(numClickY);
+            groupAction.Controls.Add(btnRecordMouse);
             groupAction.Controls.Add(lblClickX);
             groupAction.Controls.Add(numClickX);
             groupAction.Controls.Add(lblKeys);
             groupAction.Controls.Add(txtKeys);
+            groupAction.Controls.Add(btnPickShortcut);
             groupAction.Controls.Add(lblTarget);
             groupAction.Controls.Add(cboTarget);
             groupAction.Controls.Add(lblTargetType);
@@ -121,6 +125,16 @@ namespace AppRestarter
             numClickY.Name = "numClickY";
             numClickY.Size = new Size(120, 23);
             numClickY.TabIndex = 10;
+            // 
+            // btnRecordMouse
+            // 
+            btnRecordMouse.Location = new Point(250, 148);
+            btnRecordMouse.Name = "btnRecordMouse";
+            btnRecordMouse.Size = new Size(180, 35);
+            btnRecordMouse.TabIndex = 13;
+            btnRecordMouse.Text = "🔴 Record Position (Press R)";
+            btnRecordMouse.UseVisualStyleBackColor = true;
+            btnRecordMouse.Click += btnRecordMouse_Click;
             // 
             // lblClickX
             // 
@@ -154,6 +168,16 @@ namespace AppRestarter
             txtKeys.Name = "txtKeys";
             txtKeys.Size = new Size(200, 23);
             txtKeys.TabIndex = 6;
+            // 
+            // btnPickShortcut
+            // 
+            btnPickShortcut.Location = new Point(330, 103);
+            btnPickShortcut.Name = "btnPickShortcut";
+            btnPickShortcut.Size = new Size(30, 25);
+            btnPickShortcut.TabIndex = 12;
+            btnPickShortcut.Text = "...";
+            btnPickShortcut.UseVisualStyleBackColor = true;
+            btnPickShortcut.Click += btnPickShortcut_Click;
             // 
             // lblTarget
             // 
@@ -270,10 +294,12 @@ namespace AppRestarter
         private ComboBox cboTarget;
         private Label lblKeys;
         private TextBox txtKeys;
+        private Button btnPickShortcut;
         private Label lblClickX;
         private NumericUpDown numClickX;
         private Label lblClickY;
         private NumericUpDown numClickY;
+        private Button btnRecordMouse;
         private Button btnSave;
         private Button btnCancel;
     }
