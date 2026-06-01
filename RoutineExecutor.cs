@@ -242,12 +242,37 @@ namespace AppRestarter
                                  {
                                      _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
                                  }
+                                              }
+                                              break;
+                                          case ActionType.Minimize:
+                                              {
+                                                  _log?.Invoke($"Minimizing app '{app.Name}'");
+                                                  var hwnd = FindAppWindow(app);
+                                                  if (hwnd != IntPtr.Zero)
+                                                  {
+                                                      _log?.Invoke($"Found window handle: {hwnd}");
+
+                                                      // Use ShowWindow with SW_MINIMIZE
+                                                      const int SW_MINIMIZE = 6;
+                                                      if (ShowWindow(hwnd, SW_MINIMIZE))
+                                                      {
+                                                          _log?.Invoke($"Successfully minimized '{app.Name}'");
+                                                      }
+                                                      else
+                                                      {
+                                                          _log?.Invoke($"Warning: ShowWindow returned false for '{app.Name}'");
+                                                      }
+                                                  }
+                                                  else
+                                                  {
+                                                      _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
+                                                  }
+                                              }
+                                              break;
+                                      }
+                                  }
                              }
-                             break;
-                     }
-                 }
-            }
-            // TODO: Implementation for PC and Group targets
+                             // TODO: Implementation for PC and Group targets
         }
 
         private bool ActivateWindow(IntPtr hwnd)

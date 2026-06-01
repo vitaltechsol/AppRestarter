@@ -51,7 +51,8 @@ namespace AppRestarter.Models
         Restart,
         Stop,
         KeyboardShortcut,
-        ClickArea
+        ClickArea,
+        Minimize
     }
 
     public enum TargetType

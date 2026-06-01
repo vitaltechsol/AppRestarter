@@ -111,6 +111,7 @@ namespace AppRestarter
             cboActionType.Items.Add("Stop");
             cboActionType.Items.Add("Keyboard Shortcut");
             cboActionType.Items.Add("Click Area");
+            cboActionType.Items.Add("Minimize");
 
             switch (StepData.Action.Type)
             {
@@ -128,6 +129,9 @@ namespace AppRestarter
                     break;
                 case ActionType.ClickArea:
                     cboActionType.SelectedIndex = 4;
+                    break;
+                case ActionType.Minimize:
+                    cboActionType.SelectedIndex = 5;
                     break;
                 default:
                     cboActionType.SelectedIndex = 0;
@@ -212,7 +216,7 @@ namespace AppRestarter
             var selectedIndex = cboActionType.SelectedIndex;
 
             // Show/hide based on action type
-            bool showTarget = selectedIndex >= 0 && selectedIndex <= 4; // All actions need a target
+            bool showTarget = selectedIndex >= 0 && selectedIndex <= 5; // All actions need a target
             bool showKeys = selectedIndex == 3; // Keyboard Shortcut
             bool showClick = selectedIndex == 4; // Click Area
 
@@ -361,6 +365,7 @@ namespace AppRestarter
                 2 => ActionType.Stop,
                 3 => ActionType.KeyboardShortcut,
                 4 => ActionType.ClickArea,
+                5 => ActionType.Minimize,
                 _ => ActionType.Start
             };
 

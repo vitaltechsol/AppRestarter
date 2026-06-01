@@ -96,9 +96,9 @@ namespace AppRestarter
             label1.ForeColor = SystemColors.ButtonShadow;
             label1.Location = new Point(715, 12);
             label1.Name = "label1";
-            label1.Size = new Size(37, 15);
+            label1.Size = new Size(43, 15);
             label1.TabIndex = 4;
-            label1.Text = "v1.9.2";
+            label1.Text = "v1.10.0";
             // 
             // btnOpenWeb
             // 
@@ -168,7 +168,7 @@ namespace AppRestarter
             lblNavRoutines.ForeColor = Color.FromArgb(226, 232, 240);
             lblNavRoutines.Location = new Point(14, 218);
             lblNavRoutines.Name = "lblNavRoutines";
-            lblNavRoutines.Size = new Size(42, 12);
+            lblNavRoutines.Size = new Size(43, 12);
             lblNavRoutines.TabIndex = 6;
             lblNavRoutines.Text = "Routines";
             lblNavRoutines.TextAlign = ContentAlignment.MiddleCenter;

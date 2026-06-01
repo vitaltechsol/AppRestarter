@@ -176,14 +176,14 @@ namespace AppRestarter
             if (routine == null)
                 return;
 
-            var result = MessageBox.Show(
-                $"Execute routine '{routine.Name}'?\n\nThis will run all {routine.Steps?.Count ?? 0} step(s) in order.",
-                "Execute Routine",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
+            //var result = MessageBox.Show(
+            //    $"Execute routine '{routine.Name}'?\n\nThis will run all {routine.Steps?.Count ?? 0} step(s) in order.",
+            //    "Execute Routine",
+            //    MessageBoxButtons.YesNo,
+            //    MessageBoxIcon.Question);
 
-            if (result != DialogResult.Yes)
-                return;
+            //if (result != DialogResult.Yes)
+            //    return;
 
             AddToLog($"Executing routine: {routine.Name}");
 
