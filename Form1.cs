@@ -21,7 +21,8 @@ namespace AppRestarter
         private enum ViewMode
         {
             Apps,
-            Pcs
+            Pcs,
+            Routines
         }
 
         private ViewMode _currentView = ViewMode.Apps;
@@ -29,14 +30,14 @@ namespace AppRestarter
         private readonly List<ApplicationDetails> _apps = new();
         private List<GroupDetails> _groups = new();
         private readonly List<PcInfo> _pcs = new();
-
+        private List<AppRestarter.Models.Routine> _routines = new List<AppRestarter.Models.Routine>();
+        private AppSettings _settings;
+        private WebServer _webServer;
         private TcpListener server;
         private volatile bool _serverRunning = true;
-        private WebServer _webServer;
-        private AppSettings _settings = new();
-        private readonly string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
         private int _timeout = 8000;
         private bool VerboseLogging { get; set; } = false;
+        private readonly string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
 
         // NEW: all app status logic moved out of Form1/AppView into this manager
         private AppStatusManager _statusManager;
@@ -49,6 +50,7 @@ namespace AppRestarter
             this.FormClosing += MainForm_FormClosing;
 
             ApplyDarkTheme();
+            _settings = new AppSettings(); // Initialize with defaults
             LoadSettingsFromXml();
 
             // Initialize font system with loaded settings
@@ -56,6 +58,7 @@ namespace AppRestarter
 
             LoadApplicationsFromXml();
             LoadPcsFromXml();
+            LoadRoutines();
             MakeNavButtonsCircular();
 
             _autoUpdater = new AutoUpdater(
@@ -115,6 +118,7 @@ namespace AppRestarter
 
             MakeCircular(btnNavApps);
             MakeCircular(btnNavPcs);
+            MakeCircular(btnNavRoutines);
             MakeCircular(btnNavSettings);
         }
 
@@ -146,9 +150,11 @@ namespace AppRestarter
 
             lblNavApps.ForeColor = Color.FromArgb(226, 232, 240);
             lblNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
+            lblNavRoutines.ForeColor = Color.FromArgb(226, 232, 240);
             lblNavSettings.ForeColor = Color.FromArgb(226, 232, 240);
 
-            foreach (var btn in new[] { btnNavApps, btnNavPcs, btnNavSettings })
+            // Add btnNavRoutines if needed
+            foreach (var btn in new[] { btnNavApps, btnNavPcs, btnNavRoutines, btnNavSettings })
             {
                 btn.BackColor = Color.FromArgb(15, 23, 42);
                 btn.FlatStyle = FlatStyle.Flat;
@@ -176,7 +182,7 @@ namespace AppRestarter
             var activeFg = Color.FromArgb(15, 23, 42);
             var inactiveFg = Color.FromArgb(226, 232, 240);
 
-            foreach (var btn in new[] { btnNavApps, btnNavPcs })
+            foreach (var btn in new[] { btnNavApps, btnNavPcs, btnNavRoutines })
             {
                 bool isActive = (btn == active);
                 btn.BackColor = isActive ? activeBg : inactiveBg;
@@ -197,6 +203,11 @@ namespace AppRestarter
         private void btnNavPcs_Click(object sender, EventArgs e)
         {
             ShowPcsView();
+        }
+
+        private void btnNavRoutines_Click(object sender, EventArgs e)
+        {
+            ShowRoutinesView();
         }
 
         // ------------------ LOGGING ------------------
@@ -222,7 +233,7 @@ namespace AppRestarter
             try
             {
                 var indexPath = Path.Combine(exeDir, "index.html");
-                _webServer = new WebServer(_apps, _pcs, _groups, AddToLog, indexPath, _settings,
+                _webServer = new WebServer(_apps, _pcs, _groups, _routines, AddToLog, indexPath, _settings,
                      statusProvider: () =>
                      {
                          _statusManager.Refresh(force: true);
@@ -633,7 +644,7 @@ namespace AppRestarter
                     UpdateAppList();
                 }
             }
-            else
+            else if (_currentView == ViewMode.Pcs)
             {
                 using var addPcForm = new AddPcForm();
                 if (addPcForm.ShowDialog(this) == DialogResult.OK)
@@ -641,6 +652,16 @@ namespace AppRestarter
                     _pcs.Add(addPcForm.PcData);
                     SaveApplicationsToXml();
                     RenderPcButtons();
+                }
+            }
+            else if (_currentView == ViewMode.Routines)
+            {
+                using var addRoutineForm = new AddRoutineForm(null, _apps, _pcs, _groups);
+                if (addRoutineForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    _routines.Add(addRoutineForm.RoutineData);
+                    SaveRoutines();
+                    RenderRoutines();
                 }
             }
         }
@@ -702,6 +723,7 @@ namespace AppRestarter
             try
             {
                 SaveApplicationsToXml();
+                SaveRoutines();
 
                 // NEW: stop centralized status polling timer
                 _statusManager?.Dispose();
