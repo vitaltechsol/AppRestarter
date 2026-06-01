@@ -332,6 +332,7 @@ namespace AppRestarter
                         {
                             ApplicationDetails applicationDetails = null;
                             AppStatusBatchRequest batchRequest = null;
+                            RemoteRoutineActionRequest routineActionRequest = null;
 
                             // Try ApplicationDetails first
                             try
@@ -350,12 +351,31 @@ namespace AppRestarter
                                 }
                                 catch (SerializationException)
                                 {
-                                    string raw = Encoding.UTF8.GetString(ms.ToArray());
-                                    AddToLog("Serialization error: " + serEx.Message);
-                                    AddToLog("Raw payload (first 1000 chars): " +
-                                             (raw.Length > 1000 ? raw.Substring(0, 1000) + "..." : raw));
-                                    continue;
+                                    // Try RemoteRoutineActionRequest
+                                    ms.Position = 0;
+                                    try
+                                    {
+                                        var routineSerializer = new DataContractSerializer(typeof(RemoteRoutineActionRequest));
+                                        routineActionRequest = (RemoteRoutineActionRequest)routineSerializer.ReadObject(ms);
+                                    }
+                                    catch (SerializationException)
+                                    {
+                                        string raw = Encoding.UTF8.GetString(ms.ToArray());
+                                        AddToLog("Serialization error: " + serEx.Message);
+                                        AddToLog("Raw payload (first 1000 chars): " +
+                                                 (raw.Length > 1000 ? raw.Substring(0, 1000) + "..." : raw));
+                                        continue;
+                                    }
                                 }
+                            }
+
+                            // Handle routine action request
+                            if (routineActionRequest != null)
+                            {
+                                if (VerboseLogging)
+                                    AddToLog($"Received TCP Routine Action Request: {routineActionRequest.RoutineActionType} for app '{routineActionRequest.AppName}'");
+                                HandleRemoteRoutineAction(routineActionRequest);
+                                continue;
                             }
 
                             // Handle batch status request

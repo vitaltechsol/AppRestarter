@@ -185,87 +185,38 @@ namespace AppRestarter
                          case ActionType.KeyboardShortcut:
                              if (!string.IsNullOrWhiteSpace(action.Keys))
                              {
-                                 _log?.Invoke($"Executing keyboard shortcut '{action.Keys}' on app '{app.Name}'");
-                                 var hwnd = FindAppWindow(app);
-                                 if (hwnd != IntPtr.Zero)
+                                 if (IsRemoteApp(app))
                                  {
-                                     _log?.Invoke($"Found window handle: {hwnd}");
-
-                                     // Activate the window with multiple approaches
-                                     if (!ActivateWindow(hwnd))
-                                     {
-                                         _log?.Invoke("Warning: Failed to fully activate window");
-                                     }
-
-                                     await Task.Delay(500, cancellationToken); // Wait longer for window to be ready
-
-                                     // Send the keys using SendKeys
-                                     _log?.Invoke($"Sending keys: {action.Keys}");
-                                     System.Windows.Forms.SendKeys.SendWait(action.Keys);
-                                     _log?.Invoke("Keys sent successfully");
+                                     await SendRemoteRoutineActionAsync(app, "KeyboardShortcut", keys: action.Keys);
                                  }
                                  else
                                  {
-                                     _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
+                                     await ExecuteKeyboardShortcutAsync(app, action.Keys, cancellationToken);
                                  }
                              }
                              break;
                          case ActionType.ClickArea:
                              if (action.ClickX >= 0 && action.ClickY >= 0)
                              {
-                                 _log?.Invoke($"Executing click at ({action.ClickX}, {action.ClickY}) on app '{app.Name}'");
-                                 var hwnd = FindAppWindow(app);
-                                 if (hwnd != IntPtr.Zero)
+                                 if (IsRemoteApp(app))
                                  {
-                                     _log?.Invoke($"Found window handle: {hwnd}");
-
-                                     // Activate the window
-                                     if (!ActivateWindow(hwnd))
-                                     {
-                                         _log?.Invoke("Warning: Failed to fully activate window");
-                                     }
-
-                                     await Task.Delay(500, cancellationToken); // Wait longer for window to be ready
-
-                                     // Use the coordinates as screen coordinates directly (they were recorded as screen coords)
-                                     _log?.Invoke($"Moving cursor to screen position ({action.ClickX}, {action.ClickY})");
-                                     SetCursorPos(action.ClickX, action.ClickY);
-                                     await Task.Delay(100, cancellationToken);
-
-                                     _log?.Invoke("Performing mouse click");
-                                     mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-                                     await Task.Delay(50, cancellationToken);
-                                     mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-                                     _log?.Invoke("Click completed");
+                                     await SendRemoteRoutineActionAsync(app, "ClickArea", clickX: action.ClickX, clickY: action.ClickY);
                                  }
                                  else
                                  {
-                                     _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
+                                     await ExecuteClickAsync(app, action.ClickX, action.ClickY, cancellationToken);
                                  }
-                                              }
-                                              break;
+                             }
+                             break;
                                           case ActionType.Minimize:
                                               {
-                                                  _log?.Invoke($"Minimizing app '{app.Name}'");
-                                                  var hwnd = FindAppWindow(app);
-                                                  if (hwnd != IntPtr.Zero)
+                                                  if (IsRemoteApp(app))
                                                   {
-                                                      _log?.Invoke($"Found window handle: {hwnd}");
-
-                                                      // Use ShowWindow with SW_MINIMIZE
-                                                      const int SW_MINIMIZE = 6;
-                                                      if (ShowWindow(hwnd, SW_MINIMIZE))
-                                                      {
-                                                          _log?.Invoke($"Successfully minimized '{app.Name}'");
-                                                      }
-                                                      else
-                                                      {
-                                                          _log?.Invoke($"Warning: ShowWindow returned false for '{app.Name}'");
-                                                      }
+                                                      await SendRemoteRoutineActionAsync(app, "Minimize");
                                                   }
                                                   else
                                                   {
-                                                      _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
+                                                      await ExecuteMinimizeAsync(app, cancellationToken);
                                                   }
                                               }
                                               break;
@@ -430,6 +381,135 @@ namespace AppRestarter
             }
 
             return IntPtr.Zero;
+        }
+
+        // Helper methods for remote execution
+        private bool IsRemoteApp(ApplicationDetails app)
+        {
+            return !string.IsNullOrWhiteSpace(app.ClientIP);
+        }
+
+        private async Task SendRemoteRoutineActionAsync(ApplicationDetails app, string actionType, string keys = null, int clickX = 0, int clickY = 0)
+        {
+            try
+            {
+                _log?.Invoke($"Sending remote routine action '{actionType}' to {app.ClientIP}");
+
+                var request = new RemoteRoutineActionRequest
+                {
+                    ActionType = RemoteActionType.RoutineAction,
+                    AppName = app.Name,
+                    ProcessName = app.ProcessName,
+                    RestartPath = app.RestartPath,
+                    RoutineActionType = actionType,
+                    Keys = keys,
+                    ClickX = clickX,
+                    ClickY = clickY
+                };
+
+                using var client = new System.Net.Sockets.TcpClient(app.ClientIP, 2024); // TODO: Get port from settings
+                client.SendTimeout = 6000;
+                using var stream = client.GetStream();
+
+                var serializer = new System.Runtime.Serialization.DataContractSerializer(typeof(RemoteRoutineActionRequest));
+                serializer.WriteObject(stream, request);
+                stream.Flush();
+
+                _log?.Invoke($"Remote routine action sent successfully");
+            }
+            catch (Exception ex)
+            {
+                _log?.Invoke($"Error sending remote routine action: {ex.Message}");
+            }
+        }
+
+        // Public helper methods for individual action execution (used by remote handler)
+        public async Task ExecuteKeyboardShortcutAsync(ApplicationDetails app, string keys, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(keys))
+                return;
+
+            _log?.Invoke($"Executing keyboard shortcut '{keys}' on app '{app.Name}'");
+            var hwnd = FindAppWindow(app);
+            if (hwnd != IntPtr.Zero)
+            {
+                _log?.Invoke($"Found window handle: {hwnd}");
+
+                if (!ActivateWindow(hwnd))
+                {
+                    _log?.Invoke("Warning: Failed to fully activate window");
+                }
+
+                await Task.Delay(500, cancellationToken);
+
+                _log?.Invoke($"Sending keys: {keys}");
+                System.Windows.Forms.SendKeys.SendWait(keys);
+                _log?.Invoke("Keys sent successfully");
+            }
+            else
+            {
+                _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
+            }
+        }
+
+        public async Task ExecuteClickAsync(ApplicationDetails app, int clickX, int clickY, CancellationToken cancellationToken = default)
+        {
+            if (clickX < 0 || clickY < 0)
+                return;
+
+            _log?.Invoke($"Executing click at ({clickX}, {clickY}) on app '{app.Name}'");
+            var hwnd = FindAppWindow(app);
+            if (hwnd != IntPtr.Zero)
+            {
+                _log?.Invoke($"Found window handle: {hwnd}");
+
+                if (!ActivateWindow(hwnd))
+                {
+                    _log?.Invoke("Warning: Failed to fully activate window");
+                }
+
+                await Task.Delay(500, cancellationToken);
+
+                _log?.Invoke($"Moving cursor to screen position ({clickX}, {clickY})");
+                SetCursorPos(clickX, clickY);
+                await Task.Delay(100, cancellationToken);
+
+                _log?.Invoke("Performing mouse click");
+                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                await Task.Delay(50, cancellationToken);
+                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                _log?.Invoke("Click completed");
+            }
+            else
+            {
+                _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
+            }
+        }
+
+        public async Task ExecuteMinimizeAsync(ApplicationDetails app, CancellationToken cancellationToken = default)
+        {
+            _log?.Invoke($"Minimizing app '{app.Name}'");
+            var hwnd = FindAppWindow(app);
+            if (hwnd != IntPtr.Zero)
+            {
+                _log?.Invoke($"Found window handle: {hwnd}");
+
+                const int SW_MINIMIZE = 6;
+                if (ShowWindow(hwnd, SW_MINIMIZE))
+                {
+                    _log?.Invoke($"Successfully minimized '{app.Name}'");
+                }
+                else
+                {
+                    _log?.Invoke($"Warning: ShowWindow returned false for '{app.Name}'");
+                }
+            }
+            else
+            {
+                _log?.Invoke($"Error: Could not find window for app '{app.Name}'");
+            }
+
+            await Task.CompletedTask;
         }
     }
 }

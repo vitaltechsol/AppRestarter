@@ -8,7 +8,8 @@ namespace AppRestarter
         AppControl,
         PcRestart,
         PcShutdown,
-        AppStatusBatch
+        AppStatusBatch,
+        RoutineAction
     }
 
     [DataContract]
@@ -63,6 +64,37 @@ namespace AppRestarter
         [DataMember]
         public List<ApplicationDetails> Apps { get; set; }
 
+    }
+
+    /// <summary>
+    /// DTO for remote routine action execution (keyboard shortcuts, clicks, minimize)
+    /// </summary>
+    [DataContract]
+    public class RemoteRoutineActionRequest
+    {
+        [DataMember]
+        public RemoteActionType ActionType { get; set; } = RemoteActionType.RoutineAction;
+
+        [DataMember]
+        public string AppName { get; set; }
+
+        [DataMember]
+        public string ProcessName { get; set; }
+
+        [DataMember]
+        public string RestartPath { get; set; }
+
+        [DataMember]
+        public string RoutineActionType { get; set; } // "KeyboardShortcut", "ClickArea", "Minimize"
+
+        [DataMember]
+        public string Keys { get; set; }
+
+        [DataMember]
+        public int ClickX { get; set; }
+
+        [DataMember]
+        public int ClickY { get; set; }
     }
 
     public class AppSettings
