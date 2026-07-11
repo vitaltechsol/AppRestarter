@@ -17,23 +17,22 @@ namespace AppRestarter
 
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AddRoutineStepForm));
             groupWait = new GroupBox();
+            btnRemoveWait = new Button();
+            btnAddWait = new Button();
             btnEditWait = new Button();
             btnMoveUpWait = new Button();
             btnMoveDownWait = new Button();
-            btnRemoveWait = new Button();
-            btnAddWait = new Button();
             lstWaitConditions = new ListBox();
             groupAction = new GroupBox();
             lblClickY = new Label();
             numClickY = new NumericUpDown();
+            btnRecordMouse = new Button();
             lblClickX = new Label();
             numClickX = new NumericUpDown();
             lblKeys = new Label();
             txtKeys = new TextBox();
             btnPickShortcut = new Button();
-            btnRecordMouse = new Button();
             lblTarget = new Label();
             cboTarget = new ComboBox();
             lblTargetType = new Label();
@@ -61,7 +60,7 @@ namespace AppRestarter
             groupWait.Size = new Size(560, 150);
             groupWait.TabIndex = 0;
             groupWait.TabStop = false;
-            groupWait.Text = "Wait Conditions (executed in order)";
+            groupWait.Text = "Optional wait conditions: (executed in order)";
             // 
             // btnRemoveWait
             // 
@@ -82,9 +81,9 @@ namespace AppRestarter
             btnAddWait.Text = "Add";
             btnAddWait.UseVisualStyleBackColor = true;
             btnAddWait.Click += btnAddWait_Click;
-            //
+            // 
             // btnEditWait
-            //
+            // 
             btnEditWait.Location = new Point(459, 55);
             btnEditWait.Name = "btnEditWait";
             btnEditWait.Size = new Size(90, 27);
@@ -92,22 +91,22 @@ namespace AppRestarter
             btnEditWait.Text = "Edit";
             btnEditWait.UseVisualStyleBackColor = true;
             btnEditWait.Click += btnEditWait_Click;
-            //
+            // 
             // btnMoveUpWait
-            //
-            btnMoveUpWait.Location = new Point(519, 121);
+            // 
+            btnMoveUpWait.Location = new Point(511, 121);
             btnMoveUpWait.Name = "btnMoveUpWait";
-            btnMoveUpWait.Size = new Size(30, 23);
+            btnMoveUpWait.Size = new Size(38, 23);
             btnMoveUpWait.TabIndex = 4;
             btnMoveUpWait.Text = "↑";
             btnMoveUpWait.UseVisualStyleBackColor = true;
             btnMoveUpWait.Click += btnMoveUpWait_Click;
-            //
+            // 
             // btnMoveDownWait
-            //
+            // 
             btnMoveDownWait.Location = new Point(459, 121);
             btnMoveDownWait.Name = "btnMoveDownWait";
-            btnMoveDownWait.Size = new Size(30, 23);
+            btnMoveDownWait.Size = new Size(37, 23);
             btnMoveDownWait.TabIndex = 5;
             btnMoveDownWait.Text = "↓";
             btnMoveDownWait.UseVisualStyleBackColor = true;
@@ -151,7 +150,7 @@ namespace AppRestarter
             lblClickY.AutoSize = true;
             lblClickY.Location = new Point(15, 165);
             lblClickY.Name = "lblClickY";
-            lblClickY.Size = new Size(48, 15);
+            lblClickY.Size = new Size(46, 15);
             lblClickY.TabIndex = 11;
             lblClickY.Text = "Click Y:";
             // 
@@ -167,7 +166,7 @@ namespace AppRestarter
             // 
             btnRecordMouse.Location = new Point(250, 148);
             btnRecordMouse.Name = "btnRecordMouse";
-            btnRecordMouse.Size = new Size(180, 35);
+            btnRecordMouse.Size = new Size(246, 35);
             btnRecordMouse.TabIndex = 13;
             btnRecordMouse.Text = "🔴 Record Position (Press R)";
             btnRecordMouse.UseVisualStyleBackColor = true;
@@ -178,7 +177,7 @@ namespace AppRestarter
             lblClickX.AutoSize = true;
             lblClickX.Location = new Point(15, 136);
             lblClickX.Name = "lblClickX";
-            lblClickX.Size = new Size(48, 15);
+            lblClickX.Size = new Size(46, 15);
             lblClickX.TabIndex = 9;
             lblClickX.Text = "Click X:";
             // 
@@ -195,7 +194,7 @@ namespace AppRestarter
             lblKeys.AutoSize = true;
             lblKeys.Location = new Point(15, 107);
             lblKeys.Name = "lblKeys";
-            lblKeys.Size = new Size(99, 15);
+            lblKeys.Size = new Size(98, 15);
             lblKeys.TabIndex = 7;
             lblKeys.Text = "Keys (e.g., ^{F5}):";
             // 
@@ -221,7 +220,7 @@ namespace AppRestarter
             lblTarget.AutoSize = true;
             lblTarget.Location = new Point(295, 52);
             lblTarget.Name = "lblTarget";
-            lblTarget.Size = new Size(43, 15);
+            lblTarget.Size = new Size(42, 15);
             lblTarget.TabIndex = 5;
             lblTarget.Text = "Target:";
             // 
@@ -239,7 +238,7 @@ namespace AppRestarter
             lblTargetType.AutoSize = true;
             lblTargetType.Location = new Point(15, 52);
             lblTargetType.Name = "lblTargetType";
-            lblTargetType.Size = new Size(72, 15);
+            lblTargetType.Size = new Size(69, 15);
             lblTargetType.TabIndex = 3;
             lblTargetType.Text = "Target Type:";
             // 
@@ -258,7 +257,7 @@ namespace AppRestarter
             lblActionType.AutoSize = true;
             lblActionType.Location = new Point(15, 25);
             lblActionType.Name = "lblActionType";
-            lblActionType.Size = new Size(75, 15);
+            lblActionType.Size = new Size(72, 15);
             lblActionType.TabIndex = 1;
             lblActionType.Text = "Action Type:";
             // 
@@ -302,7 +301,6 @@ namespace AppRestarter
             Controls.Add(groupAction);
             Controls.Add(groupWait);
             FormBorderStyle = FormBorderStyle.FixedDialog;
-           //  Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "AddRoutineStepForm";

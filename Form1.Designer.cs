@@ -166,7 +166,7 @@ namespace AppRestarter
             lblNavRoutines.AutoSize = true;
             lblNavRoutines.Font = new Font("Segoe UI", 7F);
             lblNavRoutines.ForeColor = Color.FromArgb(226, 232, 240);
-            lblNavRoutines.Location = new Point(11, 258);
+            lblNavRoutines.Location = new Point(11, 161);
             lblNavRoutines.Name = "lblNavRoutines";
             lblNavRoutines.Size = new Size(43, 12);
             lblNavRoutines.TabIndex = 6;
@@ -179,7 +179,7 @@ namespace AppRestarter
             btnNavRoutines.FlatStyle = FlatStyle.Flat;
             btnNavRoutines.Font = new Font("Segoe UI Emoji", 12F);
             btnNavRoutines.ForeColor = Color.FromArgb(226, 232, 240);
-            btnNavRoutines.Location = new Point(3, 203);
+            btnNavRoutines.Location = new Point(6, 106);
             btnNavRoutines.Name = "btnNavRoutines";
             btnNavRoutines.Size = new Size(52, 52);
             btnNavRoutines.TabIndex = 5;
@@ -192,7 +192,7 @@ namespace AppRestarter
             lblNavPcs.AutoSize = true;
             lblNavPcs.Font = new Font("Segoe UI", 7F);
             lblNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
-            lblNavPcs.Location = new Point(19, 167);
+            lblNavPcs.Location = new Point(22, 244);
             lblNavPcs.Name = "lblNavPcs";
             lblNavPcs.Size = new Size(21, 12);
             lblNavPcs.TabIndex = 3;
@@ -205,7 +205,7 @@ namespace AppRestarter
             btnNavPcs.FlatStyle = FlatStyle.Flat;
             btnNavPcs.Font = new Font("Segoe UI Emoji", 12F);
             btnNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
-            btnNavPcs.Location = new Point(3, 112);
+            btnNavPcs.Location = new Point(6, 189);
             btnNavPcs.Name = "btnNavPcs";
             btnNavPcs.Size = new Size(52, 52);
             btnNavPcs.TabIndex = 2;

@@ -31,6 +31,7 @@ namespace AppRestarter
         private List<GroupDetails> _groups = new();
         private readonly List<PcInfo> _pcs = new();
         private List<AppRestarter.Models.Routine> _routines = new List<AppRestarter.Models.Routine>();
+        private List<AppRestarter.Models.RemoteRoutineReference> _remoteRoutines = new List<AppRestarter.Models.RemoteRoutineReference>();
         private AppSettings _settings;
         private WebServer _webServer;
         private TcpListener server;
@@ -59,6 +60,7 @@ namespace AppRestarter
             LoadApplicationsFromXml();
             LoadPcsFromXml();
             LoadRoutines();
+            LoadRemoteRoutines();
             MakeNavButtonsCircular();
 
             _autoUpdater = new AutoUpdater(
@@ -233,7 +235,7 @@ namespace AppRestarter
             try
             {
                 var indexPath = Path.Combine(exeDir, "index.html");
-                _webServer = new WebServer(_apps, _pcs, _groups, _routines, AddToLog, indexPath, _settings,
+                _webServer = new WebServer(_apps, _pcs, _groups, _routines, _remoteRoutines, AddToLog, indexPath, _settings,
                      statusProvider: () =>
                      {
                          _statusManager.Refresh(force: true);
@@ -676,11 +678,19 @@ namespace AppRestarter
             }
             else if (_currentView == ViewMode.Routines)
             {
-                using var addRoutineForm = new AddRoutineForm(null, _apps, _pcs, _groups);
+                using var addRoutineForm = new AddRoutineForm(_apps, _pcs, _groups, _settings.WebPort);
                 if (addRoutineForm.ShowDialog(this) == DialogResult.OK)
                 {
-                    _routines.Add(addRoutineForm.RoutineData);
-                    SaveRoutines();
+                    if (addRoutineForm.Mode == AddRoutineForm.RoutineMode.Local)
+                    {
+                        _routines.Add(addRoutineForm.RoutineData);
+                        SaveRoutines();
+                    }
+                    else // Remote
+                    {
+                        _remoteRoutines.Add(addRoutineForm.RemoteRoutineData);
+                        SaveRemoteRoutines();
+                    }
                     RenderRoutines();
                 }
             }

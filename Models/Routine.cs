@@ -10,6 +10,16 @@ namespace AppRestarter.Models
         public List<RoutineStep> Steps { get; set; } = new List<RoutineStep>();
     }
 
+    public class RemoteRoutineReference
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string RemoteHost { get; set; } // IP or hostname
+        public int RemotePort { get; set; } = 8090;
+        public string RemoteRoutineId { get; set; }
+        public string CachedName { get; set; } // Cached for display
+        public DateTime LastUpdated { get; set; } = DateTime.Now;
+    }
+
     public class RoutineStep
     {
         public List<WaitCondition> WaitConditions { get; set; } = new List<WaitCondition>();

@@ -1249,73 +1249,145 @@ Proceed with shutdown?`;
             return waitDesc + actionDesc;
         }
 
-        function renderRoutines(routines) {
+        function renderRoutines(routines, remoteRoutines) {
             routineList.innerHTML = '';
 
-            if (!routines || routines.length === 0) {
+            const hasLocal = routines && routines.length > 0;
+            const hasRemote = remoteRoutines && remoteRoutines.length > 0;
+
+            if (!hasLocal && !hasRemote) {
                 routineList.innerHTML = '<div style="font-size:12px;color:#9ca3af;">No routines configured yet.</div>';
                 return;
             }
 
-            for (const routine of routines) {
-                const card = document.createElement('div');
-                card.className = 'routine-card';
+            // Render local routines
+            if (hasLocal) {
+                const localHeader = document.createElement('div');
+                localHeader.style.cssText = 'font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:12px;';
+                localHeader.textContent = 'Local Routines';
+                routineList.appendChild(localHeader);
 
-                const header = document.createElement('div');
-                header.className = 'routine-header';
+                for (const routine of routines) {
+                    const card = document.createElement('div');
+                    card.className = 'routine-card';
 
-                const title = document.createElement('div');
-                title.className = 'routine-title';
-                title.textContent = routine.Name || 'Unnamed Routine';
+                    const header = document.createElement('div');
+                    header.className = 'routine-header';
 
-                const actions = document.createElement('div');
-                actions.className = 'routine-actions';
+                    const title = document.createElement('div');
+                    title.className = 'routine-title';
+                    title.textContent = routine.Name || 'Unnamed Routine';
 
-                const executeBtn = document.createElement('button');
-                executeBtn.className = 'routine-btn';
-                executeBtn.innerHTML = 'Execute';
-                executeBtn.addEventListener('click', async () => {
-                    try {
-                        const resp = await apiPost('/routines/execute', { Id: routine.Id });
-                        showToast(resp || `Routine "${routine.Name}" started.`);
-                    } catch (err) {
-                        console.error(err);
-                        showToast(`Failed to execute routine "${routine.Name}".`, true);
+                    const actions = document.createElement('div');
+                    actions.className = 'routine-actions';
+
+                    const executeBtn = document.createElement('button');
+                    executeBtn.className = 'routine-btn';
+                    executeBtn.innerHTML = 'Execute';
+                    executeBtn.addEventListener('click', async () => {
+                        try {
+                            const resp = await apiPost('/routines/execute', { Id: routine.Id });
+                            showToast(resp || `Routine "${routine.Name}" started.`);
+                        } catch (err) {
+                            console.error(err);
+                            showToast(`Failed to execute routine "${routine.Name}".`, true);
+                        }
+                    });
+
+                    actions.appendChild(executeBtn);
+                    header.appendChild(title);
+                    header.appendChild(actions);
+
+                    const steps = document.createElement('div');
+                    steps.className = 'routine-steps';
+
+                    if (routine.Steps && routine.Steps.length > 0) {
+                        for (let i = 0; i < routine.Steps.length; i++) {
+                            const stepEl = document.createElement('div');
+                            stepEl.className = 'routine-step';
+                            stepEl.textContent = `Step ${i + 1}: ${formatRoutineStep(routine.Steps[i])}`;
+                            steps.appendChild(stepEl);
+                        }
+                    } else {
+                        const emptyMsg = document.createElement('div');
+                        emptyMsg.style.color = '#9ca3af';
+                        emptyMsg.style.fontSize = '12px';
+                        emptyMsg.textContent = 'No steps defined';
+                        steps.appendChild(emptyMsg);
                     }
-                });
 
-                actions.appendChild(executeBtn);
-                header.appendChild(title);
-                header.appendChild(actions);
-
-                const steps = document.createElement('div');
-                steps.className = 'routine-steps';
-
-                if (routine.Steps && routine.Steps.length > 0) {
-                    for (let i = 0; i < routine.Steps.length; i++) {
-                        const stepEl = document.createElement('div');
-                        stepEl.className = 'routine-step';
-                        stepEl.textContent = `Step ${i + 1}: ${formatRoutineStep(routine.Steps[i])}`;
-                        steps.appendChild(stepEl);
-                    }
-                } else {
-                    const emptyMsg = document.createElement('div');
-                    emptyMsg.style.color = '#9ca3af';
-                    emptyMsg.style.fontSize = '12px';
-                    emptyMsg.textContent = 'No steps defined';
-                    steps.appendChild(emptyMsg);
+                    card.appendChild(header);
+                    card.appendChild(steps);
+                    routineList.appendChild(card);
                 }
+            }
 
-                card.appendChild(header);
-                card.appendChild(steps);
-                routineList.appendChild(card);
+            // Render remote routines
+            if (hasRemote) {
+                const remoteHeader = document.createElement('div');
+                remoteHeader.style.cssText = 'font-size:14px;font-weight:600;color:#e2e8f0;margin:24px 0 12px 0;';
+                remoteHeader.textContent = 'Remote Routines';
+                routineList.appendChild(remoteHeader);
+
+                for (const remoteRoutine of remoteRoutines) {
+                    const card = document.createElement('div');
+                    card.className = 'routine-card';
+                    card.style.borderLeft = '3px solid #17dbe4'; // Different color for remote
+
+                    const header = document.createElement('div');
+                    header.className = 'routine-header';
+
+                    const title = document.createElement('div');
+                    title.className = 'routine-title';
+                    title.textContent = remoteRoutine.CachedName || 'Unnamed Remote Routine';
+
+                    const actions = document.createElement('div');
+                    actions.className = 'routine-actions';
+
+                    // Find PC name from IP
+                    const pc = pcsCache.find(p => p.IP === remoteRoutine.RemoteHost);
+                    const pcName = pc ? pc.Name : remoteRoutine.RemoteHost;
+
+                    const executeBtn = document.createElement('button');
+                    executeBtn.className = 'routine-btn';
+                    executeBtn.innerHTML = 'Execute';
+                    executeBtn.style.backgroundColor = '#17dbe4';
+                    executeBtn.addEventListener('click', async () => {
+                        try {
+                            const resp = await apiPost('/remote-routines/execute', { Id: remoteRoutine.Id });
+                            showToast(resp || `Remote routine "${remoteRoutine.CachedName}" started on ${pcName}.`);
+                        } catch (err) {
+                            console.error(err);
+                            showToast(`Failed to execute remote routine "${remoteRoutine.CachedName}".`, true);
+                        }
+                    });
+
+                    actions.appendChild(executeBtn);
+                    header.appendChild(title);
+                    header.appendChild(actions);
+
+                    const info = document.createElement('div');
+                    info.className = 'routine-steps';
+
+                    const hostEl = document.createElement('div');
+                    hostEl.className = 'routine-step';
+                    hostEl.innerHTML = `🌐 Remote: <strong>${pcName}</strong>`;
+                    info.appendChild(hostEl);
+
+                    card.appendChild(header);
+                    card.appendChild(info);
+                    routineList.appendChild(card);
+                }
             }
         }
 
         async function loadRoutines() {
             try {
-                const routines = await apiGet('/routines');
-                renderRoutines(routines);
+                const [routines, remoteRoutines] = await Promise.all([
+                    apiGet('/routines'),
+                    apiGet('/remote-routines')
+                ]);
+                renderRoutines(routines, remoteRoutines);
             } catch (err) {
                 console.error(err);
                 showToast('Failed to load routines list.', true);
