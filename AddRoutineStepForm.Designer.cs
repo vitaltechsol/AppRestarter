@@ -19,6 +19,9 @@ namespace AppRestarter
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AddRoutineStepForm));
             groupWait = new GroupBox();
+            btnEditWait = new Button();
+            btnMoveUpWait = new Button();
+            btnMoveDownWait = new Button();
             btnRemoveWait = new Button();
             btnAddWait = new Button();
             lstWaitConditions = new ListBox();
@@ -49,6 +52,9 @@ namespace AppRestarter
             // 
             groupWait.Controls.Add(btnRemoveWait);
             groupWait.Controls.Add(btnAddWait);
+            groupWait.Controls.Add(btnEditWait);
+            groupWait.Controls.Add(btnMoveUpWait);
+            groupWait.Controls.Add(btnMoveDownWait);
             groupWait.Controls.Add(lstWaitConditions);
             groupWait.Location = new Point(12, 12);
             groupWait.Name = "groupWait";
@@ -59,7 +65,7 @@ namespace AppRestarter
             // 
             // btnRemoveWait
             // 
-            btnRemoveWait.Location = new Point(459, 55);
+            btnRemoveWait.Location = new Point(459, 88);
             btnRemoveWait.Name = "btnRemoveWait";
             btnRemoveWait.Size = new Size(90, 27);
             btnRemoveWait.TabIndex = 2;
@@ -76,6 +82,36 @@ namespace AppRestarter
             btnAddWait.Text = "Add";
             btnAddWait.UseVisualStyleBackColor = true;
             btnAddWait.Click += btnAddWait_Click;
+            //
+            // btnEditWait
+            //
+            btnEditWait.Location = new Point(459, 55);
+            btnEditWait.Name = "btnEditWait";
+            btnEditWait.Size = new Size(90, 27);
+            btnEditWait.TabIndex = 3;
+            btnEditWait.Text = "Edit";
+            btnEditWait.UseVisualStyleBackColor = true;
+            btnEditWait.Click += btnEditWait_Click;
+            //
+            // btnMoveUpWait
+            //
+            btnMoveUpWait.Location = new Point(519, 121);
+            btnMoveUpWait.Name = "btnMoveUpWait";
+            btnMoveUpWait.Size = new Size(30, 23);
+            btnMoveUpWait.TabIndex = 4;
+            btnMoveUpWait.Text = "↑";
+            btnMoveUpWait.UseVisualStyleBackColor = true;
+            btnMoveUpWait.Click += btnMoveUpWait_Click;
+            //
+            // btnMoveDownWait
+            //
+            btnMoveDownWait.Location = new Point(459, 121);
+            btnMoveDownWait.Name = "btnMoveDownWait";
+            btnMoveDownWait.Size = new Size(30, 23);
+            btnMoveDownWait.TabIndex = 5;
+            btnMoveDownWait.Text = "↓";
+            btnMoveDownWait.UseVisualStyleBackColor = true;
+            btnMoveDownWait.Click += btnMoveDownWait_Click;
             // 
             // lstWaitConditions
             // 
@@ -85,6 +121,7 @@ namespace AppRestarter
             lstWaitConditions.Name = "lstWaitConditions";
             lstWaitConditions.Size = new Size(440, 109);
             lstWaitConditions.TabIndex = 0;
+            lstWaitConditions.SelectedIndexChanged += lstWaitConditions_SelectedIndexChanged;
             // 
             // groupAction
             // 
@@ -285,6 +322,9 @@ namespace AppRestarter
         private ListBox lstWaitConditions;
         private Button btnAddWait;
         private Button btnRemoveWait;
+        private Button btnEditWait;
+        private Button btnMoveUpWait;
+        private Button btnMoveDownWait;
         private GroupBox groupAction;
         private ComboBox cboActionType;
         private Label lblActionType;

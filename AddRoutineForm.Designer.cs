@@ -17,7 +17,6 @@ namespace AppRestarter
 
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AddRoutineForm));
             lblName = new Label();
             txtName = new TextBox();
             groupSteps = new GroupBox();
@@ -38,7 +37,7 @@ namespace AppRestarter
             lblName.AutoSize = true;
             lblName.Location = new Point(12, 15);
             lblName.Name = "lblName";
-            lblName.Size = new Size(88, 15);
+            lblName.Size = new Size(86, 15);
             lblName.TabIndex = 0;
             lblName.Text = "Routine Name:";
             // 
@@ -66,7 +65,7 @@ namespace AppRestarter
             // 
             // btnMoveDown
             // 
-            btnMoveDown.Location = new Point(530, 120);
+            btnMoveDown.Location = new Point(530, 161);
             btnMoveDown.Name = "btnMoveDown";
             btnMoveDown.Size = new Size(100, 30);
             btnMoveDown.TabIndex = 5;
@@ -76,7 +75,7 @@ namespace AppRestarter
             // 
             // btnMoveUp
             // 
-            btnMoveUp.Location = new Point(530, 84);
+            btnMoveUp.Location = new Point(530, 125);
             btnMoveUp.Name = "btnMoveUp";
             btnMoveUp.Size = new Size(100, 30);
             btnMoveUp.TabIndex = 4;
@@ -86,7 +85,7 @@ namespace AppRestarter
             // 
             // btnRemoveStep
             // 
-            btnRemoveStep.Location = new Point(530, 156);
+            btnRemoveStep.Location = new Point(530, 197);
             btnRemoveStep.Name = "btnRemoveStep";
             btnRemoveStep.Size = new Size(100, 30);
             btnRemoveStep.TabIndex = 3;
@@ -96,7 +95,7 @@ namespace AppRestarter
             // 
             // btnEditStep
             // 
-            btnEditStep.Location = new Point(530, 48);
+            btnEditStep.Location = new Point(530, 89);
             btnEditStep.Name = "btnEditStep";
             btnEditStep.Size = new Size(100, 30);
             btnEditStep.TabIndex = 2;
@@ -166,7 +165,6 @@ namespace AppRestarter
             Controls.Add(txtName);
             Controls.Add(lblName);
             FormBorderStyle = FormBorderStyle.FixedDialog;
-            //Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "AddRoutineForm";

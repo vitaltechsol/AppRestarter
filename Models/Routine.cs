@@ -22,11 +22,26 @@ namespace AppRestarter.Models
         public int WaitTimeSeconds { get; set; }
         public string AppId { get; set; }
         public int AppStartTimeoutSeconds { get; set; } // 0 means 'never' or stop routine
+
+        public string Summary
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case WaitType.TimeDelay:
+                        return $"Wait {WaitTimeSeconds} seconds";
+                    case WaitType.AppRunning:
+                        return $"Wait for '{AppId}' to be running (timeout: {AppStartTimeoutSeconds}s)";
+                    default:
+                        return "Unknown wait";
+                }
+            }
+        }
     }
 
     public enum WaitType
     {
-        None,
         TimeDelay,
         AppRunning
     }

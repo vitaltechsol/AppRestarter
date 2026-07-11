@@ -60,7 +60,7 @@ namespace AppRestarter
             AppFlowLayoutPanel.BackColor = Color.FromArgb(15, 23, 42);
             AppFlowLayoutPanel.Location = new Point(84, 40);
             AppFlowLayoutPanel.Name = "AppFlowLayoutPanel";
-            AppFlowLayoutPanel.Size = new Size(668, 340);
+            AppFlowLayoutPanel.Size = new Size(668, 391);
             AppFlowLayoutPanel.TabIndex = 0;
             // 
             // txtLog
@@ -69,7 +69,7 @@ namespace AppRestarter
             txtLog.BackColor = Color.FromArgb(15, 23, 42);
             txtLog.BorderStyle = BorderStyle.FixedSingle;
             txtLog.ForeColor = Color.FromArgb(229, 231, 235);
-            txtLog.Location = new Point(12, 386);
+            txtLog.Location = new Point(12, 437);
             txtLog.Multiline = true;
             txtLog.Name = "txtLog";
             txtLog.ScrollBars = ScrollBars.Vertical;
@@ -127,7 +127,7 @@ namespace AppRestarter
             panelLeftNav.Controls.Add(btnNavApps);
             panelLeftNav.Location = new Point(12, 40);
             panelLeftNav.Name = "panelLeftNav";
-            panelLeftNav.Size = new Size(66, 340);
+            panelLeftNav.Size = new Size(66, 391);
             panelLeftNav.TabIndex = 7;
             // 
             // lblNavSettings
@@ -136,7 +136,7 @@ namespace AppRestarter
             lblNavSettings.AutoSize = true;
             lblNavSettings.Font = new Font("Segoe UI", 7F);
             lblNavSettings.ForeColor = Color.FromArgb(226, 232, 240);
-            lblNavSettings.Location = new Point(13, 301);
+            lblNavSettings.Location = new Point(13, 352);
             lblNavSettings.Name = "lblNavSettings";
             lblNavSettings.Size = new Size(39, 12);
             lblNavSettings.TabIndex = 5;
@@ -153,7 +153,7 @@ namespace AppRestarter
             btnNavSettings.FlatStyle = FlatStyle.Flat;
             btnNavSettings.Font = new Font("Segoe UI Emoji", 12F);
             btnNavSettings.ForeColor = Color.FromArgb(226, 232, 240);
-            btnNavSettings.Location = new Point(6, 246);
+            btnNavSettings.Location = new Point(6, 297);
             btnNavSettings.Name = "btnNavSettings";
             btnNavSettings.Size = new Size(52, 52);
             btnNavSettings.TabIndex = 4;
@@ -166,7 +166,7 @@ namespace AppRestarter
             lblNavRoutines.AutoSize = true;
             lblNavRoutines.Font = new Font("Segoe UI", 7F);
             lblNavRoutines.ForeColor = Color.FromArgb(226, 232, 240);
-            lblNavRoutines.Location = new Point(14, 218);
+            lblNavRoutines.Location = new Point(11, 258);
             lblNavRoutines.Name = "lblNavRoutines";
             lblNavRoutines.Size = new Size(43, 12);
             lblNavRoutines.TabIndex = 6;
@@ -179,7 +179,7 @@ namespace AppRestarter
             btnNavRoutines.FlatStyle = FlatStyle.Flat;
             btnNavRoutines.Font = new Font("Segoe UI Emoji", 12F);
             btnNavRoutines.ForeColor = Color.FromArgb(226, 232, 240);
-            btnNavRoutines.Location = new Point(6, 163);
+            btnNavRoutines.Location = new Point(3, 203);
             btnNavRoutines.Name = "btnNavRoutines";
             btnNavRoutines.Size = new Size(52, 52);
             btnNavRoutines.TabIndex = 5;
@@ -192,7 +192,7 @@ namespace AppRestarter
             lblNavPcs.AutoSize = true;
             lblNavPcs.Font = new Font("Segoe UI", 7F);
             lblNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
-            lblNavPcs.Location = new Point(22, 134);
+            lblNavPcs.Location = new Point(19, 167);
             lblNavPcs.Name = "lblNavPcs";
             lblNavPcs.Size = new Size(21, 12);
             lblNavPcs.TabIndex = 3;
@@ -205,7 +205,7 @@ namespace AppRestarter
             btnNavPcs.FlatStyle = FlatStyle.Flat;
             btnNavPcs.Font = new Font("Segoe UI Emoji", 12F);
             btnNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
-            btnNavPcs.Location = new Point(6, 79);
+            btnNavPcs.Location = new Point(3, 112);
             btnNavPcs.Name = "btnNavPcs";
             btnNavPcs.Size = new Size(52, 52);
             btnNavPcs.TabIndex = 2;
@@ -218,7 +218,7 @@ namespace AppRestarter
             lblNavApps.AutoSize = true;
             lblNavApps.Font = new Font("Segoe UI", 7F);
             lblNavApps.ForeColor = Color.FromArgb(226, 232, 240);
-            lblNavApps.Location = new Point(19, 76);
+            lblNavApps.Location = new Point(19, 77);
             lblNavApps.Name = "lblNavApps";
             lblNavApps.Size = new Size(27, 12);
             lblNavApps.TabIndex = 1;
@@ -244,7 +244,7 @@ namespace AppRestarter
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(2, 6, 23);
-            ClientSize = new Size(764, 461);
+            ClientSize = new Size(764, 512);
             Controls.Add(panelLeftNav);
             Controls.Add(btnOpenWeb);
             Controls.Add(label1);

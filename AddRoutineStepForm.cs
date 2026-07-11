@@ -69,32 +69,17 @@ namespace AppRestarter
 
         private void LoadWaitConditions()
         {
-            // Clear existing wait conditions
-            lstWaitConditions.Items.Clear();
-
-            if (StepData.WaitConditions != null && StepData.WaitConditions.Any())
+            lstWaitConditions.DataSource = null;
+            if (StepData.WaitConditions == null || StepData.WaitConditions.Count == 0)
             {
-                foreach (var wait in StepData.WaitConditions)
-                {
-                    lstWaitConditions.Items.Add(FormatWaitCondition(wait));
-                }
+                lstWaitConditions.Items.Clear();
             }
-        }
-
-        private string FormatWaitCondition(WaitCondition wait)
-        {
-            switch (wait.Type)
+            else
             {
-                case WaitType.None:
-                    return "No wait";
-                case WaitType.TimeDelay:
-                    return $"Wait {wait.WaitTimeSeconds} seconds";
-                case WaitType.AppRunning:
-                    var app = _apps.FirstOrDefault(a => a.Name == wait.AppId);
-                    return $"Wait for '{wait.AppId}' to be running (timeout: {wait.AppStartTimeoutSeconds}s)";
-                default:
-                    return "Unknown wait";
+                lstWaitConditions.DataSource = StepData.WaitConditions;
+                lstWaitConditions.DisplayMember = "Summary";
             }
+            UpdateWaitButtonStates();
         }
 
         private void LoadAction()
@@ -244,10 +229,24 @@ namespace AppRestarter
 
         private void btnAddWait_Click(object sender, EventArgs e)
         {
-            using var dlg = new AddWaitConditionForm(_apps);
+            using var dlg = new AddEditWaitConditionForm(null, _apps, _pcs, _groups);
             if (dlg.ShowDialog() == DialogResult.OK)
             {
-                StepData.WaitConditions.Add(dlg.WaitData);
+                StepData.WaitConditions.Add(dlg.Condition);
+                LoadWaitConditions();
+            }
+        }
+
+        private void btnEditWait_Click(object sender, EventArgs e)
+        {
+            if (lstWaitConditions.SelectedIndex < 0 || lstWaitConditions.SelectedIndex >= StepData.WaitConditions.Count)
+                return;
+
+            var condition = StepData.WaitConditions[lstWaitConditions.SelectedIndex];
+            using var dlg = new AddEditWaitConditionForm(condition, _apps, _pcs, _groups);
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                StepData.WaitConditions[lstWaitConditions.SelectedIndex] = dlg.Condition;
                 LoadWaitConditions();
             }
         }
@@ -386,126 +385,45 @@ namespace AppRestarter
             DialogResult = DialogResult.OK;
             Close();
         }
-    }
 
-    // Simple dialog to add a wait condition
-    public class AddWaitConditionForm : Form
-    {
-        private ComboBox cboWaitType;
-        private NumericUpDown numSeconds;
-        private ComboBox cboApp;
-        private NumericUpDown numTimeout;
-        private Button btnOk;
-        private Button btnCancel;
-        private Label lblWaitType;
-        private Label lblSeconds;
-        private Label lblApp;
-        private Label lblTimeout;
-
-        public WaitCondition WaitData { get; private set; } = new WaitCondition();
-        private readonly List<ApplicationDetails> _apps;
-
-        public AddWaitConditionForm(List<ApplicationDetails> apps)
+        private void lstWaitConditions_SelectedIndexChanged(object sender, EventArgs e)
         {
-            _apps = apps ?? new List<ApplicationDetails>();
-            InitializeComponent();
-            LoadData();
+            UpdateWaitButtonStates();
         }
 
-        private void InitializeComponent()
+        private void UpdateWaitButtonStates()
         {
-            Text = "Add Wait Condition";
-            Width = 400;
-            Height = 280;
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
+            var selectedIndex = lstWaitConditions.SelectedIndex;
+            var count = lstWaitConditions.Items.Count;
 
-            lblWaitType = new Label { Text = "Wait Type:", Left = 12, Top = 12, Width = 100 };
-            cboWaitType = new ComboBox { Left = 120, Top = 12, Width = 250, DropDownStyle = ComboBoxStyle.DropDownList };
-            cboWaitType.Items.Add("None");
-            cboWaitType.Items.Add("Time Delay (seconds)");
-            cboWaitType.Items.Add("Wait for App to be running");
-            cboWaitType.SelectedIndex = 0;
-            cboWaitType.SelectedIndexChanged += CboWaitType_SelectedIndexChanged;
-
-            lblSeconds = new Label { Text = "Seconds:", Left = 12, Top = 42, Width = 100 };
-            numSeconds = new NumericUpDown { Left = 120, Top = 42, Width = 100, Maximum = 3600, Minimum = 1, Value = 5 };
-
-            lblApp = new Label { Text = "App:", Left = 12, Top = 72, Width = 100 };
-            cboApp = new ComboBox { Left = 120, Top = 72, Width = 250, DropDownStyle = ComboBoxStyle.DropDownList };
-
-            lblTimeout = new Label { Text = "Timeout (s):", Left = 12, Top = 102, Width = 100 };
-            numTimeout = new NumericUpDown { Left = 120, Top = 102, Width = 100, Maximum = 3600, Minimum = 0, Value = 30 };
-
-            btnOk = new Button { Text = "OK", Left = 200, Top = 200, Width = 80, DialogResult = DialogResult.OK };
-            btnOk.Click += BtnOk_Click;
-
-            btnCancel = new Button { Text = "Cancel", Left = 290, Top = 200, Width = 80, DialogResult = DialogResult.Cancel };
-
-            Controls.Add(lblWaitType);
-            Controls.Add(cboWaitType);
-            Controls.Add(lblSeconds);
-            Controls.Add(numSeconds);
-            Controls.Add(lblApp);
-            Controls.Add(cboApp);
-            Controls.Add(lblTimeout);
-            Controls.Add(numTimeout);
-            Controls.Add(btnOk);
-            Controls.Add(btnCancel);
-
-            AcceptButton = btnOk;
-            CancelButton = btnCancel;
-
-            UpdateVisibility();
+            btnEditWait.Enabled = selectedIndex >= 0;
+            btnRemoveWait.Enabled = selectedIndex >= 0;
+            btnMoveUpWait.Enabled = selectedIndex > 0;
+            btnMoveDownWait.Enabled = selectedIndex >= 0 && selectedIndex < count - 1;
         }
 
-        private void LoadData()
+        private void btnMoveUpWait_Click(object sender, EventArgs e)
         {
-            foreach (var app in _apps.OrderBy(a => a.Name))
-                cboApp.Items.Add(app.Name);
+            var index = lstWaitConditions.SelectedIndex;
+            if (index <= 0) return;
+
+            var item = StepData.WaitConditions[index];
+            StepData.WaitConditions.RemoveAt(index);
+            StepData.WaitConditions.Insert(index - 1, item);
+            LoadWaitConditions();
+            lstWaitConditions.SelectedIndex = index - 1;
         }
 
-        private void CboWaitType_SelectedIndexChanged(object sender, EventArgs e)
+        private void btnMoveDownWait_Click(object sender, EventArgs e)
         {
-            UpdateVisibility();
-        }
+            var index = lstWaitConditions.SelectedIndex;
+            if (index < 0 || index >= StepData.WaitConditions.Count - 1) return;
 
-        private void UpdateVisibility()
-        {
-            var selectedIndex = cboWaitType.SelectedIndex;
-
-            bool showSeconds = selectedIndex == 1;
-            bool showApp = selectedIndex == 2;
-
-            lblSeconds.Visible = showSeconds;
-            numSeconds.Visible = showSeconds;
-
-            lblApp.Visible = showApp;
-            cboApp.Visible = showApp;
-            lblTimeout.Visible = showApp;
-            numTimeout.Visible = showApp;
-        }
-
-        private void BtnOk_Click(object sender, EventArgs e)
-        {
-            var selectedIndex = cboWaitType.SelectedIndex;
-
-            WaitData.Type = selectedIndex switch
-            {
-                0 => WaitType.None,
-                1 => WaitType.TimeDelay,
-                2 => WaitType.AppRunning,
-                _ => WaitType.None
-            };
-
-            WaitData.WaitTimeSeconds = (int)numSeconds.Value;
-            WaitData.AppId = cboApp.SelectedItem?.ToString() ?? "";
-            WaitData.AppStartTimeoutSeconds = (int)numTimeout.Value;
-
-            DialogResult = DialogResult.OK;
-            Close();
+            var item = StepData.WaitConditions[index];
+            StepData.WaitConditions.RemoveAt(index);
+            StepData.WaitConditions.Insert(index + 1, item);
+            LoadWaitConditions();
+            lstWaitConditions.SelectedIndex = index + 1;
         }
     }
 }
