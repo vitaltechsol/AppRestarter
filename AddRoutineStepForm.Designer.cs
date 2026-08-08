@@ -25,6 +25,9 @@ namespace AppRestarter
             btnMoveDownWait = new Button();
             lstWaitConditions = new ListBox();
             groupAction = new GroupBox();
+            lblDescription = new Label();
+            txtDescription = new TextBox();
+            chkDoubleClick = new CheckBox();
             lblClickY = new Label();
             numClickY = new NumericUpDown();
             btnRecordMouse = new Button();
@@ -39,6 +42,7 @@ namespace AppRestarter
             cboTargetType = new ComboBox();
             lblActionType = new Label();
             cboActionType = new ComboBox();
+            btnTest = new Button();
             btnSave = new Button();
             btnCancel = new Button();
             groupWait.SuspendLayout();
@@ -124,6 +128,9 @@ namespace AppRestarter
             // 
             // groupAction
             // 
+            groupAction.Controls.Add(lblDescription);
+            groupAction.Controls.Add(txtDescription);
+            groupAction.Controls.Add(chkDoubleClick);
             groupAction.Controls.Add(lblClickY);
             groupAction.Controls.Add(numClickY);
             groupAction.Controls.Add(btnRecordMouse);
@@ -140,15 +147,45 @@ namespace AppRestarter
             groupAction.Controls.Add(cboActionType);
             groupAction.Location = new Point(12, 168);
             groupAction.Name = "groupAction";
-            groupAction.Size = new Size(560, 200);
+            groupAction.Size = new Size(560, 252);
             groupAction.TabIndex = 1;
             groupAction.TabStop = false;
             groupAction.Text = "Action";
             // 
+            // lblDescription
+            // 
+            lblDescription.AutoSize = true;
+            lblDescription.Location = new Point(15, 116);
+            lblDescription.Name = "lblDescription";
+            lblDescription.Size = new Size(71, 15);
+            lblDescription.TabIndex = 14;
+            lblDescription.Text = "Click Name:";
+            lblDescription.Visible = false;
+            // 
+            // txtDescription
+            // 
+            txtDescription.Location = new Point(120, 113);
+            txtDescription.Name = "txtDescription";
+            txtDescription.PlaceholderText = "e.g., \"Click Start button\"";
+            txtDescription.Size = new Size(376, 23);
+            txtDescription.TabIndex = 15;
+            txtDescription.Visible = false;
+            // 
+            // chkDoubleClick
+            // 
+            chkDoubleClick.AutoSize = true;
+            chkDoubleClick.Location = new Point(250, 155);
+            chkDoubleClick.Name = "chkDoubleClick";
+            chkDoubleClick.Size = new Size(95, 19);
+            chkDoubleClick.TabIndex = 16;
+            chkDoubleClick.Text = "Double-Click";
+            chkDoubleClick.UseVisualStyleBackColor = true;
+            chkDoubleClick.Visible = false;
+            // 
             // lblClickY
             // 
             lblClickY.AutoSize = true;
-            lblClickY.Location = new Point(15, 165);
+            lblClickY.Location = new Point(15, 201);
             lblClickY.Name = "lblClickY";
             lblClickY.Size = new Size(46, 15);
             lblClickY.TabIndex = 11;
@@ -156,7 +193,7 @@ namespace AppRestarter
             // 
             // numClickY
             // 
-            numClickY.Location = new Point(120, 163);
+            numClickY.Location = new Point(120, 199);
             numClickY.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
             numClickY.Name = "numClickY";
             numClickY.Size = new Size(120, 23);
@@ -164,7 +201,7 @@ namespace AppRestarter
             // 
             // btnRecordMouse
             // 
-            btnRecordMouse.Location = new Point(250, 148);
+            btnRecordMouse.Location = new Point(250, 191);
             btnRecordMouse.Name = "btnRecordMouse";
             btnRecordMouse.Size = new Size(246, 35);
             btnRecordMouse.TabIndex = 13;
@@ -175,7 +212,7 @@ namespace AppRestarter
             // lblClickX
             // 
             lblClickX.AutoSize = true;
-            lblClickX.Location = new Point(15, 136);
+            lblClickX.Location = new Point(15, 155);
             lblClickX.Name = "lblClickX";
             lblClickX.Size = new Size(46, 15);
             lblClickX.TabIndex = 9;
@@ -183,7 +220,7 @@ namespace AppRestarter
             // 
             // numClickX
             // 
-            numClickX.Location = new Point(120, 134);
+            numClickX.Location = new Point(120, 153);
             numClickX.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
             numClickX.Name = "numClickX";
             numClickX.Size = new Size(120, 23);
@@ -192,7 +229,7 @@ namespace AppRestarter
             // lblKeys
             // 
             lblKeys.AutoSize = true;
-            lblKeys.Location = new Point(15, 107);
+            lblKeys.Location = new Point(15, 116);
             lblKeys.Name = "lblKeys";
             lblKeys.Size = new Size(98, 15);
             lblKeys.TabIndex = 7;
@@ -200,14 +237,14 @@ namespace AppRestarter
             // 
             // txtKeys
             // 
-            txtKeys.Location = new Point(120, 104);
+            txtKeys.Location = new Point(120, 113);
             txtKeys.Name = "txtKeys";
             txtKeys.Size = new Size(200, 23);
             txtKeys.TabIndex = 6;
             // 
             // btnPickShortcut
             // 
-            btnPickShortcut.Location = new Point(330, 103);
+            btnPickShortcut.Location = new Point(330, 112);
             btnPickShortcut.Name = "btnPickShortcut";
             btnPickShortcut.Size = new Size(30, 25);
             btnPickShortcut.TabIndex = 12;
@@ -218,7 +255,7 @@ namespace AppRestarter
             // lblTarget
             // 
             lblTarget.AutoSize = true;
-            lblTarget.Location = new Point(295, 52);
+            lblTarget.Location = new Point(294, 63);
             lblTarget.Name = "lblTarget";
             lblTarget.Size = new Size(42, 15);
             lblTarget.TabIndex = 5;
@@ -228,7 +265,7 @@ namespace AppRestarter
             // 
             cboTarget.DropDownStyle = ComboBoxStyle.DropDownList;
             cboTarget.FormattingEnabled = true;
-            cboTarget.Location = new Point(370, 49);
+            cboTarget.Location = new Point(369, 60);
             cboTarget.Name = "cboTarget";
             cboTarget.Size = new Size(180, 23);
             cboTarget.TabIndex = 4;
@@ -236,7 +273,7 @@ namespace AppRestarter
             // lblTargetType
             // 
             lblTargetType.AutoSize = true;
-            lblTargetType.Location = new Point(15, 52);
+            lblTargetType.Location = new Point(14, 63);
             lblTargetType.Name = "lblTargetType";
             lblTargetType.Size = new Size(69, 15);
             lblTargetType.TabIndex = 3;
@@ -246,7 +283,7 @@ namespace AppRestarter
             // 
             cboTargetType.DropDownStyle = ComboBoxStyle.DropDownList;
             cboTargetType.FormattingEnabled = true;
-            cboTargetType.Location = new Point(120, 49);
+            cboTargetType.Location = new Point(119, 60);
             cboTargetType.Name = "cboTargetType";
             cboTargetType.Size = new Size(150, 23);
             cboTargetType.TabIndex = 2;
@@ -271,9 +308,19 @@ namespace AppRestarter
             cboActionType.TabIndex = 0;
             cboActionType.SelectedIndexChanged += cboActionType_SelectedIndexChanged;
             // 
+            // btnTest
+            // 
+            btnTest.Location = new Point(6, 426);
+            btnTest.Name = "btnTest";
+            btnTest.Size = new Size(100, 30);
+            btnTest.TabIndex = 6;
+            btnTest.Text = "\U0001f9ea Test Step";
+            btnTest.UseVisualStyleBackColor = true;
+            btnTest.Click += btnTest_Click;
+            // 
             // btnSave
             // 
-            btnSave.Location = new Point(392, 380);
+            btnSave.Location = new Point(386, 426);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(90, 30);
             btnSave.TabIndex = 2;
@@ -284,7 +331,7 @@ namespace AppRestarter
             // btnCancel
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new Point(488, 380);
+            btnCancel.Location = new Point(482, 426);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(90, 30);
             btnCancel.TabIndex = 3;
@@ -295,7 +342,8 @@ namespace AppRestarter
             // 
             AcceptButton = btnSave;
             CancelButton = btnCancel;
-            ClientSize = new Size(584, 422);
+            ClientSize = new Size(584, 468);
+            Controls.Add(btnTest);
             Controls.Add(btnCancel);
             Controls.Add(btnSave);
             Controls.Add(groupAction);
@@ -316,6 +364,8 @@ namespace AppRestarter
 
         #endregion
 
+        private Label lblDescription;
+        private TextBox txtDescription;
         private GroupBox groupWait;
         private ListBox lstWaitConditions;
         private Button btnAddWait;
@@ -337,7 +387,9 @@ namespace AppRestarter
         private NumericUpDown numClickX;
         private Label lblClickY;
         private NumericUpDown numClickY;
+        private CheckBox chkDoubleClick;
         private Button btnRecordMouse;
+        private Button btnTest;
         private Button btnSave;
         private Button btnCancel;
     }

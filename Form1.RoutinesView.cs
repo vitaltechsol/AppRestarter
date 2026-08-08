@@ -168,9 +168,8 @@ namespace AppRestarter
             var lblName = new Label
             {
                 AutoSize = false,
-                Text = $"🌐 {remoteRef.CachedName ?? "(unnamed)"}",
+                Text = $"{remoteRef.CachedName ?? "(unnamed)"}",
                 Font = nameFont,
-                ForeColor = Color.FromArgb(125, 211, 252), // Light blue for remote
                 Location = new Point(6, 4),
                 Size = new Size(routineCard.Width - 30, nameFont.Height + 2),
                 AutoEllipsis = true

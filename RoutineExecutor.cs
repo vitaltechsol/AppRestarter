@@ -204,7 +204,7 @@ namespace AppRestarter
                                  }
                                  else
                                  {
-                                     await ExecuteClickAsync(app, action.ClickX, action.ClickY, cancellationToken);
+                                     await ExecuteClickAsync(app, action.ClickX, action.ClickY, action.DoubleClick, cancellationToken);
                                  }
                              }
                              break;
@@ -452,32 +452,93 @@ namespace AppRestarter
             }
         }
 
-        public async Task ExecuteClickAsync(ApplicationDetails app, int clickX, int clickY, CancellationToken cancellationToken = default)
+        public async Task ExecuteClickAsync(ApplicationDetails app, int clickX, int clickY, bool doubleClick = false, CancellationToken cancellationToken = default)
         {
             if (clickX < 0 || clickY < 0)
                 return;
 
-            _log?.Invoke($"Executing click at ({clickX}, {clickY}) on app '{app.Name}'");
+            _log?.Invoke($"Executing {(doubleClick ? "double-" : "")}click at ({clickX}, {clickY}) on app '{app.Name}'");
             var hwnd = FindAppWindow(app);
             if (hwnd != IntPtr.Zero)
             {
                 _log?.Invoke($"Found window handle: {hwnd}");
 
-                if (!ActivateWindow(hwnd))
+                // Retry activation with verification to ensure window is truly focused
+                bool activated = false;
+                for (int retry = 0; retry < 3; retry++)
                 {
-                    _log?.Invoke("Warning: Failed to fully activate window");
+                    if (ActivateWindow(hwnd))
+                    {
+                        activated = true;
+                        _log?.Invoke($"Window activated successfully on attempt {retry + 1}");
+                        break;
+                    }
+                    _log?.Invoke($"Window not fully activated, retry {retry + 1}/3");
+                    await Task.Delay(300, cancellationToken);
                 }
 
+                if (!activated)
+                {
+                    _log?.Invoke("Error: Failed to activate window after 3 attempts, aborting click");
+                    return;
+                }
+
+                // Extra delay to ensure the window is fully ready for input
                 await Task.Delay(500, cancellationToken);
+
+                // Final verification that window is still in foreground
+                IntPtr currentForeground = GetForegroundWindow();
+                _log?.Invoke($"Verifying focus before click - Target: {hwnd}, Current foreground: {currentForeground}");
+
+                if (currentForeground != hwnd)
+                {
+                    _log?.Invoke("Warning: Window lost focus before click, re-activating");
+                    if (!ActivateWindow(hwnd))
+                    {
+                        _log?.Invoke("Error: Could not re-activate window, aborting click");
+                        return;
+                    }
+                    await Task.Delay(300, cancellationToken);
+
+                    // Verify again after re-activation
+                    currentForeground = GetForegroundWindow();
+                    if (currentForeground != hwnd)
+                    {
+                        _log?.Invoke($"Error: Window still not focused (foreground: {currentForeground}), aborting click");
+                        return;
+                    }
+                }
 
                 _log?.Invoke($"Moving cursor to screen position ({clickX}, {clickY})");
                 SetCursorPos(clickX, clickY);
                 await Task.Delay(100, cancellationToken);
 
-                _log?.Invoke("Performing mouse click");
-                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-                await Task.Delay(50, cancellationToken);
-                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                // One final focus check right before clicking
+                currentForeground = GetForegroundWindow();
+                if (currentForeground != hwnd)
+                {
+                    _log?.Invoke($"Critical: Window lost focus just before click (foreground: {currentForeground}), attempting emergency re-activation");
+                    ActivateWindow(hwnd);
+                    await Task.Delay(200, cancellationToken);
+                }
+
+                _log?.Invoke($"Performing mouse {(doubleClick ? "double-" : "")}click");
+
+                // Perform single or double click
+                int clickCount = doubleClick ? 2 : 1;
+                for (int i = 0; i < clickCount; i++)
+                {
+                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                    await Task.Delay(50, cancellationToken);
+                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+
+                    if (doubleClick && i == 0)
+                    {
+                        // Small delay between clicks in double-click
+                        await Task.Delay(50, cancellationToken);
+                    }
+                }
+
                 _log?.Invoke("Click completed");
             }
             else

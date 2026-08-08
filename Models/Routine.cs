@@ -22,6 +22,7 @@ namespace AppRestarter.Models
 
     public class RoutineStep
     {
+        public string Description { get; set; }
         public List<WaitCondition> WaitConditions { get; set; } = new List<WaitCondition>();
         public RoutineAction Action { get; set; }
     }
@@ -68,6 +69,7 @@ namespace AppRestarter.Models
         // For Clicks
         public int ClickX { get; set; }
         public int ClickY { get; set; }
+        public bool DoubleClick { get; set; }
     }
 
     public enum ActionType

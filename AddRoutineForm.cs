@@ -231,7 +231,9 @@ namespace AppRestarter
                 ActionType.Restart => $"Restart {step.Action.TargetType} '{step.Action.TargetId}'",
                 ActionType.Stop => $"Stop {step.Action.TargetType} '{step.Action.TargetId}'",
                 ActionType.KeyboardShortcut => $"Send keys '{step.Action.Keys}'",
-                ActionType.ClickArea => $"Click ({step.Action.ClickX}, {step.Action.ClickY})",
+                ActionType.ClickArea => !string.IsNullOrWhiteSpace(step.Description) 
+                    ? step.Description 
+                    : $"Click ({step.Action.ClickX}, {step.Action.ClickY})",
                 ActionType.Minimize => $"Minimize {step.Action.TargetType} '{step.Action.TargetId}'",
                 _ => "Unknown action"
             };

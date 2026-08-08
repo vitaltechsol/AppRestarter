@@ -89,6 +89,9 @@ namespace AppRestarter
                 StepData.Action = new RoutineAction();
             }
 
+            // Load description
+            txtDescription.Text = StepData.Description ?? "";
+
             // Load action type
             cboActionType.Items.Clear();
             cboActionType.Items.Add("Start");
@@ -150,6 +153,7 @@ namespace AppRestarter
             txtKeys.Text = StepData.Action.Keys ?? "";
             numClickX.Value = StepData.Action.ClickX;
             numClickY.Value = StepData.Action.ClickY;
+            chkDoubleClick.Checked = StepData.Action.DoubleClick;
 
             UpdateActionControls();
         }
@@ -219,6 +223,11 @@ namespace AppRestarter
             lblClickY.Visible = showClick;
             numClickY.Visible = showClick;
             btnRecordMouse.Visible = showClick;
+            chkDoubleClick.Visible = showClick;
+
+            // Description is only for Click Area actions (ambiguous actions)
+            lblDescription.Visible = showClick;
+            txtDescription.Visible = showClick;
 
             // Stop recording if switching away from click area
             if (!showClick && _isRecording)
@@ -355,6 +364,9 @@ namespace AppRestarter
 
         private void btnSave_Click(object sender, EventArgs e)
         {
+            // Save description
+            StepData.Description = string.IsNullOrWhiteSpace(txtDescription.Text) ? null : txtDescription.Text.Trim();
+
             // Save action
             var actionIndex = cboActionType.SelectedIndex;
             StepData.Action.Type = actionIndex switch
@@ -381,6 +393,7 @@ namespace AppRestarter
             StepData.Action.Keys = txtKeys.Text;
             StepData.Action.ClickX = (int)numClickX.Value;
             StepData.Action.ClickY = (int)numClickY.Value;
+            StepData.Action.DoubleClick = chkDoubleClick.Checked;
 
             DialogResult = DialogResult.OK;
             Close();
@@ -424,6 +437,99 @@ namespace AppRestarter
             StepData.WaitConditions.Insert(index + 1, item);
             LoadWaitConditions();
             lstWaitConditions.SelectedIndex = index + 1;
+        }
+
+        private async void btnTest_Click(object sender, EventArgs e)
+        {
+            // Validate that we have a valid action configuration
+            if (cboActionType.SelectedIndex < 0)
+            {
+                MessageBox.Show("Please select an action type.", "Test Step", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (cboTarget.SelectedIndex < 0 && cboActionType.SelectedIndex <= 2) // Start/Restart/Stop/Minimize need target
+            {
+                MessageBox.Show("Please select a target.", "Test Step", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Build a temporary step with current form values
+            var testStep = new RoutineStep
+            {
+                Description = txtDescription.Text,
+                WaitConditions = new List<WaitCondition>(StepData.WaitConditions),
+                Action = new RoutineAction
+                {
+                    Type = cboActionType.SelectedIndex switch
+                    {
+                        0 => ActionType.Start,
+                        1 => ActionType.Restart,
+                        2 => ActionType.Stop,
+                        3 => ActionType.KeyboardShortcut,
+                        4 => ActionType.ClickArea,
+                        5 => ActionType.Minimize,
+                        _ => ActionType.Start
+                    },
+                    TargetType = cboTargetType.SelectedIndex switch
+                    {
+                        0 => TargetType.App,
+                        1 => TargetType.PC,
+                        2 => TargetType.Group,
+                        _ => TargetType.App
+                    },
+                    TargetId = cboTarget.SelectedItem?.ToString() ?? "",
+                    Keys = txtKeys.Text,
+                    ClickX = (int)numClickX.Value,
+                    ClickY = (int)numClickY.Value,
+                    DoubleClick = chkDoubleClick.Checked
+                }
+            };
+
+            // Create a temporary routine with just this step
+            var testRoutine = new Routine
+            {
+                Name = "Test",
+                Steps = new List<RoutineStep> { testStep }
+            };
+
+            // Collect log messages
+            var logMessages = new System.Text.StringBuilder();
+            void LogAction(string message)
+            {
+                logMessages.AppendLine($"[{DateTime.Now:HH:mm:ss}] {message}");
+            }
+
+            // Disable the test button and show it's running
+            btnTest.Enabled = false;
+            btnTest.Text = "⏳ Testing...";
+            Application.DoEvents();
+
+            try
+            {
+                var executor = new RoutineExecutor(_apps, LogAction);
+                await executor.ExecuteRoutineAsync(testRoutine);
+
+                // Show the log
+                var result = MessageBox.Show(
+                    $"Test completed!\n\nLog:\n{logMessages}",
+                    "Test Step Result",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Test failed with error:\n{ex.Message}\n\nLog:\n{logMessages}",
+                    "Test Step Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                btnTest.Enabled = true;
+                btnTest.Text = "🧪 Test Step";
+            }
         }
     }
 }
