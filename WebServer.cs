@@ -18,6 +18,8 @@ namespace AppRestarter
         private readonly List<ApplicationDetails> _apps;
         private readonly List<PcInfo> _pcs;
         private readonly List<GroupDetails> _groups;
+        private readonly List<AppRestarter.Models.Routine> _routines;
+        private readonly List<AppRestarter.Models.RemoteRoutineReference> _remoteRoutines;
         private readonly AppSettings _settings;
         private readonly Action<string> _logAction;
         private HttpListener _httpListener;
@@ -40,6 +42,8 @@ namespace AppRestarter
             List<ApplicationDetails> apps,
             List<PcInfo> pcs,
             List<GroupDetails> groups,
+            List<AppRestarter.Models.Routine> routines,
+            List<AppRestarter.Models.RemoteRoutineReference> remoteRoutines,
             Action<string> logAction,
             string htmlFilePath,
             AppSettings settings,
@@ -48,6 +52,8 @@ namespace AppRestarter
             _apps = apps ?? throw new ArgumentNullException(nameof(apps));
             _pcs = pcs ?? throw new ArgumentNullException(nameof(pcs));
             _groups = groups ?? new List<GroupDetails>();
+            _routines = routines ?? new List<AppRestarter.Models.Routine>();
+            _remoteRoutines = remoteRoutines ?? new List<AppRestarter.Models.RemoteRoutineReference>();
             _logAction = logAction ?? throw new ArgumentNullException(nameof(logAction));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
@@ -340,6 +346,140 @@ namespace AppRestarter
                     response.ContentType = "application/json";
                     response.ContentLength64 = buffer.Length;
                     await response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+                    return;
+                }
+
+                // ---- ROUTINES: list ----
+                if (request.HttpMethod == "GET" && path == "/routines")
+                {
+                    var routinesToSend = _routines.Select(r => new
+                    {
+                        r.Id,
+                        r.Name,
+                        r.Steps
+                    }).ToList();
+
+                    var json = JsonSerializer.Serialize(routinesToSend);
+                    var buffer = Encoding.UTF8.GetBytes(json);
+                    response.ContentType = "application/json";
+                    response.ContentLength64 = buffer.Length;
+                    await response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+                    return;
+                }
+
+                // ---- ROUTINES: execute ----
+                if (request.HttpMethod == "POST" && path == "/routines/execute")
+                {
+                    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+                    var body = await reader.ReadToEndAsync().ConfigureAwait(false);
+                    var req = JsonSerializer.Deserialize<ExecuteRoutineRequest>(body);
+
+                    var routine = _routines.FirstOrDefault(r => r.Id == req?.Id);
+                    if (routine != null)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var executor = new RoutineExecutor(_apps);
+                                await executor.ExecuteRoutineAsync(routine);
+                                _logAction($"Routine '{routine.Name}' completed.");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logAction($"Routine '{routine.Name}' failed: {ex.Message}");
+                            }
+                        });
+
+                        response.StatusCode = 200;
+                        var okBuf = Encoding.UTF8.GetBytes("Routine execution started");
+                        response.ContentLength64 = okBuf.Length;
+                        await response.OutputStream.WriteAsync(okBuf, 0, okBuf.Length).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        response.StatusCode = 404;
+                        var notFoundBuf = Encoding.UTF8.GetBytes("Routine not found");
+                        response.ContentLength64 = notFoundBuf.Length;
+                        await response.OutputStream.WriteAsync(notFoundBuf, 0, notFoundBuf.Length).ConfigureAwait(false);
+                    }
+                    return;
+                }
+
+                // ---- REMOTE ROUTINES: list ----
+                if (request.HttpMethod == "GET" && path == "/remote-routines")
+                {
+                    var remoteRoutinesToSend = _remoteRoutines.Select(r => new
+                    {
+                        r.Id,
+                        r.RemoteHost,
+                        r.RemotePort,
+                        r.RemoteRoutineId,
+                        r.CachedName,
+                        r.LastUpdated
+                    }).ToList();
+
+                    var json = JsonSerializer.Serialize(remoteRoutinesToSend);
+                    var buffer = Encoding.UTF8.GetBytes(json);
+                    response.ContentType = "application/json";
+                    response.ContentLength64 = buffer.Length;
+                    await response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+                    return;
+                }
+
+                // ---- REMOTE ROUTINES: execute ----
+                if (request.HttpMethod == "POST" && path == "/remote-routines/execute")
+                {
+                    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+                    var body = await reader.ReadToEndAsync().ConfigureAwait(false);
+                    var req = JsonSerializer.Deserialize<ExecuteRoutineRequest>(body);
+
+                    var remoteRef = _remoteRoutines.FirstOrDefault(r => r.Id == req?.Id);
+                    if (remoteRef != null)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var pcName = _pcs.FirstOrDefault(p => p.IP == remoteRef.RemoteHost)?.Name ?? remoteRef.RemoteHost;
+                                _logAction($"Executing remote routine: {remoteRef.CachedName} on {pcName}");
+
+                                using var httpClient = new System.Net.Http.HttpClient();
+                                httpClient.Timeout = TimeSpan.FromSeconds(30);
+                                var executeUrl = $"http://{remoteRef.RemoteHost}:{remoteRef.RemotePort}/routines/execute";
+                                var requestBody = new { Id = remoteRef.RemoteRoutineId };
+                                var jsonBody = JsonSerializer.Serialize(requestBody);
+                                var content = new System.Net.Http.StringContent(jsonBody, Encoding.UTF8, "application/json");
+
+                                var httpResponse = await httpClient.PostAsync(executeUrl, content);
+
+                                if (httpResponse.IsSuccessStatusCode)
+                                {
+                                    _logAction($"Remote routine '{remoteRef.CachedName}' execution started on {pcName}.");
+                                }
+                                else
+                                {
+                                    _logAction($"Failed to execute remote routine on {pcName}: {httpResponse.StatusCode}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logAction($"Error executing remote routine '{remoteRef.CachedName}': {ex.Message}");
+                            }
+                        });
+
+                        response.StatusCode = 200;
+                        var okBuf = Encoding.UTF8.GetBytes("Remote routine execution started");
+                        response.ContentLength64 = okBuf.Length;
+                        await response.OutputStream.WriteAsync(okBuf, 0, okBuf.Length).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        response.StatusCode = 404;
+                        var notFoundBuf = Encoding.UTF8.GetBytes("Remote routine not found");
+                        response.ContentLength64 = notFoundBuf.Length;
+                        await response.OutputStream.WriteAsync(notFoundBuf, 0, notFoundBuf.Length).ConfigureAwait(false);
+                    }
                     return;
                 }
 
@@ -696,6 +836,11 @@ namespace AppRestarter
     public class RestartGroupRequest
     {
         public string GroupName { get; set; }
+    }
+
+    public class ExecuteRoutineRequest
+    {
+        public string Id { get; set; }
     }
 
     public class PcRequest

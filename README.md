@@ -25,6 +25,7 @@ The application includes **Apps** and **PCs** navigation tabs, allowing you to m
 * Monitor the status of running applications (on local and remote PCs).
 * Delayed auto-start of applications on initial launch.
 * Create groups to start/stop groups of applications.
+* Create routines to automate multi-step tasks (start apps, wait, send keys, click buttons).
 * Add remote PCs and perform **Shutdown** and **Restart** commands.
 * Web browser (Web UI) enabled.
 * Keep logs of actions performed.
@@ -199,6 +200,61 @@ AppRestarter supports application grouping for batch operations.
 - Right-click → **Rename** allows you to rename the group  
 - Right-click → **Disable Warning** disables the confirmation prompt when restarting the group  
 - Groups also appear in the **web interface**
+
+---
+
+## Routines
+
+Routines let you automate multi-step tasks like starting apps in order, waiting for them to load, and sending keyboard shortcuts or mouse clicks.
+
+### Creating a Routine
+
+1. Switch to the **Routines** tab
+2. Click **Add Routine**
+3. Give your routine a name
+4. Click **Add Step** to add actions
+
+### Routine Steps
+
+Each step can have:
+
+**Wait Conditions** (optional):
+- **Wait X seconds** – pause before the action
+- **Wait for app to run** – wait until an app starts
+
+**Action** (choose one):
+- **Start/Restart/Stop** – control an app
+- **Keyboard Shortcut** – send keys (e.g., Ctrl+F5)
+- **Click Area** – click at specific screen coordinates
+- **Minimize** – minimize an app window
+
+### Click Actions
+
+For Click Area actions:
+
+1. Enter X and Y screen coordinates, or
+2. Click **Record Position** and press **R** to capture your mouse position
+3. (Optional) Give the click a name like "Click Start button"
+4. Check **Double-Click** if needed
+
+### Testing Steps
+
+Before saving, click **Test Step** to make sure it works correctly.
+
+### Running Routines
+
+- Click a routine button to run it
+- Check the logs to see what's happening
+- Routines work on both the desktop and web interface
+
+### Remote Routines
+
+You can run routines on other PCs:
+
+1. Click **Add Routine**
+2. Select a remote PC instead of creating a local routine
+3. Browse and select a routine from that PC
+4. The routine runs on the remote PC, not local
 
 ---
 

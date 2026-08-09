@@ -9,7 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <BaseOutputPath></BaseOutputPath>
     <ApplicationIcon>apprestarter.ico</ApplicationIcon>
-    <Version>1.9.0</Version>
+    <Version>1.9.2</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <DefaultItemExcludes>$(DefaultItemExcludes);VitalTechSol.AutoUpdater\**</DefaultItemExcludes>
   </PropertyGroup>
@@ -46,9 +46,6 @@
   <ItemGroup>
     <None Update="applications - Copy.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="applications.xml">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="index.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

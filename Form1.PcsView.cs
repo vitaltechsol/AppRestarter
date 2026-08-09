@@ -387,5 +387,52 @@ namespace AppRestarter
                 }
             });
         }
+
+        private void HandleRemoteRoutineAction(RemoteRoutineActionRequest request)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    AddToLog($"Executing routine action '{request.RoutineActionType}' for app '{request.AppName}'");
+
+                    // Find the actual app from the configured apps list
+                    var app = _apps.FirstOrDefault(a => a.Name == request.AppName);
+
+                    if (app == null)
+                    {
+                        AddToLog($"Error: App '{request.AppName}' not found in local configuration");
+                        return;
+                    }
+
+                    // Create a routine executor with logging
+                    var executor = new RoutineExecutor(_apps, AddToLog);
+
+                    // Execute the specific action based on type
+                    switch (request.RoutineActionType)
+                    {
+                        case "KeyboardShortcut":
+                            await executor.ExecuteKeyboardShortcutAsync(app, request.Keys);
+                            break;
+
+                        case "ClickArea":
+                            await executor.ExecuteClickAsync(app, request.ClickX, request.ClickY);
+                            break;
+
+                        case "Minimize":
+                            await executor.ExecuteMinimizeAsync(app);
+                            break;
+
+                        default:
+                            AddToLog($"Unknown routine action type: {request.RoutineActionType}");
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddToLog($"Error executing remote routine action: {ex.Message}");
+                }
+            });
+        }
     }
 }

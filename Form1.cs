@@ -21,7 +21,8 @@ namespace AppRestarter
         private enum ViewMode
         {
             Apps,
-            Pcs
+            Pcs,
+            Routines
         }
 
         private ViewMode _currentView = ViewMode.Apps;
@@ -29,14 +30,15 @@ namespace AppRestarter
         private readonly List<ApplicationDetails> _apps = new();
         private List<GroupDetails> _groups = new();
         private readonly List<PcInfo> _pcs = new();
-
+        private List<AppRestarter.Models.Routine> _routines = new List<AppRestarter.Models.Routine>();
+        private List<AppRestarter.Models.RemoteRoutineReference> _remoteRoutines = new List<AppRestarter.Models.RemoteRoutineReference>();
+        private AppSettings _settings;
+        private WebServer _webServer;
         private TcpListener server;
         private volatile bool _serverRunning = true;
-        private WebServer _webServer;
-        private AppSettings _settings = new();
-        private readonly string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
         private int _timeout = 8000;
         private bool VerboseLogging { get; set; } = false;
+        private readonly string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
 
         // NEW: all app status logic moved out of Form1/AppView into this manager
         private AppStatusManager _statusManager;
@@ -49,6 +51,7 @@ namespace AppRestarter
             this.FormClosing += MainForm_FormClosing;
 
             ApplyDarkTheme();
+            _settings = new AppSettings(); // Initialize with defaults
             LoadSettingsFromXml();
 
             // Initialize font system with loaded settings
@@ -56,6 +59,8 @@ namespace AppRestarter
 
             LoadApplicationsFromXml();
             LoadPcsFromXml();
+            LoadRoutines();
+            LoadRemoteRoutines();
             MakeNavButtonsCircular();
 
             _autoUpdater = new AutoUpdater(
@@ -115,6 +120,7 @@ namespace AppRestarter
 
             MakeCircular(btnNavApps);
             MakeCircular(btnNavPcs);
+            MakeCircular(btnNavRoutines);
             MakeCircular(btnNavSettings);
         }
 
@@ -146,9 +152,11 @@ namespace AppRestarter
 
             lblNavApps.ForeColor = Color.FromArgb(226, 232, 240);
             lblNavPcs.ForeColor = Color.FromArgb(226, 232, 240);
+            lblNavRoutines.ForeColor = Color.FromArgb(226, 232, 240);
             lblNavSettings.ForeColor = Color.FromArgb(226, 232, 240);
 
-            foreach (var btn in new[] { btnNavApps, btnNavPcs, btnNavSettings })
+            // Add btnNavRoutines if needed
+            foreach (var btn in new[] { btnNavApps, btnNavPcs, btnNavRoutines, btnNavSettings })
             {
                 btn.BackColor = Color.FromArgb(15, 23, 42);
                 btn.FlatStyle = FlatStyle.Flat;
@@ -176,7 +184,7 @@ namespace AppRestarter
             var activeFg = Color.FromArgb(15, 23, 42);
             var inactiveFg = Color.FromArgb(226, 232, 240);
 
-            foreach (var btn in new[] { btnNavApps, btnNavPcs })
+            foreach (var btn in new[] { btnNavApps, btnNavPcs, btnNavRoutines })
             {
                 bool isActive = (btn == active);
                 btn.BackColor = isActive ? activeBg : inactiveBg;
@@ -197,6 +205,11 @@ namespace AppRestarter
         private void btnNavPcs_Click(object sender, EventArgs e)
         {
             ShowPcsView();
+        }
+
+        private void btnNavRoutines_Click(object sender, EventArgs e)
+        {
+            ShowRoutinesView();
         }
 
         // ------------------ LOGGING ------------------
@@ -222,7 +235,7 @@ namespace AppRestarter
             try
             {
                 var indexPath = Path.Combine(exeDir, "index.html");
-                _webServer = new WebServer(_apps, _pcs, _groups, AddToLog, indexPath, _settings,
+                _webServer = new WebServer(_apps, _pcs, _groups, _routines, _remoteRoutines, AddToLog, indexPath, _settings,
                      statusProvider: () =>
                      {
                          _statusManager.Refresh(force: true);
@@ -321,6 +334,7 @@ namespace AppRestarter
                         {
                             ApplicationDetails applicationDetails = null;
                             AppStatusBatchRequest batchRequest = null;
+                            RemoteRoutineActionRequest routineActionRequest = null;
 
                             // Try ApplicationDetails first
                             try
@@ -339,12 +353,31 @@ namespace AppRestarter
                                 }
                                 catch (SerializationException)
                                 {
-                                    string raw = Encoding.UTF8.GetString(ms.ToArray());
-                                    AddToLog("Serialization error: " + serEx.Message);
-                                    AddToLog("Raw payload (first 1000 chars): " +
-                                             (raw.Length > 1000 ? raw.Substring(0, 1000) + "..." : raw));
-                                    continue;
+                                    // Try RemoteRoutineActionRequest
+                                    ms.Position = 0;
+                                    try
+                                    {
+                                        var routineSerializer = new DataContractSerializer(typeof(RemoteRoutineActionRequest));
+                                        routineActionRequest = (RemoteRoutineActionRequest)routineSerializer.ReadObject(ms);
+                                    }
+                                    catch (SerializationException)
+                                    {
+                                        string raw = Encoding.UTF8.GetString(ms.ToArray());
+                                        AddToLog("Serialization error: " + serEx.Message);
+                                        AddToLog("Raw payload (first 1000 chars): " +
+                                                 (raw.Length > 1000 ? raw.Substring(0, 1000) + "..." : raw));
+                                        continue;
+                                    }
                                 }
+                            }
+
+                            // Handle routine action request
+                            if (routineActionRequest != null)
+                            {
+                                if (VerboseLogging)
+                                    AddToLog($"Received TCP Routine Action Request: {routineActionRequest.RoutineActionType} for app '{routineActionRequest.AppName}'");
+                                HandleRemoteRoutineAction(routineActionRequest);
+                                continue;
                             }
 
                             // Handle batch status request
@@ -633,7 +666,7 @@ namespace AppRestarter
                     UpdateAppList();
                 }
             }
-            else
+            else if (_currentView == ViewMode.Pcs)
             {
                 using var addPcForm = new AddPcForm();
                 if (addPcForm.ShowDialog(this) == DialogResult.OK)
@@ -641,6 +674,24 @@ namespace AppRestarter
                     _pcs.Add(addPcForm.PcData);
                     SaveApplicationsToXml();
                     RenderPcButtons();
+                }
+            }
+            else if (_currentView == ViewMode.Routines)
+            {
+                using var addRoutineForm = new AddRoutineForm(_apps, _pcs, _groups, _settings.WebPort);
+                if (addRoutineForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    if (addRoutineForm.Mode == AddRoutineForm.RoutineMode.Local)
+                    {
+                        _routines.Add(addRoutineForm.RoutineData);
+                        SaveRoutines();
+                    }
+                    else // Remote
+                    {
+                        _remoteRoutines.Add(addRoutineForm.RemoteRoutineData);
+                        SaveRemoteRoutines();
+                    }
+                    RenderRoutines();
                 }
             }
         }
@@ -702,6 +753,7 @@ namespace AppRestarter
             try
             {
                 SaveApplicationsToXml();
+                SaveRoutines();
 
                 // NEW: stop centralized status polling timer
                 _statusManager?.Dispose();
