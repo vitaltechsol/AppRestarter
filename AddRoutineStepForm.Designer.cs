@@ -164,7 +164,7 @@ namespace AppRestarter
             // 
             // txtDescription
             // 
-            txtDescription.Location = new Point(120, 113);
+            txtDescription.Location = new Point(148, 113);
             txtDescription.Name = "txtDescription";
             txtDescription.PlaceholderText = "e.g., \"Click Start button\"";
             txtDescription.Size = new Size(376, 23);
@@ -193,10 +193,10 @@ namespace AppRestarter
             // 
             // numClickY
             // 
-            numClickY.Location = new Point(120, 199);
+            numClickY.Location = new Point(148, 199);
             numClickY.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
             numClickY.Name = "numClickY";
-            numClickY.Size = new Size(120, 23);
+            numClickY.Size = new Size(92, 23);
             numClickY.TabIndex = 10;
             // 
             // btnRecordMouse
@@ -220,10 +220,10 @@ namespace AppRestarter
             // 
             // numClickX
             // 
-            numClickX.Location = new Point(120, 153);
+            numClickX.Location = new Point(148, 153);
             numClickX.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
             numClickX.Name = "numClickX";
-            numClickX.Size = new Size(120, 23);
+            numClickX.Size = new Size(92, 23);
             numClickX.TabIndex = 8;
             // 
             // lblKeys
@@ -237,14 +237,14 @@ namespace AppRestarter
             // 
             // txtKeys
             // 
-            txtKeys.Location = new Point(120, 113);
+            txtKeys.Location = new Point(148, 113);
             txtKeys.Name = "txtKeys";
             txtKeys.Size = new Size(200, 23);
             txtKeys.TabIndex = 6;
             // 
             // btnPickShortcut
             // 
-            btnPickShortcut.Location = new Point(330, 112);
+            btnPickShortcut.Location = new Point(358, 112);
             btnPickShortcut.Name = "btnPickShortcut";
             btnPickShortcut.Size = new Size(30, 25);
             btnPickShortcut.TabIndex = 12;
@@ -255,7 +255,7 @@ namespace AppRestarter
             // lblTarget
             // 
             lblTarget.AutoSize = true;
-            lblTarget.Location = new Point(294, 63);
+            lblTarget.Location = new Point(303, 63);
             lblTarget.Name = "lblTarget";
             lblTarget.Size = new Size(42, 15);
             lblTarget.TabIndex = 5;
@@ -283,9 +283,9 @@ namespace AppRestarter
             // 
             cboTargetType.DropDownStyle = ComboBoxStyle.DropDownList;
             cboTargetType.FormattingEnabled = true;
-            cboTargetType.Location = new Point(119, 60);
+            cboTargetType.Location = new Point(138, 60);
             cboTargetType.Name = "cboTargetType";
-            cboTargetType.Size = new Size(150, 23);
+            cboTargetType.Size = new Size(139, 23);
             cboTargetType.TabIndex = 2;
             cboTargetType.SelectedIndexChanged += cboTargetType_SelectedIndexChanged;
             // 
@@ -302,9 +302,9 @@ namespace AppRestarter
             // 
             cboActionType.DropDownStyle = ComboBoxStyle.DropDownList;
             cboActionType.FormattingEnabled = true;
-            cboActionType.Location = new Point(120, 22);
+            cboActionType.Location = new Point(139, 22);
             cboActionType.Name = "cboActionType";
-            cboActionType.Size = new Size(200, 23);
+            cboActionType.Size = new Size(191, 23);
             cboActionType.TabIndex = 0;
             cboActionType.SelectedIndexChanged += cboActionType_SelectedIndexChanged;
             // 

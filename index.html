@@ -505,64 +505,9 @@
             gap: 14px;
         }
 
-        .routine-card {
-            background: var(--card-bg);
-            border-radius: var(--radius-xl);
-            border: 1px solid var(--border-subtle);
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: var(--shadow-soft);
-            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-        }
-
-        .routine-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .routine-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--title);
-        }
-
-        .routine-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 13px;
-            color: var(--text-muted);
-            padding-left: 12px;
-        }
-
-        .routine-step {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-        }
-
-            .routine-step::before {
-                content: '▸';
-                color: var(--accent);
-                flex-shrink: 0;
-            }
-
-        .routine-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 4px;
-        }
-
         .routine-btn {
-            all: unset;
             cursor: pointer;
-            padding: 8px 16px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
             background: var(--accent);
             color: #020617;
             border: 1px solid transparent;
@@ -617,18 +562,18 @@
                     <div>🗃️</div>
                     <span class="label">Apps</span>
                 </button>
-                <button class="nav-btn" data-view="pcs" id="navPcs">
-                    <div>🖥️</div>
-                    <span class="label">PCs</span>
-                </button>
                 <button class="nav-btn" data-view="routines" id="navRoutines">
                     <div>🔄</div>
                     <span class="label">Routines</span>
                 </button>
+                <button class="nav-btn" data-view="pcs" id="navPcs">
+                    <div>🖥️</div>
+                    <span class="label">PCs</span>
+                </button>
             </div>
             <div class="nav-bottom">
                 <div style="opacity:0.4; cursor:default; font-size: 9px;">
-                    <span class="label">v1.9.2</span>
+                    <span class="label">v1.10.0</span>
                 </div>
             </div>
         </aside>
@@ -1262,27 +1207,45 @@ Proceed with shutdown?`;
 
             // Render local routines
             if (hasLocal) {
-                const localHeader = document.createElement('div');
-                localHeader.style.cssText = 'font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:12px;';
-                localHeader.textContent = 'Local Routines';
-                routineList.appendChild(localHeader);
+                const groupCard = document.createElement('div');
+                groupCard.className = 'group-card';
+
+                const header = document.createElement('div');
+                header.className = 'group-header';
+
+                const headerTitle = document.createElement('div');
+                headerTitle.className = 'group-name';
+                headerTitle.textContent = 'Local Routines';
+
+                header.appendChild(headerTitle);
+                groupCard.appendChild(header);
+
+                const routineListContainer = document.createElement('div');
+                routineListContainer.className = 'app-list';
 
                 for (const routine of routines) {
                     const card = document.createElement('div');
-                    card.className = 'routine-card';
+                    card.className = 'app-pill';
 
-                    const header = document.createElement('div');
-                    header.className = 'routine-header';
+                    const textWrap = document.createElement('div');
 
                     const title = document.createElement('div');
-                    title.className = 'routine-title';
+                    title.className = 'app-name';
                     title.textContent = routine.Name || 'Unnamed Routine';
 
+                    const meta = document.createElement('div');
+                    meta.className = 'app-meta';
+                    const stepCount = routine.Steps ? routine.Steps.length : 0;
+                    meta.textContent = `${stepCount} step${stepCount !== 1 ? 's' : ''} · Local`;
+
+                    textWrap.appendChild(title);
+                    textWrap.appendChild(meta);
+
                     const actions = document.createElement('div');
-                    actions.className = 'routine-actions';
+                    actions.className = 'app-actions';
 
                     const executeBtn = document.createElement('button');
-                    executeBtn.className = 'routine-btn';
+                    executeBtn.className = 'routine-btn btn btn-small';
                     executeBtn.innerHTML = 'Execute';
                     executeBtn.addEventListener('click', async () => {
                         try {
@@ -1295,61 +1258,59 @@ Proceed with shutdown?`;
                     });
 
                     actions.appendChild(executeBtn);
-                    header.appendChild(title);
-                    header.appendChild(actions);
-
-                    const steps = document.createElement('div');
-                    steps.className = 'routine-steps';
-
-                    if (routine.Steps && routine.Steps.length > 0) {
-                        for (let i = 0; i < routine.Steps.length; i++) {
-                            const stepEl = document.createElement('div');
-                            stepEl.className = 'routine-step';
-                            stepEl.textContent = `Step ${i + 1}: ${formatRoutineStep(routine.Steps[i])}`;
-                            steps.appendChild(stepEl);
-                        }
-                    } else {
-                        const emptyMsg = document.createElement('div');
-                        emptyMsg.style.color = '#9ca3af';
-                        emptyMsg.style.fontSize = '12px';
-                        emptyMsg.textContent = 'No steps defined';
-                        steps.appendChild(emptyMsg);
-                    }
-
-                    card.appendChild(header);
-                    card.appendChild(steps);
-                    routineList.appendChild(card);
+                    card.appendChild(textWrap);
+                    card.appendChild(actions);
+                    routineListContainer.appendChild(card);
                 }
+
+                groupCard.appendChild(routineListContainer);
+                routineList.appendChild(groupCard);
             }
 
             // Render remote routines
             if (hasRemote) {
-                const remoteHeader = document.createElement('div');
-                remoteHeader.style.cssText = 'font-size:14px;font-weight:600;color:#e2e8f0;margin:24px 0 12px 0;';
-                remoteHeader.textContent = 'Remote Routines';
-                routineList.appendChild(remoteHeader);
+                const groupCard = document.createElement('div');
+                groupCard.className = 'group-card';
+
+                const header = document.createElement('div');
+                header.className = 'group-header';
+
+                const headerTitle = document.createElement('div');
+                headerTitle.className = 'group-name';
+                headerTitle.textContent = 'Remote Routines';
+
+                header.appendChild(headerTitle);
+                groupCard.appendChild(header);
+
+                const routineListContainer = document.createElement('div');
+                routineListContainer.className = 'app-list';
 
                 for (const remoteRoutine of remoteRoutines) {
                     const card = document.createElement('div');
-                    card.className = 'routine-card';
-                    card.style.borderLeft = '3px solid #17dbe4'; // Different color for remote
+                    card.className = 'app-pill';
 
-                    const header = document.createElement('div');
-                    header.className = 'routine-header';
+                    const textWrap = document.createElement('div');
 
                     const title = document.createElement('div');
-                    title.className = 'routine-title';
+                    title.className = 'app-name';
                     title.textContent = remoteRoutine.CachedName || 'Unnamed Remote Routine';
 
-                    const actions = document.createElement('div');
-                    actions.className = 'routine-actions';
+                    const meta = document.createElement('div');
+                    meta.className = 'app-meta';
 
                     // Find PC name from IP
                     const pc = pcsCache.find(p => p.IP === remoteRoutine.RemoteHost);
                     const pcName = pc ? pc.Name : remoteRoutine.RemoteHost;
+                    meta.textContent = `Remote · ${pcName}`;
+
+                    textWrap.appendChild(title);
+                    textWrap.appendChild(meta);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'app-actions';
 
                     const executeBtn = document.createElement('button');
-                    executeBtn.className = 'routine-btn';
+                    executeBtn.className = 'routine-btn btn btn-small';
                     executeBtn.innerHTML = 'Execute';
                     executeBtn.style.backgroundColor = '#17dbe4';
                     executeBtn.addEventListener('click', async () => {
@@ -1363,21 +1324,13 @@ Proceed with shutdown?`;
                     });
 
                     actions.appendChild(executeBtn);
-                    header.appendChild(title);
-                    header.appendChild(actions);
-
-                    const info = document.createElement('div');
-                    info.className = 'routine-steps';
-
-                    const hostEl = document.createElement('div');
-                    hostEl.className = 'routine-step';
-                    hostEl.innerHTML = `🌐 Remote: <strong>${pcName}</strong>`;
-                    info.appendChild(hostEl);
-
-                    card.appendChild(header);
-                    card.appendChild(info);
-                    routineList.appendChild(card);
+                    card.appendChild(textWrap);
+                    card.appendChild(actions);
+                    routineListContainer.appendChild(card);
                 }
+
+                groupCard.appendChild(routineListContainer);
+                routineList.appendChild(groupCard);
             }
         }
 

@@ -66,7 +66,7 @@ namespace AppRestarter
             groupSteps.Controls.Add(lstSteps);
             groupSteps.Location = new Point(12, 120);
             groupSteps.Name = "groupSteps";
-            groupSteps.Size = new Size(640, 300);
+            groupSteps.Size = new Size(671, 300);
             groupSteps.TabIndex = 2;
             groupSteps.TabStop = false;
             groupSteps.Text = "Steps (executed in order)";
@@ -75,7 +75,7 @@ namespace AppRestarter
             // 
             btnMoveDown.Location = new Point(530, 161);
             btnMoveDown.Name = "btnMoveDown";
-            btnMoveDown.Size = new Size(100, 30);
+            btnMoveDown.Size = new Size(135, 30);
             btnMoveDown.TabIndex = 5;
             btnMoveDown.Text = "Move Down";
             btnMoveDown.UseVisualStyleBackColor = true;
@@ -85,7 +85,7 @@ namespace AppRestarter
             // 
             btnMoveUp.Location = new Point(530, 125);
             btnMoveUp.Name = "btnMoveUp";
-            btnMoveUp.Size = new Size(100, 30);
+            btnMoveUp.Size = new Size(135, 30);
             btnMoveUp.TabIndex = 4;
             btnMoveUp.Text = "Move Up";
             btnMoveUp.UseVisualStyleBackColor = true;
@@ -95,7 +95,7 @@ namespace AppRestarter
             // 
             btnRemoveStep.Location = new Point(530, 197);
             btnRemoveStep.Name = "btnRemoveStep";
-            btnRemoveStep.Size = new Size(100, 30);
+            btnRemoveStep.Size = new Size(135, 30);
             btnRemoveStep.TabIndex = 3;
             btnRemoveStep.Text = "Remove";
             btnRemoveStep.UseVisualStyleBackColor = true;
@@ -105,7 +105,7 @@ namespace AppRestarter
             // 
             btnEditStep.Location = new Point(530, 89);
             btnEditStep.Name = "btnEditStep";
-            btnEditStep.Size = new Size(100, 30);
+            btnEditStep.Size = new Size(135, 30);
             btnEditStep.TabIndex = 2;
             btnEditStep.Text = "Edit";
             btnEditStep.UseVisualStyleBackColor = true;
@@ -115,7 +115,7 @@ namespace AppRestarter
             // 
             btnAddStep.Location = new Point(530, 22);
             btnAddStep.Name = "btnAddStep";
-            btnAddStep.Size = new Size(100, 30);
+            btnAddStep.Size = new Size(135, 30);
             btnAddStep.TabIndex = 1;
             btnAddStep.Text = "Add Step";
             btnAddStep.UseVisualStyleBackColor = true;
@@ -132,7 +132,7 @@ namespace AppRestarter
             // 
             // btnSave
             // 
-            btnSave.Location = new Point(451, 430);
+            btnSave.Location = new Point(583, 430);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(100, 32);
             btnSave.TabIndex = 3;
@@ -143,7 +143,7 @@ namespace AppRestarter
             // btnCancel
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new Point(557, 430);
+            btnCancel.Location = new Point(440, 430);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(100, 32);
             btnCancel.TabIndex = 4;
@@ -177,7 +177,7 @@ namespace AppRestarter
             rdoRemote.AutoSize = true;
             rdoRemote.Location = new Point(180, 25);
             rdoRemote.Name = "rdoRemote";
-            rdoRemote.Size = new Size(177, 19);
+            rdoRemote.Size = new Size(165, 19);
             rdoRemote.TabIndex = 1;
             rdoRemote.Text = "Remote Routine Reference";
             rdoRemote.UseVisualStyleBackColor = true;
@@ -201,7 +201,7 @@ namespace AppRestarter
             lblRemotePc.AutoSize = true;
             lblRemotePc.Location = new Point(12, 85);
             lblRemotePc.Name = "lblRemotePc";
-            lblRemotePc.Size = new Size(55, 15);
+            lblRemotePc.Size = new Size(59, 15);
             lblRemotePc.TabIndex = 7;
             lblRemotePc.Text = "Select PC:";
             lblRemotePc.Visible = false;
@@ -229,7 +229,6 @@ namespace AppRestarter
             // 
             // lblRemoteInfo
             // 
-            lblRemoteInfo.AutoSize = false;
             lblRemoteInfo.Location = new Point(120, 120);
             lblRemoteInfo.Name = "lblRemoteInfo";
             lblRemoteInfo.Size = new Size(500, 80);
@@ -241,7 +240,7 @@ namespace AppRestarter
             // 
             AcceptButton = btnSave;
             CancelButton = btnCancel;
-            ClientSize = new Size(664, 474);
+            ClientSize = new Size(695, 474);
             Controls.Add(lblRemoteInfo);
             Controls.Add(btnBrowseRemote);
             Controls.Add(cmbRemotePc);
