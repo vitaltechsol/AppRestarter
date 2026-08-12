@@ -79,6 +79,7 @@ namespace AppRestarter
             InitializeForm();
 
             txtName.Text = existing.Name;
+            chkAutoStart.Checked = RoutineAutoStartManager.GetAutoStart(existing.Id);
             LoadSteps();
         }
 
@@ -179,6 +180,7 @@ namespace AppRestarter
                 // Show local routine controls
                 lblName.Visible = true;
                 txtName.Visible = true;
+                chkAutoStart.Visible = true;
                 groupSteps.Visible = true;
 
                 // Hide remote routine controls
@@ -192,6 +194,7 @@ namespace AppRestarter
                 // Hide local routine controls
                 lblName.Visible = false;
                 txtName.Visible = false;
+                chkAutoStart.Visible = false;
                 groupSteps.Visible = false;
 
                 // Show remote routine controls
@@ -329,6 +332,10 @@ namespace AppRestarter
                 }
 
                 RoutineData.Name = name;
+
+                // Save auto-start preference locally
+                RoutineAutoStartManager.SetAutoStart(RoutineData.Id, chkAutoStart.Checked);
+
                 DialogResult = DialogResult.OK;
                 Close();
             }

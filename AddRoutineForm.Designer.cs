@@ -19,6 +19,7 @@ namespace AppRestarter
         {
             lblName = new Label();
             txtName = new TextBox();
+            chkAutoStart = new CheckBox();
             groupSteps = new GroupBox();
             btnMoveDown = new Button();
             btnMoveUp = new Button();
@@ -55,6 +56,16 @@ namespace AppRestarter
             txtName.Name = "txtName";
             txtName.Size = new Size(400, 23);
             txtName.TabIndex = 1;
+            // 
+            // chkAutoStart
+            // 
+            chkAutoStart.AutoSize = true;
+            chkAutoStart.Location = new Point(530, 85);
+            chkAutoStart.Name = "chkAutoStart";
+            chkAutoStart.Size = new Size(151, 19);
+            chkAutoStart.TabIndex = 8;
+            chkAutoStart.Text = "Auto-start on app launch";
+            chkAutoStart.UseVisualStyleBackColor = true;
             // 
             // groupSteps
             // 
@@ -250,6 +261,7 @@ namespace AppRestarter
             Controls.Add(btnCancel);
             Controls.Add(btnSave);
             Controls.Add(groupSteps);
+            Controls.Add(chkAutoStart);
             Controls.Add(txtName);
             Controls.Add(lblName);
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -269,6 +281,7 @@ namespace AppRestarter
 
         private Label lblName;
         private TextBox txtName;
+        private CheckBox chkAutoStart;
         private GroupBox groupSteps;
         private ListBox lstSteps;
         private Button btnAddStep;
