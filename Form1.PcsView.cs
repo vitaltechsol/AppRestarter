@@ -396,13 +396,36 @@ namespace AppRestarter
                 {
                     AddToLog($"Executing routine action '{request.RoutineActionType}' for app '{request.AppName}'");
 
-                    // Find the actual app from the configured apps list
-                    var app = _apps.FirstOrDefault(a => a.Name == request.AppName);
+                    // Resolve target app from local config when possible, but do not require name parity.
+                    var app = _apps.FirstOrDefault(a =>
+                        !string.IsNullOrWhiteSpace(request.AppName) &&
+                        string.Equals(a.Name, request.AppName, StringComparison.OrdinalIgnoreCase));
 
                     if (app == null)
                     {
-                        AddToLog($"Error: App '{request.AppName}' not found in local configuration");
-                        return;
+                        app = _apps.FirstOrDefault(a =>
+                            !string.IsNullOrWhiteSpace(request.ProcessName) &&
+                            string.Equals(a.ProcessName, request.ProcessName, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    if (app == null)
+                    {
+                        app = _apps.FirstOrDefault(a =>
+                            !string.IsNullOrWhiteSpace(request.RestartPath) &&
+                            string.Equals(a.RestartPath, request.RestartPath, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    if (app == null)
+                    {
+                        app = new ApplicationDetails
+                        {
+                            Name = string.IsNullOrWhiteSpace(request.AppName) ? (request.ProcessName ?? "RemoteRoutineApp") : request.AppName,
+                            ProcessName = request.ProcessName,
+                            RestartPath = request.RestartPath,
+                            StartMinimized = request.StartMinimized
+                        };
+
+                        AddToLog($"App '{request.AppName}' not found in local configuration; using request details.");
                     }
 
                     // Create a routine executor with logging
@@ -411,6 +434,18 @@ namespace AppRestarter
                     // Execute the specific action based on type
                     switch (request.RoutineActionType)
                     {
+                        case "Start":
+                            await HandleAppButtonClickAsync(app, start: true, stop: false, skipConfirm: true);
+                            break;
+
+                        case "Stop":
+                            await HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
+                            break;
+
+                        case "Restart":
+                            await HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
+                            break;
+
                         case "KeyboardShortcut":
                             await executor.ExecuteKeyboardShortcutAsync(app, request.Keys);
                             break;

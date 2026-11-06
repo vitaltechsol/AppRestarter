@@ -105,6 +105,18 @@ namespace AppRestarter
                     {
                         el.Value = newName;
                     }
+
+                    var groupsEl = app.Element("Groups");
+                    if (groupsEl != null)
+                    {
+                        foreach (var groupEl in groupsEl.Elements("Group"))
+                        {
+                            if (groupEl.Value.Equals(oldName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                groupEl.Value = newName;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -162,6 +174,18 @@ namespace AppRestarter
                     if (el != null && el.Value.Equals(oldName, StringComparison.OrdinalIgnoreCase))
                     {
                         el.Value = newName;
+                    }
+
+                    var groupsEl = app.Element("Groups");
+                    if (groupsEl != null)
+                    {
+                        foreach (var groupEl in groupsEl.Elements("Group"))
+                        {
+                            if (groupEl.Value.Equals(oldName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                groupEl.Value = newName;
+                            }
+                        }
                     }
                 }
             }

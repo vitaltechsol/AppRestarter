@@ -509,5 +509,46 @@ namespace AppRestarter
                 AddToLog($"Removed remote routine reference: {remoteRef.CachedName}");
             }
         }
+
+        private void AutoStartRoutines()
+        {
+            var autoStartSettings = RoutineAutoStartManager.LoadAutoStartSettings();
+
+            // Auto-start local routines
+            foreach (var routine in _routines.Where(r => autoStartSettings.ContainsKey(r.Id) && autoStartSettings[r.Id]))
+            {
+                AddToLog($"Auto-starting routine: {routine.Name}");
+
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        await ExecuteRoutineAsync(routine);
+                    }
+                    catch (Exception ex)
+                    {
+                        AddToLog($"Error auto-starting routine {routine.Name}: {ex.Message}");
+                    }
+                });
+            }
+
+            // Auto-start remote routine references
+            foreach (var remoteRoutine in _remoteRoutines.Where(r => autoStartSettings.ContainsKey(r.Id) && autoStartSettings[r.Id]))
+            {
+                AddToLog($"Auto-starting remote routine: {remoteRoutine.CachedName}");
+
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        await ExecuteRemoteRoutineAsync(remoteRoutine);
+                    }
+                    catch (Exception ex)
+                    {
+                        AddToLog($"Error auto-starting remote routine {remoteRoutine.CachedName}: {ex.Message}");
+                    }
+                });
+            }
+        }
     }
 }

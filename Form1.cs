@@ -87,6 +87,7 @@ namespace AppRestarter
             StartWebServer();
             ShowAppsView();      // default view
             Task.Run(AutoStartApps);
+            Task.Run(AutoStartRoutines);
         }
 
         private async void Form1_Load(object sender, EventArgs e)

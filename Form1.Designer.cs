@@ -98,7 +98,7 @@ namespace AppRestarter
             label1.Name = "label1";
             label1.Size = new Size(43, 15);
             label1.TabIndex = 4;
-            label1.Text = "v1.10.0";
+            label1.Text = "v1.11.0";
             // 
             // btnOpenWeb
             // 

@@ -116,8 +116,8 @@ namespace AppRestarter
                      {
                          cancellationToken.ThrowIfCancellationRequested();
 
-                         // Check if process is running
-                         bool isRunning = IsAppRunning(app);
+                          // Check if process is running (local or remote)
+                          bool isRunning = await IsAppRunningAsync(app, cancellationToken);
                          if (isRunning)
                          {
                              break;
@@ -135,9 +135,103 @@ namespace AppRestarter
              }
         }
 
-        private bool IsAppRunning(ApplicationDetails app)
+        private async Task<bool> IsAppRunningAsync(ApplicationDetails app, CancellationToken cancellationToken)
         {
+            if (IsRemoteApp(app))
+                return await IsRemoteAppRunningAsync(app, cancellationToken);
+
             return ProcessTerminator.IsRunning(app);
+        }
+
+        private async Task<bool> IsRemoteAppRunningAsync(ApplicationDetails app, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var batchRequest = new AppStatusBatchRequest
+                {
+                    ActionType = RemoteActionType.AppStatusBatch,
+                    Apps = new List<ApplicationDetails>
+                    {
+                        new ApplicationDetails
+                        {
+                            Name = app.Name,
+                            ProcessName = app.ProcessName,
+                            RestartPath = app.RestartPath,
+                            ClientIP = null,
+                            AutoStart = app.AutoStart,
+                            AutoStartDelayInSeconds = app.AutoStartDelayInSeconds,
+                            NoWarn = app.NoWarn,
+                            StartMinimized = app.StartMinimized,
+                            GroupName = app.GroupName,
+                            GroupNames = app.GroupNames
+                        }
+                    }
+                };
+
+                using var client = new System.Net.Sockets.TcpClient(System.Net.Sockets.AddressFamily.InterNetwork);
+                client.SendTimeout = 3000;
+                client.ReceiveTimeout = 3000;
+
+                await client.ConnectAsync(app.ClientIP, 2024, cancellationToken);
+
+                using var stream = client.GetStream();
+                var serializer = new System.Runtime.Serialization.DataContractSerializer(typeof(AppStatusBatchRequest));
+                serializer.WriteObject(stream, batchRequest);
+                await stream.FlushAsync(cancellationToken);
+
+                try { client.Client.Shutdown(System.Net.Sockets.SocketShutdown.Send); } catch { }
+
+                using var ms = new System.IO.MemoryStream();
+                byte[] buffer = new byte[2048];
+                int bytesRead;
+
+                while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                {
+                    ms.Write(buffer, 0, bytesRead);
+                    if (ms.Length > 64 * 1024) break;
+                }
+
+                var reply = System.Text.Encoding.UTF8.GetString(ms.ToArray());
+                if (string.IsNullOrWhiteSpace(reply))
+                    return false;
+
+                var lines = reply
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Trim())
+                    .ToArray();
+
+                if (lines.Length == 0 || !lines[0].Equals("STATUSBATCH", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                for (int i = 1; i < lines.Length; i++)
+                {
+                    var parts = lines[i].Split('|');
+                    if (parts.Length < 4)
+                        continue;
+
+                    string name = parts[0] ?? string.Empty;
+                    string processName = parts[1] ?? string.Empty;
+                    string restartPath = parts[2] ?? string.Empty;
+                    bool isRunning = parts[3].Equals("Running", StringComparison.OrdinalIgnoreCase);
+
+                    bool pathMatch = !string.IsNullOrWhiteSpace(app.RestartPath) &&
+                                     string.Equals(app.RestartPath, restartPath, StringComparison.OrdinalIgnoreCase);
+                    bool processMatch = !string.IsNullOrWhiteSpace(app.ProcessName) &&
+                                        string.Equals(app.ProcessName, processName, StringComparison.OrdinalIgnoreCase);
+                    bool nameMatch = !string.IsNullOrWhiteSpace(app.Name) &&
+                                     string.Equals(app.Name, name, StringComparison.OrdinalIgnoreCase);
+
+                    if (pathMatch || processMatch || nameMatch)
+                        return isRunning;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _log?.Invoke($"Error checking remote app running state for '{app?.Name}': {ex.Message}");
+                return false;
+            }
         }
 
         private async Task ExecuteActionAsync(RoutineAction action, CancellationToken cancellationToken)
@@ -150,7 +244,11 @@ namespace AppRestarter
                      switch (action.Type)
                      {
                          case ActionType.Start:
-                             if (!string.IsNullOrWhiteSpace(app.RestartPath))
+                             if (IsRemoteApp(app))
+                             {
+                                 await SendRemoteAppControlAsync(app, startRequested: true, stopRequested: false);
+                             }
+                             else if (!string.IsNullOrWhiteSpace(app.RestartPath))
                              {
                                  var startInfo = new System.Diagnostics.ProcessStartInfo
                                  {
@@ -164,22 +262,36 @@ namespace AppRestarter
                              }
                              break;
                          case ActionType.Stop:
-                             await ProcessTerminator.StopAsync(app, log: null);
+                             if (IsRemoteApp(app))
+                             {
+                                 await SendRemoteAppControlAsync(app, startRequested: false, stopRequested: true);
+                             }
+                             else
+                             {
+                                 await ProcessTerminator.StopAsync(app, log: null);
+                             }
                              break;
                          case ActionType.Restart:
-                             await ProcessTerminator.StopAsync(app, log: null);
-                             await Task.Delay(2000, cancellationToken);
-                             if (!string.IsNullOrWhiteSpace(app.RestartPath))
+                             if (IsRemoteApp(app))
                              {
-                                 var startInfo = new System.Diagnostics.ProcessStartInfo
+                                 await SendRemoteAppControlAsync(app, startRequested: true, stopRequested: true);
+                             }
+                             else
+                             {
+                                 await ProcessTerminator.StopAsync(app, log: null);
+                                 await Task.Delay(2000, cancellationToken);
+                                 if (!string.IsNullOrWhiteSpace(app.RestartPath))
                                  {
-                                     FileName = app.RestartPath,
-                                     WorkingDirectory = System.IO.Path.GetDirectoryName(app.RestartPath),
-                                     UseShellExecute = true,
-                                 };
-                                 if (app.StartMinimized)
-                                     startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Minimized;
-                                 System.Diagnostics.Process.Start(startInfo);
+                                     var startInfo = new System.Diagnostics.ProcessStartInfo
+                                     {
+                                         FileName = app.RestartPath,
+                                         WorkingDirectory = System.IO.Path.GetDirectoryName(app.RestartPath),
+                                         UseShellExecute = true,
+                                     };
+                                     if (app.StartMinimized)
+                                         startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Minimized;
+                                     System.Diagnostics.Process.Start(startInfo);
+                                 }
                              }
                              break;
                          case ActionType.KeyboardShortcut:
@@ -224,6 +336,41 @@ namespace AppRestarter
                                   }
                              }
                              // TODO: Implementation for PC and Group targets
+        }
+
+        private async Task SendRemoteAppControlAsync(ApplicationDetails app, bool startRequested, bool stopRequested)
+        {
+            try
+            {
+                _log?.Invoke($"Sending remote app control request to {app.ClientIP}: start={startRequested}, stop={stopRequested}");
+
+                var request = new ApplicationDetails
+                {
+                    ActionType = RemoteActionType.AppControl,
+                    Name = app.Name,
+                    ProcessName = app.ProcessName,
+                    RestartPath = app.RestartPath,
+                    ClientIP = app.ClientIP,
+                    StartMinimized = app.StartMinimized,
+                    NoWarn = true,
+                    StartRequested = startRequested,
+                    StopRequested = stopRequested
+                };
+
+                using var client = new System.Net.Sockets.TcpClient(app.ClientIP, 2024); // TODO: Get port from settings
+                client.SendTimeout = 6000;
+                using var stream = client.GetStream();
+
+                var serializer = new System.Runtime.Serialization.DataContractSerializer(typeof(ApplicationDetails));
+                serializer.WriteObject(stream, request);
+                stream.Flush();
+
+                _log?.Invoke("Remote app control request sent successfully");
+            }
+            catch (Exception ex)
+            {
+                _log?.Invoke($"Error sending remote app control request: {ex.Message}");
+            }
         }
 
         private bool ActivateWindow(IntPtr hwnd)
@@ -401,6 +548,7 @@ namespace AppRestarter
                     AppName = app.Name,
                     ProcessName = app.ProcessName,
                     RestartPath = app.RestartPath,
+                    StartMinimized = app.StartMinimized,
                     RoutineActionType = actionType,
                     Keys = keys,
                     ClickX = clickX,
