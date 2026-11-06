@@ -85,7 +85,10 @@ namespace AppRestarter
         public string RestartPath { get; set; }
 
         [DataMember]
-        public string RoutineActionType { get; set; } // "KeyboardShortcut", "ClickArea", "Minimize"
+        public bool StartMinimized { get; set; }
+
+        [DataMember]
+        public string RoutineActionType { get; set; } // "Start", "Stop", "Restart", "KeyboardShortcut", "ClickArea", "Minimize"
 
         [DataMember]
         public string Keys { get; set; }
