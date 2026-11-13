@@ -252,7 +252,7 @@ namespace AppRestarter
                 _webServer.RestartRequested += (s, app) =>
                 {
                     if (!string.IsNullOrEmpty(app.ClientIP))
-                        HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: true);
+                        _ = HandleRemoteClientAppClickAsync(app, start: true, stop: true, skipConfirm: true);
                     else
                         _ = HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
                 };
@@ -260,7 +260,7 @@ namespace AppRestarter
                 _webServer.StopRequested += (s, app) =>
                 {
                     if (!string.IsNullOrEmpty(app.ClientIP))
-                        HandleRemoteClientAppClick(app, start: false, stop: true, skipConfirm: true);
+                        _ = HandleRemoteClientAppClickAsync(app, start: false, stop: true, skipConfirm: true);
                     else
                         _ = HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
                 };

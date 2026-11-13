@@ -19,10 +19,10 @@ namespace AppRestarter
             {
                 log?.Invoke($"Sending {action} to {pc.Name} ({pc.IP})");
 
-                using var client = new TcpClient(pc.IP, port)
-                {
-                    SendTimeout = 3000
-                };
+                using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var client = new TcpClient();
+                await client.ConnectAsync(pc.IP, port, connectCts.Token);
+                client.SendTimeout = 3000;
                 using var stream = client.GetStream();
 
                 var msg = new ApplicationDetails

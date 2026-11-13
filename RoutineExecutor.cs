@@ -357,7 +357,9 @@ namespace AppRestarter
                     StopRequested = stopRequested
                 };
 
-                using var client = new System.Net.Sockets.TcpClient(app.ClientIP, 2024); // TODO: Get port from settings
+                using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var client = new System.Net.Sockets.TcpClient();
+                await client.ConnectAsync(app.ClientIP, 2024, connectCts.Token); // TODO: Get port from settings
                 client.SendTimeout = 6000;
                 using var stream = client.GetStream();
 
@@ -555,7 +557,9 @@ namespace AppRestarter
                     ClickY = clickY
                 };
 
-                using var client = new System.Net.Sockets.TcpClient(app.ClientIP, 2024); // TODO: Get port from settings
+                using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var client = new System.Net.Sockets.TcpClient();
+                await client.ConnectAsync(app.ClientIP, 2024, connectCts.Token); // TODO: Get port from settings
                 client.SendTimeout = 6000;
                 using var stream = client.GetStream();
 

@@ -348,7 +348,7 @@ namespace AppRestarter
                         if (!app.Enabled) continue;
 
                         if (!string.IsNullOrEmpty(app.ClientIP))
-                            HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: true);
+                            await HandleRemoteClientAppClickAsync(app, start: true, stop: true, skipConfirm: true);
                         else
                             await HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: true);
                     }
@@ -378,7 +378,7 @@ namespace AppRestarter
                             if (!app.Enabled) continue;
 
                             if (!string.IsNullOrEmpty(app.ClientIP))
-                                HandleRemoteClientAppClick(app, start: false, stop: true, skipConfirm: true);
+                                await HandleRemoteClientAppClickAsync(app, start: false, stop: true, skipConfirm: true);
                             else
                                 await HandleAppButtonClickAsync(app, start: false, stop: true, skipConfirm: true);
                         }
@@ -566,12 +566,12 @@ namespace AppRestarter
                     // Left-click anywhere on the card => restart
                     void AttachClick(Control c)
                     {
-                        c.Click += (s, e) =>
+                        c.Click += async (s, e) =>
                         {
                             if (!app.Enabled) return;
 
                             if (!string.IsNullOrEmpty(app.ClientIP))
-                                HandleRemoteClientAppClick(app, start: true, stop: true, skipConfirm: false);
+                                await HandleRemoteClientAppClickAsync(app, start: true, stop: true, skipConfirm: false);
                             else
                                 _ = HandleAppButtonClickAsync(app, start: true, stop: true, skipConfirm: false);
                         };
@@ -704,7 +704,7 @@ namespace AppRestarter
         {
             var existing = _apps[index];
             if (!string.IsNullOrEmpty(existing.ClientIP))
-                HandleRemoteClientAppClick(existing, start: false, stop: true, skipConfirm: false);
+                _ = HandleRemoteClientAppClickAsync(existing, start: false, stop: true, skipConfirm: false);
             else
                 _ = HandleAppButtonClickAsync(existing, start: false, stop: true, skipConfirm: false);
         }
@@ -723,7 +723,7 @@ namespace AppRestarter
                     if (!string.IsNullOrEmpty(app.ClientIP))
                     {
                         Debug.WriteLine($"AutoStart ClientIP {app.Name}");
-                        HandleRemoteClientAppClick(app, start: true, stop: false, skipConfirm: true);
+                        await HandleRemoteClientAppClickAsync(app, start: true, stop: false, skipConfirm: true);
                     }
                     else
                         await HandleAppButtonClickAsync(app, start: true, stop: false, skipConfirm: true);
@@ -826,7 +826,7 @@ namespace AppRestarter
             // Route remote apps to the remote handler
             if (!string.IsNullOrEmpty(app.ClientIP))
             {
-                HandleRemoteClientAppClick(app, start, stop, skipConfirm);
+                await HandleRemoteClientAppClickAsync(app, start, stop, skipConfirm);
                 return;
             }
 
@@ -965,7 +965,7 @@ namespace AppRestarter
             _statusManager.Refresh();
         }
 
-        private void HandleRemoteClientAppClick(ApplicationDetails applicationDetails, bool start, bool stop, bool skipConfirm)
+        private async Task HandleRemoteClientAppClickAsync(ApplicationDetails applicationDetails, bool start, bool stop, bool skipConfirm)
         {
             try
             {
@@ -997,7 +997,9 @@ namespace AppRestarter
                 else if (stop && !start)
                     _statusManager.MarkStopInitiatedByUs(applicationDetails);
 
-                using var client = new TcpClient(applicationDetails.ClientIP, _settings.AppPort);
+                using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var client = new TcpClient();
+                await client.ConnectAsync(applicationDetails.ClientIP, _settings.AppPort, connectCts.Token);
                 client.SendTimeout = 6000;
                 using var stream = client.GetStream();
 
