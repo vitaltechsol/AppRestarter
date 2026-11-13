@@ -43,6 +43,8 @@ namespace AppRestarter
         // NEW: all app status logic moved out of Form1/AppView into this manager
         private AppStatusManager _statusManager;
 
+        private PcDiscoveryService _discoveryService;
+
         private AutoUpdater _autoUpdater;
 
         public Form1()
@@ -83,9 +85,14 @@ namespace AppRestarter
             // Make group “cards” fluid width
             AppFlowLayoutPanel.Resize += AppFlowLayoutPanel_Resize;
 
+            _discoveryService = new PcDiscoveryService();
+            _discoveryService.StartListening();
+            Task.Run(() => FirewallHelper.EnsureFirewallRules(
+                _settings.AppPort, _settings.WebPort, PcDiscoveryService.DiscoveryPort, AddToLog));
+
             StartServer();
             StartWebServer();
-            ShowAppsView();      // default view
+            ShowAppsView();
             Task.Run(AutoStartApps);
             Task.Run(AutoStartRoutines);
         }
@@ -758,6 +765,7 @@ namespace AppRestarter
 
                 // NEW: stop centralized status polling timer
                 _statusManager?.Dispose();
+                _discoveryService?.Dispose();
 
                 _serverRunning = false;
                 server?.Stop();

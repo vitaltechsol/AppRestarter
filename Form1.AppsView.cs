@@ -823,6 +823,13 @@ namespace AppRestarter
 
         private async Task HandleAppButtonClickAsync(ApplicationDetails app, bool start, bool stop, bool skipConfirm)
         {
+            // Route remote apps to the remote handler
+            if (!string.IsNullOrEmpty(app.ClientIP))
+            {
+                HandleRemoteClientAppClick(app, start, stop, skipConfirm);
+                return;
+            }
+
             DialogResult? confirmResult = null;
             string actionName = "restart";
             if (stop && !start)

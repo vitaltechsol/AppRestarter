@@ -27,6 +27,8 @@ The application includes **Apps** and **PCs** navigation tabs, allowing you to m
 * Create groups to start/stop groups of applications.
 * Create routines to automate multi-step tasks (start apps, wait, send keys, click buttons).
 * Add remote PCs and perform **Shutdown** and **Restart** commands.
+* **Automatically discovers** other PCs on the LAN that are running AppRestarter.
+* **Auto-configures Windows Firewall** rules on first launch (when run as administrator).
 * Web browser (Web UI) enabled.
 * Keep logs of actions performed.
 * Lightweight and easy to deploy.
@@ -64,14 +66,21 @@ To stop/start elevated applications or send shutdown/restart commands:
 
 ### 4. Windows Defender Firewall
 
-Allow inbound TCP on AppRestarter's port (default **2024**):
+AppRestarter **automatically adds the required firewall rules** the first time it runs as administrator — no manual steps needed.
 
-1. Open *Windows Defender Firewall with Advanced Security*
-2. Select **Inbound Rules → New Rule**
-3. Choose **Port**, then *Next*
-4. Select **TCP**, enter **2024, 8090**
-5. Allow the connection
-6. Name it **AppRestarter**
+The following rules are created automatically:
+
+| Rule | Protocol | Port(s) | Purpose |
+|------|----------|---------|---------|
+| AppRestarter | TCP | 2024, 8090 | App control + Web UI |
+| AppRestarter UDP | UDP | 2026 | LAN PC discovery |
+
+> If AppRestarter is **not** running as administrator, the rules cannot be added automatically. In that case, add them manually:
+>
+> 1. Open *Windows Defender Firewall with Advanced Security*
+> 2. Select **Inbound Rules → New Rule**
+> 3. **Rule 1:** TCP → ports `2024, 8090` → Allow → name it `AppRestarter`
+> 4. **Rule 2:** UDP → port `2026` → Allow → name it `AppRestarter UDP`
 
 ---
 
@@ -104,13 +113,20 @@ This tab handles **PC-level power control**.
 
 To send shutdown/restart commands or restart remote applications, you must add PCs to AppRestarter.
 
+### PC Auto-Discovery
+
+When AppRestarter starts it advertises itself on the local network (UDP port 2026). Any other machine on the same subnet running AppRestarter will respond, so you rarely need to type an IP address manually.
+
+> **Requirement:** Both PCs must be running AppRestarter and on the same LAN subnet.
+
 ### To Add a PC
-1. Switch to the **PCs** tab  
-2. Click **Add New PC**  
-3. Enter:
-   - **PC Name** (e.g., “Gaming Rig”, “Sim Machine”)
-   - **PC IP Address**
-4. Save
+
+1. Switch to the **PCs** tab
+2. Click **Add New PC**
+3. The dialog automatically scans your network and lists any discovered PCs at the top
+4. **Click a discovered PC** to instantly fill in the Name and IP — then click **Save**
+5. If the PC doesn't appear, click **Rescan** to try again
+6. Or skip discovery and type the **PC Name** and **IP Address** manually in the fields below, then click **Save**
 
 This creates an entry under the `Systems` node in `applications.xml`.
 
