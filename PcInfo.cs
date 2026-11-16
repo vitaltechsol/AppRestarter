@@ -6,6 +6,9 @@ namespace AppRestarter
     public class PcInfo
     {
         [DataMember]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+
+        [DataMember]
         public string Name { get; set; } = "";
 
         [DataMember]

@@ -313,13 +313,13 @@ namespace AppRestarter
                 // ---- APPS: list ----
                 if (request.HttpMethod == "GET" && path == "/apps")
                 {
-                    var appsToSend = _apps.Where(a => a.Enabled).Select(app => new
+                    // Expose only local (non-remote) apps with their UUIDs so other PCs can build RemoteAppReference entries.
+                    var appsToSend = _apps.Where(a => a.Enabled && string.IsNullOrEmpty(a.ClientIP)).Select(app => new
                     {
+                        app.Id,
                         app.Name,
                         app.ProcessName,
                         app.RestartPath,
-                        app.ClientIP,
-                        app.NoWarn,
                         app.GroupName,
                         app.GroupNames
                     }).ToList();
@@ -329,6 +329,42 @@ namespace AppRestarter
                     response.ContentType = "application/json";
                     response.ContentLength64 = buffer.Length;
                     await response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+                    return;
+                }
+
+                // ---- APPS: UUID-based control (start / stop / restart) ----
+                if (request.HttpMethod == "POST" && path == "/apps/control")
+                {
+                    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+                    var body = await reader.ReadToEndAsync().ConfigureAwait(false);
+                    var req = JsonSerializer.Deserialize<AppControlRequest>(body,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    var app = _apps.FirstOrDefault(a => a.Id == req?.AppId);
+                    if (app != null)
+                    {
+                        app.StartRequested = req.Start;
+                        app.StopRequested = req.Stop;
+                        _ = Task.Run(() =>
+                        {
+                            if (req.Stop)
+                                StopRequested?.Invoke(this, app);
+                            if (req.Start)
+                                RestartRequested?.Invoke(this, app);
+                        });
+
+                        response.StatusCode = 200;
+                        var okBuf = Encoding.UTF8.GetBytes("App control request accepted");
+                        response.ContentLength64 = okBuf.Length;
+                        await response.OutputStream.WriteAsync(okBuf, 0, okBuf.Length).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        response.StatusCode = 404;
+                        var notFoundBuf = Encoding.UTF8.GetBytes("App not found");
+                        response.ContentLength64 = notFoundBuf.Length;
+                        await response.OutputStream.WriteAsync(notFoundBuf, 0, notFoundBuf.Length).ConfigureAwait(false);
+                    }
                     return;
                 }
 
@@ -841,6 +877,13 @@ namespace AppRestarter
     public class ExecuteRoutineRequest
     {
         public string Id { get; set; }
+    }
+
+    public class AppControlRequest
+    {
+        public string AppId { get; set; }
+        public bool Start { get; set; }
+        public bool Stop { get; set; }
     }
 
     public class PcRequest

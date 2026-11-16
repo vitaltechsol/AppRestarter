@@ -77,11 +77,14 @@ namespace AppRestarter
                             }
                         }
 
+                        var rawId = applicationElement.Element("Id")?.Value;
                         ApplicationDetails app = new ApplicationDetails
                         {
+                            Id = string.IsNullOrWhiteSpace(rawId) ? Guid.NewGuid().ToString() : rawId,
                             Name = applicationElement.Element("Name")?.Value ?? "",
                             ProcessName = applicationElement.Element("ProcessName")?.Value ?? "",
                             RestartPath = applicationElement.Element("RestartPath")?.Value,
+                            // ClientIP kept for migration: MigrateRemoteApps() will move these to remote-apps.xml
                             ClientIP = applicationElement.Element("ClientIP")?.Value,
                             AutoStart = bool.TryParse(applicationElement.Element("AutoStart")?.Value, out var autoStart) && autoStart,
                             AutoStartDelayInSeconds = int.TryParse(applicationElement.Element("AutoStartDelayInSeconds")?.Value, out var delay) ? delay : 0,
@@ -1017,6 +1020,173 @@ namespace AppRestarter
                 MessageBox.Show(msg);
                 AddToLog(msg);
                 Debug.WriteLine(msg);
+            }
+        }
+
+        // ---- Remote App load / save ----
+
+        private void LoadRemoteApps()
+        {
+            try
+            {
+                var loaded = RemoteAppManager.LoadRemoteApps();
+                _remoteApps.Clear();
+                _remoteApps.AddRange(loaded);
+                AddToLog($"Loaded {_remoteApps.Count} remote app(s).");
+
+                // Recovery: if a RemoteAppReference has no resolved UUID yet, the remote PC
+                // has not been contacted. Re-add it as an ApplicationDetails with ClientIP so the
+                // app remains visible and controllable via the existing TCP path until it is fully
+                // migrated (i.e. remote PC comes online and RemoteAppId is resolved).
+                // This also recovers apps that were prematurely removed from applications.xml
+                // before the remote-apps UI (Step 8) was available.
+                foreach (var remoteApp in _remoteApps.Where(r => string.IsNullOrEmpty(r.RemoteAppId)))
+                {
+                    var pc = _pcs.FirstOrDefault(p => p.Id == remoteApp.PcId);
+                    if (pc == null) continue;
+
+                    bool alreadyPresent = _apps.Any(a =>
+                        string.Equals(a.Name, remoteApp.CachedName, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(a.ClientIP, pc.IP, StringComparison.OrdinalIgnoreCase));
+
+                    if (!alreadyPresent)
+                    {
+                        _apps.Add(new ApplicationDetails
+                        {
+                            Id = remoteApp.Id,
+                            Name = remoteApp.CachedName,
+                            ProcessName = remoteApp.CachedProcessName ?? "",
+                            RestartPath = remoteApp.CachedRestartPath,
+                            ClientIP = pc.IP,
+                            Enabled = true
+                        });
+                        AddToLog($"Recovered remote app '{remoteApp.CachedName}' on {pc.Name} into apps list (UUID pending).");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AddToLog($"Error loading remote apps: {ex.Message}");
+                _remoteApps.Clear();
+            }
+        }
+
+        private void SaveRemoteApps()
+        {
+            try
+            {
+                RemoteAppManager.SaveRemoteApps(_remoteApps);
+                AddToLog($"Saved {_remoteApps.Count} remote app(s).");
+            }
+            catch (Exception ex)
+            {
+                AddToLog($"Error saving remote apps: {ex.Message}");
+            }
+        }
+
+        // ---- One-time migration: raw ClientIP / RemoteHost → UUID references ----
+
+        /// <summary>
+        /// Runs once on startup when legacy data is detected.
+        /// - Assigns UUIDs to any PcInfo entries loaded without one and saves.
+        /// - Migrates RemoteRoutineReference.RemoteHost (IP) → PcId (UUID).
+        /// - Migrates ApplicationDetails entries with ClientIP set → RemoteAppReference in remote-apps.xml,
+        ///   then strips them from _apps / applications.xml.
+        /// </summary>
+        private void MigrateToUuidReferences()
+        {
+            bool anyChange = false;
+
+            // Backup applications.xml once before any migration changes are written.
+            try
+            {
+                string xmlPath = getXMLConfigPath();
+                string backupPath = System.IO.Path.ChangeExtension(xmlPath, null) + ".pre-migration-backup.xml";
+                if (System.IO.File.Exists(xmlPath) && !System.IO.File.Exists(backupPath))
+                {
+                    System.IO.File.Copy(xmlPath, backupPath);
+                    AddToLog($"Migration backup created: {System.IO.Path.GetFileName(backupPath)}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AddToLog($"Warning: could not create migration backup: {ex.Message}");
+            }
+
+            // 1. Ensure every PcInfo has a stable UUID
+            if (_pcs.Any(p => string.IsNullOrWhiteSpace(p.Id)))
+            {
+                foreach (var pc in _pcs.Where(p => string.IsNullOrWhiteSpace(p.Id)))
+                    pc.Id = Guid.NewGuid().ToString();
+                anyChange = true;
+            }
+
+            // 2. Migrate RemoteRoutineReference.RemoteHost (IP) → PcId.
+            foreach (var rr in _remoteRoutines.Where(r => string.IsNullOrWhiteSpace(r.PcId)))
+            {
+                if (string.IsNullOrWhiteSpace(rr.RemoteHost)) continue;
+
+                var pc = _pcs.FirstOrDefault(p => string.Equals(p.IP, rr.RemoteHost, StringComparison.OrdinalIgnoreCase));
+                if (pc == null)
+                {
+                    // Auto-create a PcInfo entry so the UUID reference is valid.
+                    pc = new PcInfo { Id = Guid.NewGuid().ToString(), Name = rr.RemoteHost, IP = rr.RemoteHost, Enabled = true };
+                    _pcs.Add(pc);
+                }
+                rr.PcId = pc.Id;
+                rr.CachedPcName = pc.Name;
+                anyChange = true;
+            }
+
+            // 3. Create RemoteAppReference shadow entries for apps with ClientIP.
+            // The app is NOT removed from _apps here — it remains as the working fallback
+            // via the existing TCP path until its RemoteAppId is resolved (remote PC comes
+            // online). Once resolved, the app will be removed from _apps and shown in the
+            // remote-apps section instead.
+            var remoteAppsInXml = _apps.Where(a => !string.IsNullOrWhiteSpace(a.ClientIP)).ToList();
+            if (remoteAppsInXml.Count > 0)
+            {
+                foreach (var app in remoteAppsInXml)
+                {
+                    var pc = _pcs.FirstOrDefault(p => string.Equals(p.IP, app.ClientIP, StringComparison.OrdinalIgnoreCase));
+                    if (pc == null)
+                    {
+                        pc = new PcInfo { Id = Guid.NewGuid().ToString(), Name = app.ClientIP, IP = app.ClientIP, Enabled = true };
+                        _pcs.Add(pc);
+                    }
+
+                    // Only add if not already tracked (avoid duplicates on repeated startups).
+                    // Use Name for matching — ProcessName is empty for many apps and would
+                    // cause all empty-ProcessName apps on the same PC to collapse into one entry.
+                    bool alreadyTracked = _remoteApps.Any(r =>
+                        r.PcId == pc.Id &&
+                        string.Equals(r.CachedName, app.Name, StringComparison.OrdinalIgnoreCase));
+
+                    if (!alreadyTracked)
+                    {
+                        _remoteApps.Add(new AppRestarter.Models.RemoteAppReference
+                        {
+                            PcId = pc.Id,
+                            CachedPcName = pc.Name,
+                            // RemoteAppId stays null until the remote PC is online and UUID is resolved.
+                            RemoteAppId = null,
+                            CachedName = app.Name,
+                            CachedProcessName = app.ProcessName,
+                            CachedRestartPath = app.RestartPath,
+                            LastUpdated = DateTime.Now
+                        });
+                        anyChange = true;
+                    }
+                }
+
+                if (anyChange) SaveRemoteApps();
+            }
+
+            if (anyChange)
+            {
+                SaveApplicationsToXml();
+                SaveRemoteRoutines();
+                AddToLog("UUID reference migration complete.");
             }
         }
     }

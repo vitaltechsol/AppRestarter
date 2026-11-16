@@ -32,6 +32,7 @@ namespace AppRestarter
         private readonly List<PcInfo> _pcs = new();
         private List<AppRestarter.Models.Routine> _routines = new List<AppRestarter.Models.Routine>();
         private List<AppRestarter.Models.RemoteRoutineReference> _remoteRoutines = new List<AppRestarter.Models.RemoteRoutineReference>();
+        private List<AppRestarter.Models.RemoteAppReference> _remoteApps = new List<AppRestarter.Models.RemoteAppReference>();
         private AppSettings _settings;
         private WebServer _webServer;
         private TcpListener server;
@@ -63,7 +64,8 @@ namespace AppRestarter
             LoadPcsFromXml();
             LoadRoutines();
             LoadRemoteRoutines();
-            MakeNavButtonsCircular();
+            LoadRemoteApps();
+            MigrateToUuidReferences();
 
             _autoUpdater = new AutoUpdater(
                 "https://api.github.com/repos/vitaltechsol/AppRestarter/releases/latest",
@@ -413,6 +415,10 @@ namespace AppRestarter
                                     // If this is a real control request, do it.
                                     if (applicationDetails.StartRequested || applicationDetails.StopRequested)
                                     {
+                                        // Clear ClientIP: when a command arrives over TCP this PC IS the
+                                        // target. Keeping ClientIP set would cause HandleAppButtonClickAsync
+                                        // to re-route the request remotely, creating an infinite loop.
+                                        applicationDetails.ClientIP = null;
                                         _ = HandleAppButtonClickAsync(
                                             applicationDetails,
                                             applicationDetails.StartRequested,
@@ -564,10 +570,14 @@ namespace AppRestarter
                         _apps.Select(app =>
                         {
                             var x = new XElement("Application",
+                                new XElement("Id", app.Id),
                                 new XElement("Name", app.Name),
                                 new XElement("ProcessName", app.ProcessName),
                                 new XElement("RestartPath", app.RestartPath),
-                                new XElement("ClientIP", app.ClientIP),
+                                // ClientIP is kept until the RemoteAppReference for this app has a resolved
+                                // RemoteAppId (remote PC UUID confirmed). After that the app is removed from
+                                // _apps entirely and lives only in remote-apps.xml.
+                                new XElement("ClientIP", app.ClientIP ?? ""),
                                 new XElement("AutoStart", app.AutoStart),
                                 new XElement("AutoStartDelayInSeconds", app.AutoStartDelayInSeconds),
                                 new XElement("NoWarn", app.NoWarn),
@@ -597,6 +607,7 @@ namespace AppRestarter
                     new XElement("Systems",
                         _pcs.Select(pc =>
                             new XElement("PC",
+                                new XElement("Id", pc.Id),
                                 new XElement("Name", pc.Name),
                                 new XElement("IP", pc.IP),
                                 new XElement("Enabled", pc.Enabled)
@@ -622,12 +633,19 @@ namespace AppRestarter
                 _pcs.Clear();
                 foreach (var pcEl in systemNode.Elements("PC"))
                 {
+                    var id = pcEl.Element("Id")?.Value;
                     var name = pcEl.Element("Name")?.Value ?? "";
                     var ip = pcEl.Element("IP")?.Value ?? "";
                     var enabled = bool.TryParse(pcEl.Element("Enabled")?.Value, out var en) ? en : true;
                     if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(ip))
                     {
-                        _pcs.Add(new PcInfo { Name = name, IP = ip, Enabled = enabled });
+                        _pcs.Add(new PcInfo
+                        {
+                            Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString() : id,
+                            Name = name,
+                            IP = ip,
+                            Enabled = enabled
+                        });
                     }
                 }
             }

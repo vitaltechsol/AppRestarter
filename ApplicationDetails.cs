@@ -16,6 +16,9 @@ namespace AppRestarter
     public class ApplicationDetails
     {
         [DataMember]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+
+        [DataMember]
         public RemoteActionType ActionType { get; set; } = RemoteActionType.AppControl;
 
         public string Name { get; set; }
