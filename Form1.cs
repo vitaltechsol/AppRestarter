@@ -81,7 +81,8 @@ namespace AppRestarter
                 isAppsViewActive: () => _currentView == ViewMode.Apps,
                 getAppsSnapshot: () => _apps.ToList(),
                 getAppPort: () => _settings.AppPort,
-                getTimeoutMs: () => _timeout
+                getTimeoutMs: () => _timeout,
+                onRemotePcOnline: ip => Task.Run(() => TryResolveRemoteAppsForPc(ip))
             );
 
             // Make group “cards” fluid width
@@ -97,6 +98,14 @@ namespace AppRestarter
             ShowAppsView();
             Task.Run(AutoStartApps);
             Task.Run(AutoStartRoutines);
+
+            // Refresh remote app caches at startup for any PCs that are already online.
+            // (The _wasOffline callback only fires for offline→online transitions after launch.)
+            Task.Run(() =>
+            {
+                foreach (var pc in _pcs.Where(p => !string.IsNullOrWhiteSpace(p.IP)))
+                    TryResolveRemoteAppsForPc(pc.IP);
+            });
         }
 
         private async void Form1_Load(object sender, EventArgs e)

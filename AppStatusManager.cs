@@ -33,12 +33,17 @@ namespace AppRestarter
         private readonly Func<List<ApplicationDetails>> _getAppsSnapshot;
         private readonly Func<int> _getAppPort;
         private readonly Func<int> _getTimeoutMs;
+        // Called (on a background thread) the first time a remote PC responds after being offline.
+        // Argument is the PC's IP address.
+        private readonly Action<string> _onRemotePcOnline;
 
         // Stable-keyed state (works across clones/deserialization/batch requests)
         private readonly Dictionary<string, List<Control>> _appStatusIndicators = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AppRunVisualState> _lastAppRunStates = new(StringComparer.OrdinalIgnoreCase);
         // Don't hammer offline PCs every tick
         private readonly Dictionary<string, DateTime> _nextRemoteRetryUtc = new(StringComparer.OrdinalIgnoreCase);
+        // Track IPs that have ever hit a cooldown (i.e. were offline at some point)
+        private readonly HashSet<string> _wasOffline = new(StringComparer.OrdinalIgnoreCase);
 
         // Limit simultaneous remote connects so you don't create a connection storm
         private readonly System.Threading.SemaphoreSlim _remoteConcurrency = new(initialCount: 4, maxCount: 4);
@@ -59,7 +64,8 @@ namespace AppRestarter
             Func<bool> isAppsViewActive,
             Func<List<ApplicationDetails>> getAppsSnapshot,
             Func<int> getAppPort,
-            Func<int> getTimeoutMs)
+            Func<int> getTimeoutMs,
+            Action<string> onRemotePcOnline = null)
         {
             _uiInvoker = uiInvoker ?? throw new ArgumentNullException(nameof(uiInvoker));
             _log = log ?? (_ => { });
@@ -67,6 +73,7 @@ namespace AppRestarter
             _getAppsSnapshot = getAppsSnapshot ?? throw new ArgumentNullException(nameof(getAppsSnapshot));
             _getAppPort = getAppPort ?? throw new ArgumentNullException(nameof(getAppPort));
             _getTimeoutMs = getTimeoutMs ?? (() => 8000);
+            _onRemotePcOnline = onRemotePcOnline;
         }
 
         public void Dispose()
@@ -246,17 +253,23 @@ namespace AppRestarter
                                 // Success: allow immediate retries next tick
                                 _nextRemoteRetryUtc[ip] = DateTime.UtcNow;
 
+                                // If this PC was previously offline, notify so caches can refresh
+                                if (_wasOffline.Remove(ip))
+                                    _onRemotePcOnline?.Invoke(ip);
+
                                 SafeUiUpdate(results);
                             }
                             catch (SocketException)
                             {
                                 _nextRemoteRetryUtc[ip] = DateTime.UtcNow.AddSeconds(15);
+                                _wasOffline.Add(ip);
                                 if(VerboseLogging)
                                     _log($"Batch status <- {ip}: offline (cooldown 15s)");
                             }
                             catch (Exception ex)
                             {
                                 _nextRemoteRetryUtc[ip] = DateTime.UtcNow.AddSeconds(15);
+                                _wasOffline.Add(ip);
                                 if (VerboseLogging)
                                     _log($"Batch status <- {ip}: {ex.Message} (cooldown 15s)");
                             }

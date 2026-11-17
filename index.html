@@ -1005,7 +1005,7 @@
 
         async function loadApps() {
             try {
-                const apps = await apiGet('/apps');
+                const apps = await apiGet('/apps/all');
                 renderApps(apps);
             } catch (err) {
                 console.error(err);

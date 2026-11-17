@@ -332,6 +332,29 @@ namespace AppRestarter
                     return;
                 }
 
+                // ---- APPS: full list for the web UI (local + remote mirrors) ----
+                if (request.HttpMethod == "GET" && path == "/apps/all")
+                {
+                    var allApps = _apps.Where(a => a.Enabled).Select(app => new
+                    {
+                        app.Id,
+                        app.Name,
+                        app.ProcessName,
+                        app.RestartPath,
+                        app.ClientIP,
+                        app.NoWarn,
+                        app.GroupName,
+                        app.GroupNames
+                    }).ToList();
+
+                    var json = JsonSerializer.Serialize(allApps);
+                    var buffer = Encoding.UTF8.GetBytes(json);
+                    response.ContentType = "application/json";
+                    response.ContentLength64 = buffer.Length;
+                    await response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+                    return;
+                }
+
                 // ---- APPS: UUID-based control (start / stop / restart) ----
                 if (request.HttpMethod == "POST" && path == "/apps/control")
                 {

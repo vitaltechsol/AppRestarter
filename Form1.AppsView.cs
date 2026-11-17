@@ -1084,6 +1084,138 @@ namespace AppRestarter
             }
         }
 
+        // Called on startup and whenever a remote PC comes back online.
+        // Fetches /apps, resolves RemoteAppId UUIDs, and refreshes all cached name/path fields.
+        internal void TryResolveRemoteAppsForPc(string ip)
+        {
+            if (string.IsNullOrWhiteSpace(ip)) return;
+
+            var pc = _pcs.FirstOrDefault(p => string.Equals(p.IP, ip, StringComparison.OrdinalIgnoreCase));
+            if (pc == null) return;
+
+            var refs = _remoteApps.Where(r => r.PcId == pc.Id).ToList();
+            if (refs.Count == 0) return;
+
+            List<RemoteAppDto> liveApps;
+            try
+            {
+                using var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                var json = client.GetStringAsync($"http://{ip}:{_settings.WebPort}/apps").GetAwaiter().GetResult();
+                liveApps = System.Text.Json.JsonSerializer.Deserialize<List<RemoteAppDto>>(
+                    json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (Exception ex)
+            {
+                AddToLog($"Could not fetch apps from {ip} for cache update: {ex.Message}");
+                return;
+            }
+
+            if (liveApps == null || liveApps.Count == 0) return;
+
+            // Three indexes: UUID (survives renames) > name > restart path
+            var byId   = liveApps.Where(a => !string.IsNullOrWhiteSpace(a.Id))
+                                  .ToDictionary(a => a.Id, StringComparer.OrdinalIgnoreCase);
+            var byName = liveApps.Where(a => !string.IsNullOrWhiteSpace(a.Name))
+                                  .GroupBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+                                  .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var byPath = liveApps.Where(a => !string.IsNullOrWhiteSpace(a.RestartPath))
+                                  .GroupBy(a => a.RestartPath, StringComparer.OrdinalIgnoreCase)
+                                  .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            bool anyChange = false;
+
+            foreach (var r in refs)
+            {
+                RemoteAppDto match = null;
+                if (!string.IsNullOrWhiteSpace(r.RemoteAppId) && byId.TryGetValue(r.RemoteAppId, out var m1))
+                    match = m1;
+                else if (!string.IsNullOrWhiteSpace(r.CachedName) && byName.TryGetValue(r.CachedName, out var m2))
+                    match = m2;
+                else if (!string.IsNullOrWhiteSpace(r.CachedRestartPath) && byPath.TryGetValue(r.CachedRestartPath, out var m3))
+                    match = m3;
+
+                if (match == null) continue;
+
+                // Capture the _apps mirror by ClientIP + OLD name BEFORE overwriting CachedName
+                var appEntry = _apps.FirstOrDefault(a =>
+                    string.Equals(a.ClientIP, pc.IP, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(a.Name, r.CachedName, StringComparison.OrdinalIgnoreCase));
+
+                // Resolve UUID if still pending
+                if (string.IsNullOrWhiteSpace(r.RemoteAppId) && !string.IsNullOrWhiteSpace(match.Id))
+                {
+                    r.RemoteAppId = match.Id;
+                    anyChange = true;
+                }
+
+                // Update cached fields if anything changed
+                if (r.CachedName != match.Name ||
+                    r.CachedProcessName != match.ProcessName ||
+                    r.CachedRestartPath != match.RestartPath)
+                {
+                    string oldName = r.CachedName;
+
+                    r.CachedName        = match.Name;
+                    r.CachedProcessName = match.ProcessName;
+                    r.CachedRestartPath = match.RestartPath;
+                    r.LastUpdated       = DateTime.UtcNow;
+                    anyChange = true;
+
+                    if (appEntry != null)
+                    {
+                        appEntry.Name        = match.Name;
+                        appEntry.ProcessName = match.ProcessName ?? string.Empty;
+                        appEntry.RestartPath = match.RestartPath;
+                    }
+
+                    // Propagate the rename into any routine steps that reference the old name
+                    if (!string.IsNullOrWhiteSpace(oldName) && oldName != match.Name)
+                    {
+                        bool routineChanged = false;
+                        foreach (var routine in _routines)
+                        {
+                            foreach (var step in routine.Steps)
+                            {
+                                if (step.Action?.TargetType == Models.TargetType.App &&
+                                    string.Equals(step.Action.TargetId, oldName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    step.Action.TargetId = match.Name;
+                                    routineChanged = true;
+                                }
+                                foreach (var wc in step.WaitConditions)
+                                {
+                                    if (string.Equals(wc.AppId, oldName, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        wc.AppId = match.Name;
+                                        routineChanged = true;
+                                    }
+                                }
+                            }
+                        }
+                        if (routineChanged)
+                            SaveRoutines();
+                    }
+                }
+            }
+
+            if (!anyChange) return;
+
+            SaveRemoteApps();
+            SaveApplicationsToXml();
+            if (IsHandleCreated)
+                BeginInvoke((Action)UpdateAppList);
+        }
+
+
+        // Minimal DTO for /apps JSON response (mirrors WebServer GET /apps shape)
+        private class RemoteAppDto
+        {
+            public string Id          { get; set; }
+            public string Name        { get; set; }
+            public string ProcessName { get; set; }
+            public string RestartPath { get; set; }
+        }
+
         // ---- One-time migration: raw ClientIP / RemoteHost → UUID references ----
 
         /// <summary>
